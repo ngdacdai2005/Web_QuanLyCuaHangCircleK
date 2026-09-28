@@ -50,6 +50,7 @@ public class PhieuNhapService {
     @Setter
     public static class PayRequest {
         private BigDecimal daThanhToan;
+        private String hinhThucTt;
     }
 
     @Getter
@@ -247,6 +248,8 @@ public class PhieuNhapService {
             }
         }
 
+        ghiSoQuyNhapHang(reloaded, paid, actor.getId(), null);
+
         entityManager.clear();
         return toDTO(phieuNhapRepository.findById(saved.getId()).orElseThrow());
     }
@@ -256,7 +259,7 @@ public class PhieuNhapService {
      *   1. Kiểm tra phiếu ở trạng thái PENDING_PAYMENT.
      *   2. Cập nhật da_thanh_toan = grand_total.
      *   3. Chuyển trạng thái: PENDING_PAYMENT -> PENDING ("Chờ nhận hàng").
-     *   4. Ghi sổ quỹ phiếu CHI (hạng mục NHAP_HANG).
+     *   4. Ghi sổ quỹ phiếu CHI (hạng mục NHAP_HANG) và cập nhật số dư.
      *   Lưu ý: Chưa cộng tồn kho và chưa tạo lô hàng tại bước này (hàng thực tế chưa về kho).
      */
     @Transactional
@@ -292,33 +295,44 @@ public class PhieuNhapService {
                 "UPDATE phieu_nhap SET trang_thai = 'PENDING', da_thanh_toan = ?, ngay_cap_nhat = NOW() WHERE id = ?",
                 paid, id);
 
-        if (!soQuyRepository.existsByMaChungTuLienQuanAndDirectionAndHangMuc(
-                pn.getMaPhieu(), "PAYMENT", "NHAP_HANG")) {
-            String tenNcc = nhaCungCapRepository.findById(pn.getIdNcc())
-                    .map(NhaCungCap::getTenNcc)
-                    .orElse("Nhà cung cấp");
-            SoQuy cashEntry = new SoQuy();
-            cashEntry.setId(UUID.randomUUID());
-            cashEntry.setMaChungTu(null);
-            cashEntry.setMaChungTuLienQuan(pn.getMaPhieu());
-            cashEntry.setIdChiNhanh(pn.getIdChiNhanh());
-            cashEntry.setIdNguoiTao(actor.getId());
-            cashEntry.setDirection("PAYMENT");
-            cashEntry.setHangMuc("NHAP_HANG");
-            cashEntry.setHinhThucTt("BANK_TRANSFER");
-            cashEntry.setEntryDate(LocalDate.now());
-            cashEntry.setSoTien(paid);
-            cashEntry.setDoiTuong(tenNcc);
-            cashEntry.setDienGiai("Thanh toán nhập hàng " + pn.getMaPhieu() + " · NCC " + tenNcc);
-            cashEntry.setRunningBalance(BigDecimal.ZERO);
-            cashEntry.setTrangThai("COMPLETED");
-            cashEntry.setNgayTao(LocalDateTime.now());
-            cashEntry.setNgayCapNhat(LocalDateTime.now());
-            soQuyRepository.save(cashEntry);
-        }
+        ghiSoQuyNhapHang(pn, paid, actor.getId(), request != null ? request.getHinhThucTt() : null);
 
         entityManager.clear();
         return Optional.of(toDTO(phieuNhapRepository.findById(id).orElseThrow()));
+    }
+
+    /**
+     * Ghi sổ quỹ chi tiền trả NCC cho phiếu nhập (hạng mục NHAP_HANG, direction PAYMENT).
+     * Bắt buộc dùng saveAndFlush() để tránh bị entityManager.clear() xoá mất entity khỏi persistence context trước khi commit.
+     */
+    private void ghiSoQuyNhapHang(PhieuNhap pn, BigDecimal amount, UUID actorId, String hinhThucTt) {
+        if (amount == null || amount.signum() <= 0) return;
+        if (soQuyRepository.existsByMaChungTuLienQuanAndDirectionAndHangMuc(
+                pn.getMaPhieu(), "PAYMENT", "NHAP_HANG")) {
+            return;
+        }
+
+        String tenNcc = nhaCungCapRepository.findById(pn.getIdNcc())
+                .map(NhaCungCap::getTenNcc)
+                .orElse("Nhà cung cấp");
+        SoQuy cashEntry = new SoQuy();
+        cashEntry.setId(UUID.randomUUID());
+        cashEntry.setMaChungTu(null); // DB trigger trg_so_quy_sinh_ma sinh PC-YYYYMMDD-NNN
+        cashEntry.setMaChungTuLienQuan(pn.getMaPhieu());
+        cashEntry.setIdChiNhanh(pn.getIdChiNhanh());
+        cashEntry.setIdNguoiTao(actorId != null ? actorId : pn.getIdNguoiNhap());
+        cashEntry.setDirection("PAYMENT");
+        cashEntry.setHangMuc("NHAP_HANG");
+        cashEntry.setHinhThucTt(hinhThucTt != null && !hinhThucTt.isBlank() ? hinhThucTt : "BANK_TRANSFER");
+        cashEntry.setEntryDate(LocalDate.now());
+        cashEntry.setSoTien(amount);
+        cashEntry.setDoiTuong(tenNcc);
+        cashEntry.setDienGiai("Thanh toán nhập hàng " + pn.getMaPhieu() + " · NCC " + tenNcc);
+        cashEntry.setRunningBalance(BigDecimal.ZERO);
+        cashEntry.setTrangThai("COMPLETED");
+        cashEntry.setNgayTao(LocalDateTime.now());
+        cashEntry.setNgayCapNhat(LocalDateTime.now());
+        soQuyRepository.saveAndFlush(cashEntry);
     }
 
     /**
