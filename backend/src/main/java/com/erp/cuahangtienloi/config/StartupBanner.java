@@ -13,8 +13,8 @@ public class StartupBanner {
         System.out.println("=========================================================");
         System.out.println("   🚀 SERVER ĐÃ KHỞI ĐỘNG THÀNH CÔNG! ");
         System.out.println("   🌐 Trạng thái: Sẵn sàng phục vụ");
-        System.out.println("   🔌 Cổng (Port): 8080");
-        System.out.println("   🔗 Truy cập  : http://localhost:8080");
+        System.out.println("   🔌 Cổng (Port): 8089");
+        System.out.println("   🔗 Truy cập  : http://localhost:8089");
         System.out.println("=========================================================");
         System.out.println();
     }

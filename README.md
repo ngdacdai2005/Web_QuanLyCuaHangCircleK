@@ -133,7 +133,7 @@ cd backend
 # Cấu hình file .env dựa trên .env.example (hoặc để mặc định localhost)
 .\mvnw.cmd spring-boot:run
 ```
-> Backend sẽ chạy ở địa chỉ: `http://localhost:8080`.
+> Backend sẽ chạy ở địa chỉ: `http://localhost:8089`.
 > Chạy lần đầu tiên, Hibernate sẽ tự động cập nhật Database và nạp dữ liệu mẫu (Seeder).
 
 ### 2. Khởi chạy Frontend (React Vite)
