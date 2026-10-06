@@ -1,5 +1,6 @@
 package com.erp.cuahangtienloi.validation;
 
+import com.erp.cuahangtienloi.dto.ChangePasswordRequest;
 import com.erp.cuahangtienloi.dto.CreateSanPhamRequest;
 import com.erp.cuahangtienloi.dto.CreateTaiKhoanRequest;
 import com.erp.cuahangtienloi.dto.UpdateTaiKhoanRequest;
@@ -76,7 +77,10 @@ class InputValidationTest {
 
     @Test
     void changePasswordRejectsValuesShorterThanEightCharacters() {
-        var request = new TaiKhoanController.ChangePasswordRequest("current-password", "123456");
+        var request = new ChangePasswordRequest(
+                "current-password",
+                "123456"
+        );
 
         var messages = validator.validate(request).stream()
                 .map(v -> v.getMessage())

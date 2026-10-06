@@ -49,26 +49,46 @@ public class LoHangService {
 
         String maLo = (maLoTuyChon != null && !maLoTuyChon.trim().isEmpty())
                 ? maLoTuyChon.trim()
-                : generateMaLo();
+                : null;
 
         LocalDate finalHanSuDung = hanSuDung;
         if (finalHanSuDung == null) {
             SanPham sp = sanPhamRepository.findById(idSanPham).orElse(null);
             if (sp != null && sp.getHanSuDungNgay() != null && sp.getHanSuDungNgay() >= 0) {
-                LocalDate baseDate = (ngaySanXuat != null) ? ngaySanXuat : LocalDate.now();
+                LocalDate baseDate = (ngaySanXuat != null)
+                        ? ngaySanXuat
+                        : LocalDate.now();
+
                 finalHanSuDung = baseDate.plusDays(sp.getHanSuDungNgay());
             }
         }
 
-        Optional<LoHang> existing = loHangRepository.findByMaLoAndIdChiNhanh(maLo, idChiNhanh);
+        // Chỉ tìm lô hiện có khi caller thực sự chỉ định mã lô.
+        // Nếu maLo == null thì để DB trigger tự sinh mã LOT-YYYYMMDD-NNNN.
+        Optional<LoHang> existing = maLo == null
+                ? Optional.empty()
+                : loHangRepository.findByMaLoAndIdChiNhanh(maLo, idChiNhanh);
+
         LoHang loHang;
+
         if (existing.isPresent()) {
             loHang = existing.get();
-            loHang.setSoLuongTon(loHang.getSoLuongTon() + soLuong);
-            if (finalHanSuDung != null) loHang.setHanSuDung(finalHanSuDung);
-            if (ngaySanXuat != null) loHang.setNgaySanXuat(ngaySanXuat);
+
+            loHang.setSoLuongTon(
+                    loHang.getSoLuongTon() + soLuong
+            );
+
+            if (finalHanSuDung != null) {
+                loHang.setHanSuDung(finalHanSuDung);
+            }
+
+            if (ngaySanXuat != null) {
+                loHang.setNgaySanXuat(ngaySanXuat);
+            }
+
             loHang.setTrangThai("ACTIVE");
             loHang.setNgayCapNhat(LocalDateTime.now());
+
         } else {
             loHang = LoHang.builder()
                     .id(UUID.randomUUID())
@@ -86,7 +106,9 @@ public class LoHangService {
         }
 
         LoHang saved = loHangRepository.save(loHang);
+
         dongBoHanSuDungGanNhat(idSanPham, idChiNhanh);
+
         return saved;
     }
 
@@ -150,10 +172,8 @@ public class LoHangService {
                 hsd = LocalDate.now().plusDays(sp.getHanSuDungNgay());
             }
             BigDecimal giaVon = (donGiaFallback != null) ? donGiaFallback : BigDecimal.ZERO;
-            String maLo = generateMaLo();
-
             LoHang destLot = congDonHoacTaoLoTaiKhoNhan(
-                    idChiNhanhNhan, idSanPham, maLo,
+                    idChiNhanhNhan, idSanPham, null,
                     remaining, hsd, LocalDate.now(), giaVon);
             transferredLots.add(destLot);
         }
@@ -168,7 +188,9 @@ public class LoHangService {
             UUID idChiNhanh, UUID idSanPham, String maLo,
             int soLuong, LocalDate hanSuDung, LocalDate ngaySanXuat, BigDecimal giaVon) {
 
-        Optional<LoHang> existing = loHangRepository.findByMaLoAndIdChiNhanh(maLo, idChiNhanh);
+        Optional<LoHang> existing = maLo == null
+                ? Optional.empty()
+                : loHangRepository.findByMaLoAndIdChiNhanh(maLo, idChiNhanh);
         LoHang loHang;
         if (existing.isPresent()) {
             loHang = existing.get();
@@ -262,10 +284,9 @@ public class LoHangService {
                 hsd = LocalDate.now().plusDays(sp.getHanSuDungNgay());
             }
             BigDecimal giaVon = (tk.getGiaVonTrungBinh() != null) ? tk.getGiaVonTrungBinh() : BigDecimal.ZERO;
-            String maLo = generateMaLo();
 
             congDonHoacTaoLoTaiKhoNhan(
-                    idChiNhanh, idSanPham, maLo,
+                    idChiNhanh, idSanPham, null,
                     remaining, hsd, LocalDate.now(), giaVon);
         }
 
@@ -393,8 +414,4 @@ public class LoHangService {
                 nextExpiry, idSanPham, idChiNhanh);
     }
 
-    private String generateMaLo() {
-        return "LOT-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
-                + "-" + (int)(1000 + Math.random() * 9000);
-    }
 }

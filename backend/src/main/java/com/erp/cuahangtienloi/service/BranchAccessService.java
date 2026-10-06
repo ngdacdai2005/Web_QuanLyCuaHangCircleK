@@ -57,6 +57,27 @@ public class BranchAccessService {
                 || (employee.getIdChiNhanh() != null && employee.getIdChiNhanh().equals(branchId));
     }
 
+    public boolean canWriteBranch(NhanVien employee, UUID branchId) {
+        if (isSystemWide(employee)) {
+            return true;
+        }
+        return employee.getIdChiNhanh() != null && employee.getIdChiNhanh().equals(branchId);
+    }
+
+    public void requireWritableBranch(NhanVien employee, UUID branchId) {
+        if (isSystemWide(employee)) {
+            return;
+        }
+
+        if (employee.getIdChiNhanh() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Nhân viên chưa được gán chi nhánh");
+        }
+
+        if (!employee.getIdChiNhanh().equals(branchId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không được ghi dữ liệu của chi nhánh khác");
+        }
+    }
+
     /** ADMIN/Kế toán xem toàn hệ thống; Quản lý xem nhân sự chi nhánh mình;
      * các vai trò khác chỉ xem hồ sơ của chính mình. */
     public boolean canReadEmployee(NhanVien actor, NhanVien target) {

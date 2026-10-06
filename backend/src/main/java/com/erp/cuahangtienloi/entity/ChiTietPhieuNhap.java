@@ -30,6 +30,18 @@ public class ChiTietPhieuNhap {
     @Column(name = "so_luong_nhan")
     private Integer soLuongNhan;
 
+    @Column(name = "so_luong_thua")
+    private Integer soLuongThua;
+
+    @Column(name = "xu_ly_thua")
+    private String xuLyThua;
+
+    @Column(name = "don_gia_nhap_cu")
+    private BigDecimal donGiaNhapCu;
+    
+    @Column(name = "ly_do_chenh_lech_dong")
+    private String lyDoChenhLechDong;
+
     @Column(name = "don_gia_nhap")
     private BigDecimal donGiaNhap;
 

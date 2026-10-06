@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import jakarta.persistence.LockModeType;
+
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,4 +24,4 @@ public interface PhieuNhapRepository extends JpaRepository<PhieuNhap, UUID> {
     List<PhieuNhap> findByIdNcc(UUID idNcc);
     List<PhieuNhap> findByIdNguoiNhap(UUID idNguoiNhap);
     List<PhieuNhap> findByTrangThai(String trangThai);
-}
+    List<PhieuNhap> findByTrangThaiIn(Collection<String> trangThai);}

@@ -14,17 +14,35 @@
 --           bang_luong, danh_muc, san_pham, ton_kho, the_kho, nha_cung_cap).
 --
 -- Quy tắc nghiệp vụ QUAN TRỌNG:
---   1. BR-05: chỉ nhập vào chi nhánh có loai = 'KHO_TONG'. CHECK constraint
---      enforce trực tiếp ở DB (không chỉ dựa vào tầng backend).
---   2. Khi lưu phiếu nhập, đồng thời phải:
---      a. Ghi the_kho (PURCHASE_IN) — append-only audit log
---      b. Cập nhật ton_kho (cộng tồn + cập nhật BQGQ)
---      c. Cập nhật san_pham.gia_von (BQGQ mới)
---      d. Cập nhật nha_cung_cap.tong_don_hang, tong_cong_no
---      Function `fn_nhap_kho_dong_bo()` làm tất cả trong 1 transaction.
---   3. SL đặt (ordered) có thể khác SL nhận (received) khi NCC giao thiếu.
---   4. subTotal, vatTotal, grandTotal là SNAPSHOT — DB KHÔNG tự tính lại
---      khi UPDATE lines.
+--   1. BR-05: chỉ nhập vào chi nhánh có loai = 'KHO_TONG'.
+--      DB enforce bằng trigger.
+--
+--   2. Khi tạo phiếu:
+--      - Chỉ tạo header + lines.
+--      - Trạng thái = PENDING_CONFIRMATION.
+--      - KHÔNG ghi the_kho.
+--      - KHÔNG cập nhật ton_kho.
+--      - KHÔNG tạo công nợ.
+--      - KHÔNG ghi sổ quỹ.
+--
+--   3. Sau khi Kế toán/Admin duyệt:
+--      PENDING_CONFIRMATION → PENDING_RECEIVING.
+--
+--   4. Khi Thủ kho xác nhận thực nhận:
+--      - Ghi the_kho (PURCHASE_IN).
+--      - Cập nhật ton_kho.
+--      - Tạo/cập nhật lo_hang.
+--      - Tính BQGQ.
+--      - Cập nhật công nợ NCC.
+--      - Trạng thái → COMPLETED.
+--
+--   5. Thanh toán NCC thực hiện SAU khi hoàn tất kiểm nhận.
+--      Có thể thanh toán nhiều lần.
+--
+--   6. SL đặt có thể khác SL nhận khi NCC giao thiếu.
+--      Hàng giao dư được lưu riêng bằng so_luong_thua.
+--
+--   7. sub_total/vat_total/grand_total được trigger tính lại từ lines.
 -- =============================================================================
 
 -- =============================================================================
@@ -79,16 +97,19 @@ CREATE TABLE IF NOT EXISTS phieu_nhap (
     giam_gia        DECIMAL(15,0) NOT NULL DEFAULT 0 CHECK (giam_gia >= 0),
 
     -- Tổng phải trả = sub_total + vat_total - giam_gia.
-    -- DENORMALIZED — tính 1 lần lúc INSERT, sau đó snapshot. Nếu UPDATE
-    -- lines phải tính lại (không tự động).
+    -- DENORMALIZED — lưu trên header nhưng được DB tự động đồng bộ
+    -- từ chi_tiet_phieu_nhap bằng trigger AFTER INSERT/UPDATE/DELETE.
+    -- Khi thêm/sửa/xóa line, tổng tiền header được tự động tính lại.
     grand_total     DECIMAL(15,0) NOT NULL DEFAULT 0 CHECK (grand_total >= 0),
 
     -- CHECK grand_total khớp với công thức (chống sai số)
     CONSTRAINT chk_grand_total_dung CHECK (grand_total = sub_total + vat_total - giam_gia),
 
-    -- Số tiền đã thanh toán cho NCC. Snapshot, cập nhật khi chi tiền.
-    -- Khi INSERT: paid_amount = grand_total (thanh toán ngay) hoặc 0 (công nợ).
-    -- Khi UPDATE: cộng dồn khi có phiếu chi sổ quỹ TRÀ_NCC.
+    -- Số tiền đã thanh toán cho NCC.
+    -- Khi hoàn tất kiểm nhận: mặc định = 0.
+    -- Sau đó Kế toán/Admin có thể thanh toán nhiều lần.
+    -- Mỗi lần thanh toán sẽ cộng dồn vào da_thanh_toan
+    -- và trigger tự đồng bộ cong_no.
     da_thanh_toan   DECIMAL(15,0) NOT NULL DEFAULT 0
                    CHECK (da_thanh_toan >= 0 AND da_thanh_toan <= grand_total),
 
@@ -97,13 +118,58 @@ CREATE TABLE IF NOT EXISTS phieu_nhap (
     cong_no          DECIMAL(15,0) NOT NULL DEFAULT 0
                    CHECK (cong_no >= 0),
 
-    -- ===== TRẠNG THÁI =====
-    -- 3 trạng thái (xem DocumentStatus enum):
-    --   COMPLETED:   đã nhận hàng thực tế, tồn đã cộng
-    --   PENDING:     đang chờ NCC giao
-    --   CANCELLED:   huỷ đơn (NCC hết hàng, ...)
-    trang_thai      VARCHAR(20)  NOT NULL DEFAULT 'PENDING'
-                   CHECK (trang_thai IN ('DRAFT', 'PENDING', 'PENDING_PAYMENT', 'COMPLETED', 'CANCELLED')),
+    -- ===== TRẠNG THÁI WORKFLOW =====
+--
+-- PENDING_CONFIRMATION:
+--   Phiếu vừa tạo, chờ Kế toán/Admin duyệt.
+--
+-- REJECTED:
+--   Phiếu bị Kế toán/Admin từ chối.
+--   Service bắt buộc phải có ly_do_tu_choi.
+--
+-- PENDING_RECEIVING:
+--   Đã được duyệt, chờ Thủ kho bắt đầu kiểm nhận.
+--
+-- RECEIVING:
+--   Thủ kho đang kiểm đếm/thực nhận hàng.
+--
+-- COMPLETED:
+--   Đã hoàn tất kiểm nhận và ghi nhận tồn kho.
+--   KHÔNG có nghĩa là đã thanh toán hết NCC.
+--   Có thể thanh toán nhiều lần.
+--   Công nợ = grand_total - da_thanh_toan.
+--
+-- CANCELLED:
+--   Phiếu bị huỷ trước khi hoàn tất.
+    trang_thai      VARCHAR(30)  NOT NULL DEFAULT 'PENDING_CONFIRMATION'
+    CHECK (
+              trang_thai IN (
+              'PENDING_CONFIRMATION',
+              'REJECTED',
+              'PENDING_RECEIVING',
+              'RECEIVING',
+              'COMPLETED',
+              'CANCELLED'
+                            )
+    ),
+
+    -- ===== DUYỆT PHIẾU =====
+    id_nguoi_duyet       UUID REFERENCES nhan_vien(id)
+                                ON DELETE SET NULL
+                                ON UPDATE CASCADE,
+
+    ngay_duyet           TIMESTAMP,
+
+    ly_do_tu_choi        TEXT,
+
+    -- ===== KIỂM NHẬN =====
+    id_nguoi_kiem_nhan   UUID REFERENCES nhan_vien(id)
+                                ON DELETE SET NULL
+                                ON UPDATE CASCADE,
+
+    ngay_kiem_nhan       TIMESTAMP,
+
+    ly_do_chenh_lech     TEXT,
 
     -- CHECK nếu status = COMPLETED thì PHẢI có ngay_nhan_thuc_te
     CONSTRAINT chk_completed_co_ngay_nhan CHECK (
@@ -242,6 +308,43 @@ CREATE TABLE IF NOT EXISTS chi_tiet_phieu_nhap (
     -- CHECK SL nhận không vượt SL đặt
     CONSTRAINT chk_sl_nhan_khong_vuot_dat CHECK (so_luong_nhan <= so_luong_dat),
 
+    -- Số lượng NCC giao dư ngoài số lượng đặt.
+    -- KHÔNG bao giờ cộng vào grand_total
+    -- (thanh_tien = so_luong_nhan × don_gia_nhap).
+    --
+    -- Khi xu_ly_thua = 'NHAP_KHO':
+    --   - Hàng vẫn được nhập kho.
+    --   - Gia_von của hàng dư = don_gia_nhap.
+    --   - Mục đích là giữ đúng BQGQ của ton_kho.
+    --   - Tuy nhiên hàng dư KHÔNG phát sinh thêm công nợ NCC.
+    so_luong_thua   INTEGER NOT NULL DEFAULT 0
+    CHECK (so_luong_thua >= 0),
+
+    -- Cách xử lý hàng dư.
+    xu_ly_thua      VARCHAR(20) NOT NULL DEFAULT 'CHUA_XU_LY'
+    CHECK (
+              xu_ly_thua IN (
+              'NHAP_KHO',
+              'TRA_LAI_NCC',
+              'CHUA_XU_LY'
+                            )
+    ),
+
+    -- Giá cũ nếu giá nhập thay đổi khi kiểm nhận.
+    don_gia_nhap_cu DECIMAL(12,0),
+
+    -- Lý do chênh lệch riêng từng dòng.
+    ly_do_chenh_lech_dong TEXT,
+
+    -- Trong RECEIVING, CHUA_XU_LY được phép tạm thời.
+    -- Khi confirmReceiving, Service bắt buộc phải xử lý toàn bộ hàng dư
+    -- trước khi chuyển phiếu sang COMPLETED.
+    CONSTRAINT chk_thua_va_xu_ly_thua CHECK (
+        (so_luong_thua = 0 AND xu_ly_thua = 'CHUA_XU_LY')
+            OR
+        (so_luong_thua > 0 AND xu_ly_thua IN ('NHAP_KHO', 'TRA_LAI_NCC'))
+    ),
+
     -- Đơn giá nhập (snapshot tại thời điểm nhập). Dùng tính BQGQ cho ton_kho.
     don_gia_nhap    DECIMAL(12,0) NOT NULL CHECK (don_gia_nhap > 0),
 
@@ -250,6 +353,7 @@ CREATE TABLE IF NOT EXISTS chi_tiet_phieu_nhap (
                    CHECK (vat_phantram >= 0 AND vat_phantram <= 100),
 
     -- Thành tiền = so_luong_nhan × don_gia_nhap. TRƯỚC VAT.
+    -- KHÔNG bao gồm so_luong_thua, kể cả khi xu_ly_thua = 'NHAP_KHO'.
     -- DENORMALIZED — trigger BEFORE INSERT/UPDATE tự tính.
     thanh_tien      DECIMAL(15,0) NOT NULL CHECK (thanh_tien >= 0),
 
@@ -327,14 +431,24 @@ CREATE TRIGGER trg_chi_tiet_phieu_nhap_cap_nhat_tong
     EXECUTE FUNCTION fn_cap_nhat_tong_phieu_nhap();
 
 -- =============================================================================
--- FUNCTION ĐỒNG BỘ: nhập kho end-to-end (1 transaction duy nhất)
--- Gọi từ backend service, làm 5 việc:
---   1. INSERT phieu_nhap (header)
---   2. INSERT các chi_tiet_phieu_nhap (lines)
---   3. Với từng line: ghi the_kho (PURCHASE_IN) + cập nhật ton_kho
---   4. Cập nhật san_pham.gia_von (BQGQ mới)
---   5. Cập nhật nha_cung_cap.tong_don_hang, tong_cong_no
--- Trả về UUID của phieu_nhap vừa tạo.
+-- LEGACY FUNCTION — KHÔNG DÙNG CHO WORKFLOW MỚI
+-- =============================================================================
+-- Function này được giữ lại để tương thích với các script/backend cũ.
+--
+-- Workflow mới KHÔNG được gọi fn_nhap_kho_dong_bo().
+--
+-- Workflow mới phải thực hiện:
+--   1. Tạo phiếu PENDING_CONFIRMATION
+--   2. Kế toán/Admin duyệt → PENDING_RECEIVING
+--   3. Thủ kho bắt đầu kiểm nhận → RECEIVING
+--   4. Thủ kho xác nhận thực nhận → COMPLETED
+--   5. Kế toán/Admin thanh toán sau, có thể thanh toán nhiều lần
+--
+-- Đặc biệt:
+--   - Không ghi the_kho khi tạo phiếu.
+--   - Không cập nhật tồn kho khi tạo phiếu.
+--   - Không thanh toán NCC khi tạo phiếu.
+--   - Không dùng function này trong PhieuNhapService mới.
 -- =============================================================================
 CREATE OR REPLACE FUNCTION fn_nhap_kho_dong_bo(
     p_id_chi_nhanh    UUID,
@@ -423,10 +537,10 @@ BEGIN
     -- (Trong production: gọi thêm function fn_cap_nhat_bqoq_san_pham)
 
     -- 5. Cập nhật thống kê NCC
-    UPDATE nha_cung_cap
-    SET tong_don_hang = tong_don_hang + 1,
-        tong_cong_no = tong_cong_no + (v_grand - v_paid)
-    WHERE id = p_id_ncc;
+--     UPDATE nha_cung_cap
+--     SET tong_don_hang = tong_don_hang + 1,
+--         tong_cong_no = tong_cong_no + (v_grand - v_paid)
+--     WHERE id = p_id_ncc;
 
     RETURN v_id_phieu;
 END;
@@ -518,23 +632,23 @@ SET da_thanh_toan = 0,
 WHERE id = '00000000-0000-0000-0000-000000000002';  -- Vinamilk: công nợ 15 ngày
 
 -- Cập nhật thống kê NCC
-UPDATE nha_cung_cap
-SET tong_don_hang = tong_don_hang + 1,
-    tong_cong_no = tong_cong_no + (
-        SELECT grand_total - da_thanh_toan
-        FROM phieu_nhap
-        WHERE id = '00000000-0000-0000-0000-000000000001'
-    )
-WHERE id = '0a1b2c3d-0001-0000-0000-000000000001';
+-- UPDATE nha_cung_cap
+-- SET tong_don_hang = tong_don_hang + 1,
+--     tong_cong_no = tong_cong_no + (
+--         SELECT grand_total - da_thanh_toan
+--         FROM phieu_nhap
+--         WHERE id = '00000000-0000-0000-0000-000000000001'
+--     )
+-- WHERE id = '0a1b2c3d-0001-0000-0000-000000000001';
 
-UPDATE nha_cung_cap
-SET tong_don_hang = tong_don_hang + 1,
-    tong_cong_no = tong_cong_no + (
-        SELECT grand_total - da_thanh_toan
-        FROM phieu_nhap
-        WHERE id = '00000000-0000-0000-0000-000000000002'
-    )
-WHERE id = '0a1b2c3d-0001-0000-0000-000000000002';
+-- UPDATE nha_cung_cap
+-- SET tong_don_hang = tong_don_hang + 1,
+--     tong_cong_no = tong_cong_no + (
+--         SELECT grand_total - da_thanh_toan
+--         FROM phieu_nhap
+--         WHERE id = '00000000-0000-0000-0000-000000000002'
+--     )
+-- WHERE id = '0a1b2c3d-0001-0000-0000-000000000002';
 
 COMMENT ON TABLE phieu_nhap IS
     'Phiếu nhập hàng từ NCC vào Kho Tổng (BR-05). BR-05 enforce bằng trigger '
@@ -558,9 +672,9 @@ COMMENT ON COLUMN chi_tiet_phieu_nhap.so_luong_dat IS
     'đảm bảo 1 SP không xuất hiện 2 dòng trong cùng phiếu.';
 
 COMMENT ON COLUMN phieu_nhap.da_thanh_toan IS
-    'Số tiền đã trả NCC. Cập nhật khi có phiếu chi sổ quỹ (sau khi tạo bảng '
-    'so_quy). CHECK <= grand_total (không trả quá). Khi INSERT: mặc định 0 '
-    'nếu công nợ, = grand_total nếu thanh toán ngay.';
+    'Số tiền đã trả NCC. Khi phiếu COMPLETED, Kế toán/Admin có thể '
+    'thanh toán nhiều lần. Mỗi lần thanh toán cộng dồn vào da_thanh_toan. '
+    'CHECK <= grand_total để không thanh toán vượt số tiền phải trả.';
 
 COMMENT ON COLUMN phieu_nhap.cong_no IS
     'Công nợ còn phải trả = grand_total - da_thanh_toan. DENORMALIZED, '
@@ -575,9 +689,11 @@ COMMENT ON TABLE chi_tiet_phieu_nhap IS
     'DELETE tự cập nhật tổng tiền header.';
 
 COMMENT ON COLUMN chi_tiet_phieu_nhap.so_luong_nhan IS
-    'SL thực nhận. CHECK <= so_luong_dat (NCC không được giao dư). CHECK >= 0 '
-    '(cho phép = 0 nếu NCC không giao món này nhưng vẫn ghi nhận để audit). '
-    'Chỉ khi so_luong_nhan > 0 mới ghi the_kho (PURCHASE_IN) + cập nhật ton_kho.';
+    'SL thực nhận được chấp nhận theo đơn đặt hàng. CHECK <= so_luong_dat; '
+    'phần NCC giao dư được lưu riêng vào so_luong_thua và xử lý qua '
+    'xu_ly_thua. CHECK >= 0 cho phép ghi nhận trường hợp NCC không giao '
+    'món này. Chỉ khi số lượng nhập kho thực tế > 0 mới ghi the_kho '
+    '(PURCHASE_IN) và cập nhật ton_kho.';
 
 COMMENT ON COLUMN chi_tiet_phieu_nhap.vat_phantram IS
     'VAT riêng dòng (vd: sữa 8%, hàng thiết yếu 0%). Sum thành vat_total ở '

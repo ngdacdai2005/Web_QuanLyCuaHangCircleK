@@ -6,6 +6,7 @@ import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.PhieuNhap;
 import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.PhieuNhapService;
+import com.erp.cuahangtienloi.service.PhieuNhapService.ConfirmReceivingRequest;
 import com.erp.cuahangtienloi.service.PhieuNhapService.CreatePurchaseRequest;
 import com.erp.cuahangtienloi.service.PhieuNhapService.PayRequest;
 import com.erp.cuahangtienloi.service.RequestDeduplicationService;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/phieu-nhap")
@@ -29,6 +31,9 @@ public class PhieuNhapController {
     private final BranchAccessService branchAccessService;
     private final RequestDeduplicationService requestDeduplicationService;
 
+    // =========================================================
+    // GET
+    // =========================================================
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO')")
     public ResponseEntity<List<PhieuNhapDTO>> getAll(HttpServletRequest request) {
@@ -40,6 +45,7 @@ public class PhieuNhapController {
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO')")
     public ResponseEntity<?> getById(@PathVariable UUID id, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
+
         return phieuNhapService.getById(id, actor)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -49,6 +55,7 @@ public class PhieuNhapController {
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO')")
     public ResponseEntity<List<PhieuNhapDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
+
         return ResponseEntity.ok(phieuNhapService.getByChiNhanh(idChiNhanh, actor));
     }
 
@@ -56,6 +63,7 @@ public class PhieuNhapController {
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO')")
     public ResponseEntity<List<PhieuNhapDTO>> getByNcc(@PathVariable UUID idNcc, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
+
         return ResponseEntity.ok(phieuNhapService.getByNcc(idNcc, actor));
     }
 
@@ -66,12 +74,19 @@ public class PhieuNhapController {
         return ResponseEntity.ok(phieuNhapService.getByStatus(trangThai, actor));
     }
 
+    // =========================================================
+    // CREATE
+    // =========================================================
+
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
     @Deprecated
     public ResponseEntity<?> create(@RequestBody PhieuNhap request, HttpServletRequest httpRequest) {
         return ResponseEntity.status(HttpStatus.GONE).body(
-                ApiResponse.err("Endpoint cũ đã ngừng sử dụng. Hãy dùng POST /api/phieu-nhap/with-lines."));
+                ApiResponse.err(
+                        "Endpoint cũ đã ngừng sử dụng. Hãy dùng POST /api/phieu-nhap/with-lines."
+                )
+        );
     }
 
     @PostMapping("/with-lines")
@@ -81,16 +96,33 @@ public class PhieuNhapController {
 
         String linesFingerprint = request.getLines() != null
                 ? request.getLines().stream()
-                        .filter(l -> l.getIdSanPham() != null)
-                        .map(l -> l.getIdSanPham() + ":" + l.getSoLuong() + ":" + l.getDonGiaNhap())
-                        .sorted()
-                        .collect(java.util.stream.Collectors.joining(";"))
+                .filter(l -> l.getIdSanPham() != null)
+                .map(l -> l.getIdSanPham()
+                          + ":" + l.getSoLuong()
+                          + ":" + l.getDonGiaNhap())
+                .sorted()
+                .collect(Collectors.joining(";"))
                 : "";
-        String dedupKey = "PURCHASE_ORDER:" + actor.getId() + ":" + request.getIdChiNhanh() + ":" + request.getIdNcc() + ":" + linesFingerprint;
+
+        String dedupKey =
+                "PURCHASE_ORDER:"
+                        + actor.getId()
+                        + ":"
+                        + request.getIdChiNhanh()
+                        + ":"
+                        + request.getIdNcc()
+                        + ":"
+                        + linesFingerprint;
 
         if (!requestDeduplicationService.tryAcquire(dedupKey, 6)) {
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(ApiResponse.err("Yêu cầu tạo phiếu nhập đang được xử lý hoặc vừa được gửi. Vui lòng không thao tác liên tục."));
+            return ResponseEntity
+                    .status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(
+                            ApiResponse.err(
+                                    "Yêu cầu tạo phiếu nhập đang được xử lý hoặc vừa được gửi. " +
+                                            "Vui lòng không thao tác liên tục."
+                            )
+                    );
         }
 
         try {
@@ -104,50 +136,173 @@ public class PhieuNhapController {
         }
     }
 
+    // =========================================================
+    // APPROVAL WORKFLOW
+    // =========================================================
+    @PutMapping("/{id}/approve")
+    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
+    public ResponseEntity<?> approve(@PathVariable UUID id, HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        try {
+            return phieuNhapService.approve(id, actor)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
+    public ResponseEntity<?> reject(@PathVariable UUID id, @RequestBody(required = false) String lyDo, HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        try {
+            return phieuNhapService.reject(id, lyDo, actor)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
+    // =========================================================
+    // RECEIVING WORKFLOW
+    // =========================================================
+    @PutMapping("/{id}/start-receiving")
+    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
+    public ResponseEntity<?> startReceiving(@PathVariable UUID id, HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        try {
+            return phieuNhapService.startReceiving(id, actor)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/cancel-receiving")
+    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
+    public ResponseEntity<?> cancelReceiving(@PathVariable UUID id, HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        try {
+            return phieuNhapService.cancelReceiving(id, actor)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/confirm-receiving")
+    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
+    public ResponseEntity<?> confirmReceiving(@PathVariable UUID id, @Valid @RequestBody ConfirmReceivingRequest request, HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        try {
+            return phieuNhapService.confirmReceiving(id, request, actor)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
+    // =========================================================
+    // CANCEL
+    // =========================================================
+
+    @PutMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
+    public ResponseEntity<?> cancel(@PathVariable UUID id, HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        try {
+            return phieuNhapService.cancel(id, actor)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
+    // =========================================================
+    // PRICE CORRECTION
+    // =========================================================
+
+    @PutMapping("/{id}/lines/{idChiTiet}/price")
+    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
+    public ResponseEntity<?> changePrice(@PathVariable UUID id, @PathVariable UUID idChiTiet, @Valid @RequestBody PhieuNhapService.ChangePriceRequest request, HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        try {
+            return phieuNhapService.changePrice(id, idChiTiet, request, actor)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
+    // =========================================================
+    // PAYMENT
+    // =========================================================
     @PutMapping("/{id}/pay")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
-    public ResponseEntity<?> pay(@PathVariable UUID id,
-                                 @RequestBody(required = false) PayRequest request,
-                                 HttpServletRequest httpRequest) {
+    public ResponseEntity<?> pay(@PathVariable UUID id, @Valid @RequestBody(required = false) PayRequest request, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         try {
             return phieuNhapService.pay(id, request, actor)
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.notFound().build());
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
+            return ResponseEntity
+                    .badRequest()
+                    .body(ApiResponse.err(e.getMessage()));
         }
     }
 
-    @PutMapping("/{id}/receive")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
-    public ResponseEntity<?> receive(@PathVariable UUID id, HttpServletRequest httpRequest) {
-        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
-        try {
-            return phieuNhapService.receive(id, actor)
-                    .map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
-        }
-    }
-
+    // =========================================================
+    // UPDATE
+    // =========================================================
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
     public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody PhieuNhap request, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
-        return phieuNhapService.update(id, request, actor)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        try {
+            return phieuNhapService.update(id, request, actor)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(ApiResponse.err(e.getMessage()));
+        }
     }
 
+    // =========================================================
+    // DELETE
+    // =========================================================
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
     public ResponseEntity<?> delete(@PathVariable UUID id, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
-        if (phieuNhapService.delete(id, actor)) {
-            return ResponseEntity.ok(ApiResponse.ok("Xóa phiếu nhập thành công"));
+
+        try {
+            if (phieuNhapService.delete(id, actor)) {
+                return ResponseEntity.ok(ApiResponse.ok("Xóa phiếu nhập thành công"));
+            }
+            return ResponseEntity.notFound().build();
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
         }
-        return ResponseEntity.notFound().build();
     }
 }

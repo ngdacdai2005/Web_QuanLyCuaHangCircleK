@@ -1,8 +1,16 @@
 /**
- * Script nạp dữ liệu mẫu (Seed Data) và Schema vào Neon PostgreSQL Database.
- * Sử dụng thông tin kết nối từ backend/.env
+ * Script reset Schema và nạp Schema + dữ liệu mẫu vào PostgreSQL.
  *
- * Chạy lệnh: node seed_database.js
+ * ⚠️ DESTRUCTIVE:
+ * Script sẽ DROP SCHEMA public CASCADE.
+ * Chỉ được chạy khi SEED_DESTRUCTIVE=1.
+ *
+ * Chạy:
+ *   SEED_DESTRUCTIVE=1 node seed_database.js
+ *
+ * Windows PowerShell:
+ *   $env:SEED_DESTRUCTIVE="1"
+ *   node seed_database.js
  */
 
 const fs = require('fs');
@@ -38,15 +46,24 @@ const sqlFiles = [
     'danh_muc.sql',
     'migration_danh_muc_image_url.sql',
     'san_pham.sql',
+
     'nha_cung_cap.sql',
+
     'ton_kho.sql',
     'migration_ton_kho_on_conflict.sql',
+
     'the_kho.sql',
     'migration_fix_fn_ghi_the_kho_bqgq.sql',
+
     'phieu_nhap.sql',
-    'migration_phieu_nhap_add_pending_payment.sql',
-    'migration_fix_fn_cap_nhat_tong_phieu_nhap.sql',
-    'migration_fix_phieu_nhap_totals.sql',
+
+    'migration_add_lo_hang_and_fefo.sql',
+    'migration_lo_hang_ma_lo.sql',
+
+    'migration_phieu_nhap_approval_workflow.sql',
+    'migration_phieu_nhap_price_after_completed.sql',
+    'migration_phieu_nhap_supplier_debt.sql',
+
     'phieu_xuat_kho.sql',
     'migration_phieu_xuat_kho_add_shipped.sql',
     'phieu_kiem_ke.sql',
@@ -65,7 +82,7 @@ const sqlFiles = [
 
 async function main() {
     console.log('====================================================');
-    console.log('  CÔNG CỤ NẠP CƠ SỞ DỮ LIỆU & DỮ LIỆU MẪU (NEON DB) ');
+    console.log('  CÔNG CỤ RESET SCHEMA & NẠP DỮ LIỆU MẪU (POSTGRESQL)');
     console.log('====================================================');
 
     const env = loadEnv();
@@ -95,7 +112,7 @@ async function main() {
         connectionString = `${prefix}${encodeURIComponent(username)}:${encodeURIComponent(password)}@${rest}`;
     }
 
-    console.log('🔗 Đang kết nối tới Neon Database...');
+    console.log('🔗 Đang kết nối tới PostgreSQL...');
     const client = new Client({
         connectionString,
         ssl: { rejectUnauthorized: false }
@@ -103,10 +120,23 @@ async function main() {
 
     try {
         await client.connect();
-        console.log('✅ Kết nối Neon DB thành công!\n');
+        console.log('✅ Kết nối PostgreSQL thành công!\n');
+
+        const allowDestructive =
+            process.env.SEED_DESTRUCTIVE === '1' ||
+            env.SEED_DESTRUCTIVE === '1';
+
+        if (!allowDestructive) {
+            throw new Error(
+                'BLOCKED: seed_database.js sẽ XÓA TOÀN BỘ schema public. ' +
+                'Đặt SEED_DESTRUCTIVE=1 rồi mới chạy seed.'
+            );
+        }
 
         console.log('🧹 Đang làm sạch schema public (reset toàn bộ để nạp mới)...');
-        await client.query('DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;');
+        await client.query(
+            'DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;'
+        );
         console.log('✅ Schema public đã được làm sạch!\n');
 
         const sqlDir = path.resolve(__dirname, 'backend/sql');
@@ -143,7 +173,7 @@ async function main() {
         console.log('📊 THỐNG KÊ DỮ LIỆU ĐÃ NẠP VÀO CÁC BẢNG:');
         const tables = [
             'chi_nhanh', 'nhan_vien', 'tai_khoan', 'danh_muc',
-            'nha_cung_cap', 'san_pham', 'ton_kho', 'the_kho',
+            'nha_cung_cap', 'san_pham', 'ton_kho', 'lo_hang', 'the_kho',
             'phieu_nhap', 'phieu_xuat_kho', 'phieu_kiem_ke',
             'hoa_don', 'so_quy', 'cham_cong', 'bang_luong'
         ];

@@ -1,48 +1,44 @@
 package com.erp.cuahangtienloi.controller;
 
+import com.erp.cuahangtienloi.dto.HoaDonDTO;
 import com.erp.cuahangtienloi.dto.SoQuyDTO;
 import com.erp.cuahangtienloi.entity.HoaDon;
+import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.SoQuy;
-import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
-import com.erp.cuahangtienloi.repository.ChiTietHoaDonRepository;
-import com.erp.cuahangtienloi.repository.HoaDonRepository;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
-import com.erp.cuahangtienloi.repository.SanPhamRepository;
-import com.erp.cuahangtienloi.repository.SoQuyRepository;
-import com.erp.cuahangtienloi.repository.TonKhoRepository;
 import com.erp.cuahangtienloi.service.BranchAccessService;
+import com.erp.cuahangtienloi.service.HoaDonService;
+import com.erp.cuahangtienloi.service.SoQuyService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
 class CriticalFlowRegressionTest {
 
     @Test
-    void createsGlobalCapitalReceiptAndAddsRunningBalance() {
-        SoQuyRepository soQuyRepository = mock(SoQuyRepository.class);
-        ChiNhanhRepository chiNhanhRepository = mock(ChiNhanhRepository.class);
+    void createsGlobalCapitalReceiptAndDelegatesToService() {
+        SoQuyService soQuyService = mock(SoQuyService.class);
+        BranchAccessService branchAccessService = mock(BranchAccessService.class);
         NhanVienRepository nhanVienRepository = mock(NhanVienRepository.class);
+
         SoQuyController controller = new SoQuyController(
-                soQuyRepository,
-                chiNhanhRepository,
-                nhanVienRepository,
-                mock(BranchAccessService.class)
+                soQuyService,
+                branchAccessService,
+                nhanVienRepository
         );
 
         UUID creatorId = UUID.randomUUID();
+
         SoQuy request = new SoQuy();
         request.setIdChiNhanh(null);
         request.setIdNguoiTao(creatorId);
@@ -51,92 +47,148 @@ class CriticalFlowRegressionTest {
         request.setHinhThucTt("CARD");
         request.setSoTien(new BigDecimal("1000000"));
 
-        when(nhanVienRepository.existsById(creatorId)).thenReturn(true);
-        when(soQuyRepository.findByIdChiNhanh(null)).thenReturn(List.of());
-        when(soQuyRepository.save(any(SoQuy.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        SoQuyDTO expected = new SoQuyDTO();
+        expected.setRunningBalance(new BigDecimal("1000000"));
 
-        var response = controller.create(request, mock(HttpServletRequest.class));
+        when(soQuyService.create(request, null)).thenReturn(expected);
+
+        var response = controller.create(
+                request,
+                mock(HttpServletRequest.class)
+        );
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        SoQuyDTO body = (SoQuyDTO) response.getBody();
-        assertEquals(new BigDecimal("1000000"), body.getRunningBalance());
-        verify(chiNhanhRepository, never()).existsById(any());
+        assertEquals(expected, response.getBody());
+
+        verify(soQuyService).create(request, null);
+        verifyNoInteractions(branchAccessService);
     }
 
     @Test
-    void invoiceAcceptsAllDatabasePaymentMethods() {
-        ChiNhanhRepository chiNhanhRepository = mock(ChiNhanhRepository.class);
-        HoaDonRepository hoaDonRepository = mock(HoaDonRepository.class);
-        HoaDonController controller = new HoaDonController(
-                hoaDonRepository,
-                chiNhanhRepository,
-                mock(NhanVienRepository.class),
-                mock(ChiTietHoaDonRepository.class),
-                mock(SanPhamRepository.class),
-                mock(TonKhoRepository.class),
-                mock(SoQuyRepository.class),
-                mock(JdbcTemplate.class)
-        );
-        UUID branchId = UUID.randomUUID();
-        when(chiNhanhRepository.existsById(branchId)).thenReturn(true);
-        when(hoaDonRepository.save(any(HoaDon.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    void invoiceCreateDelegatesToHoaDonService() {
+        HoaDonService hoaDonService = mock(HoaDonService.class);
+        NhanVienRepository nhanVienRepository = mock(NhanVienRepository.class);
 
-        for (String method : List.of("CASH", "CARD", "MOMO", "ZALOPAY", "VNPAY", "BANK_TRANSFER")) {
-            HoaDon request = invoice(branchId, method, new BigDecimal("100000"));
+        HoaDonController controller = new HoaDonController(
+                hoaDonService,
+                nhanVienRepository
+        );
+
+        UUID branchId = UUID.randomUUID();
+
+        HoaDon request = invoice(
+                branchId,
+                "CASH",
+                new BigDecimal("100000")
+        );
+        request.setTienKhachDua(new BigDecimal("100000"));
+
+        when(hoaDonService.create(request)).thenReturn(null);
+
+        var response = controller.create(request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        verify(hoaDonService).create(request);
+    }
+
+    @Test
+    void invoiceCreateAcceptsDatabasePaymentMethodsThroughService() {
+        HoaDonService hoaDonService = mock(HoaDonService.class);
+        NhanVienRepository nhanVienRepository = mock(NhanVienRepository.class);
+
+        HoaDonController controller = new HoaDonController(
+                hoaDonService,
+                nhanVienRepository
+        );
+
+        UUID branchId = UUID.randomUUID();
+
+        for (String method : List.of(
+                "CASH",
+                "CARD",
+                "MOMO",
+                "ZALOPAY",
+                "VNPAY",
+                "BANK_TRANSFER"
+        )) {
+            HoaDon request = invoice(
+                    branchId,
+                    method,
+                    new BigDecimal("100000")
+            );
+
             if ("CASH".equals(method)) {
                 request.setTienKhachDua(new BigDecimal("100000"));
             }
 
-            assertEquals(HttpStatus.OK, controller.create(request).getStatusCode(), method);
+            when(hoaDonService.create(request)).thenReturn(null);
+
+            var response = controller.create(request);
+
+            assertEquals(
+                    HttpStatus.OK,
+                    response.getStatusCode(),
+                    method
+            );
+
+            verify(hoaDonService).create(request);
         }
     }
 
     @Test
-    void onlyCashRequiresCustomerPaidToCoverTotal() {
-        ChiNhanhRepository chiNhanhRepository = mock(ChiNhanhRepository.class);
+    void refundDelegatesToHoaDonServiceWithAuthenticatedEmployee() {
+        HoaDonService hoaDonService = mock(HoaDonService.class);
+        NhanVienRepository nhanVienRepository = mock(NhanVienRepository.class);
+
         HoaDonController controller = new HoaDonController(
-                mock(HoaDonRepository.class),
-                chiNhanhRepository,
-                mock(NhanVienRepository.class),
-                mock(ChiTietHoaDonRepository.class),
-                mock(SanPhamRepository.class),
-                mock(TonKhoRepository.class),
-                mock(SoQuyRepository.class),
-                mock(JdbcTemplate.class)
+                hoaDonService,
+                nhanVienRepository
         );
-        UUID branchId = UUID.randomUUID();
-        when(chiNhanhRepository.existsById(branchId)).thenReturn(true);
 
-        HoaDon cashInvoice = invoice(branchId, "CASH", new BigDecimal("100000"));
-        cashInvoice.setTienKhachDua(new BigDecimal("99999"));
-
-        assertThrows(IllegalArgumentException.class, () -> controller.create(cashInvoice));
-    }
-
-    @Test
-    void refundRejectsNonCompletedInvoice() {
-        HoaDonRepository hoaDonRepository = mock(HoaDonRepository.class);
-        HoaDonController controller = new HoaDonController(
-                hoaDonRepository,
-                mock(ChiNhanhRepository.class),
-                mock(NhanVienRepository.class),
-                mock(ChiTietHoaDonRepository.class),
-                mock(SanPhamRepository.class),
-                mock(TonKhoRepository.class),
-                mock(SoQuyRepository.class),
-                mock(JdbcTemplate.class)
-        );
+        UUID employeeId = UUID.randomUUID();
         UUID invoiceId = UUID.randomUUID();
-        HoaDon hd = new HoaDon();
-        hd.setId(invoiceId);
-        hd.setTrangThai("CANCELLED");
-        when(hoaDonRepository.findById(invoiceId)).thenReturn(java.util.Optional.of(hd));
 
-        var response = controller.refund(invoiceId, new HoaDonController.RefundRequest(null), mock(HttpServletRequest.class));
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        NhanVien employee = new NhanVien();
+        employee.setId(employeeId);
+
+        HttpServletRequest request = mock(HttpServletRequest.class);
+
+        when(request.getAttribute("authenticatedIdNhanVien"))
+                .thenReturn(employeeId.toString());
+
+        when(nhanVienRepository.findById(employeeId))
+                .thenReturn(Optional.of(employee));
+
+        HoaDonDTO expected = new HoaDonDTO();
+
+        when(hoaDonService.refund(
+                eq(invoiceId),
+                eq("Khách yêu cầu hoàn tiền"),
+                eq(employee)
+        )).thenReturn(expected);
+
+        var response = controller.refund(
+                invoiceId,
+                new HoaDonController.RefundRequest("Khách yêu cầu hoàn tiền"),
+                request
+        );
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(expected, response.getBody());
+
+        verify(hoaDonService).refund(
+                invoiceId,
+                "Khách yêu cầu hoàn tiền",
+                employee
+        );
     }
 
-    private HoaDon invoice(UUID branchId, String method, BigDecimal total) {
+    private HoaDon invoice(
+            UUID branchId,
+            String method,
+            BigDecimal total
+    ) {
         HoaDon request = new HoaDon();
         request.setIdChiNhanh(branchId);
         request.setHinhThucTt(method);

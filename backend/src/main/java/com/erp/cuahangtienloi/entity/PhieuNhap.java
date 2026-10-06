@@ -60,6 +60,24 @@ public class PhieuNhap {
     @Column(name = "trang_thai")
     private String trangThai;
 
+    @Column(name = "id_nguoi_duyet")
+    private UUID idNguoiDuyet;
+
+    @Column(name = "ngay_duyet")
+    private LocalDateTime ngayDuyet;
+
+    @Column(name = "ly_do_tu_choi")
+    private String lyDoTuChoi;
+
+    @Column(name = "id_nguoi_kiem_nhan")
+    private UUID idNguoiKiemNhan;
+
+    @Column(name = "ngay_kiem_nhan")
+    private LocalDateTime ngayKiemNhan;
+
+    @Column(name = "ly_do_chenh_lech")
+    private String lyDoChenhLech;
+
     @Column(name = "ghi_chu", columnDefinition = "TEXT")
     private String ghiChu;
 
