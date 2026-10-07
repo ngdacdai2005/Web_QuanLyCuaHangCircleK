@@ -113,9 +113,10 @@ async function main() {
     }
 
     console.log('🔗 Đang kết nối tới PostgreSQL...');
+    const useSsl = !/localhost|127\.0\.0\.1/.test(cleanUrl);
     const client = new Client({
         connectionString,
-        ssl: { rejectUnauthorized: false }
+        ssl: useSsl ? { rejectUnauthorized: false } : false
     });
 
     try {
