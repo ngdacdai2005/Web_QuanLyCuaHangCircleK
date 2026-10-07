@@ -41,24 +41,35 @@ const mapDtoToOrder = (dto: PhieuNhapDTO): PurchaseOrder => ({
   id: dto.id,
   code: dto.maPhieu,
   supplierId: dto.idNcc || '',
-  supplierName: '',
+  supplierName: dto.tenNcc || '',
   branchId: dto.idChiNhanh || '',
-  branchName: '',
+  branchName: dto.tenChiNhanh || '',
   orderDate: dto.ngayDatHang || '',
   expectedDate: dto.ngayDuKienGiao || null,
   receivedDate: dto.ngayNhanThucTe || null,
-  status: (dto.trangThai as DocumentStatus) ?? DOCUMENT_STATUS.Pending,
+  status: dto.trangThai as DocumentStatus,
+
+  lines: [],
+
   subTotal: dto.subTotal || 0,
   vatTotal: dto.vatTotal || 0,
   discount: dto.giamGia || 0,
   grandTotal: dto.grandTotal || 0,
   paidAmount: dto.daThanhToan || 0,
-  // debtAmount: dto.congNo || 0,
-  note: dto.ghiChu || '',
-  // createdAt: dto.ngayTao || '',
+
+  debtAmount: dto.congNo || 0,
+  estimatedTotal: dto.giaTriDuKien ?? null,
+
+  approverId: dto.idNguoiDuyet ?? null,
+  approvedAt: dto.ngayDuyet ?? null,
+  rejectReason: dto.lyDoTuChoi ?? null,
+
+  receiverId: dto.idNguoiKiemNhan ?? null,
+  receivedAt: dto.ngayKiemNhan ?? null,
+  discrepancyReason: dto.lyDoChenhLech ?? null,
+
   createdBy: dto.tenNguoiNhap || '',
-  // idNguoiNhap: dto.idNguoiNhap || '',
-  lines: [],
+  note: dto.ghiChu || '',
 });
 
 export const fetchPurchaseOrders = createAsyncThunk(
@@ -120,6 +131,11 @@ export const buildPurchaseOrder = (input: {
       vatPercent: draft.vatPercent,
       lineTotal: draft.quantity * draft.unitCost,
       expiryDate: null,
+
+      surplusQuantity: 0,
+      surplusHandling: 'CHUA_XU_LY',
+      previousUnitCost: null,
+      lineDiscrepancyReason: null,
     });
   });
 
@@ -134,7 +150,7 @@ export const buildPurchaseOrder = (input: {
   return {
     id: `po-live-${Date.now()}`,
     code: `PN-${input.orderDate.replace(/-/g, '')}-${String(
-      input.existingCount + 1,
+        input.existingCount + 1,
     ).padStart(3, '0')}`,
     supplierId: input.supplierId,
     supplierName: input.supplierName,
@@ -150,6 +166,18 @@ export const buildPurchaseOrder = (input: {
     discount: 0,
     grandTotal,
     paidAmount: grandTotal,
+
+    debtAmount: 0,
+    estimatedTotal: null,
+
+    approverId: null,
+    approvedAt: null,
+    rejectReason: null,
+
+    receiverId: null,
+    receivedAt: null,
+    discrepancyReason: null,
+
     createdBy: input.createdBy,
     note: input.note,
   };

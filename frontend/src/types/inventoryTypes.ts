@@ -142,40 +142,95 @@ export interface PurchaseOrderLine {
   productName: string;
   unit: string;
   orderedQuantity: number;
+
   /** Số lượng thực nhận, có thể nhỏ hơn khi NCC giao thiếu. */
   receivedQuantity: number;
+
+  /** Số lượng hàng thừa khi kiểm nhận (0 nếu giao đủ). */
+  surplusQuantity: number;
+
+  /** Cách xử lý hàng thừa: NHAP_KHO | TRA_LAI_NCC | CHUA_XU_LY. */
+  surplusHandling: string;
+
   unitCost: VND;
   vatPercent: number;
+
   /** Thành tiền trước VAT = receivedQuantity * unitCost. */
   lineTotal: VND;
+
+  /** Đơn giá nhập trước khi sửa, null nếu chưa từng sửa. */
+  previousUnitCost: VND | null;
+
+  /** Lý do chênh lệch của dòng, null nếu khớp đơn đặt. */
+  lineDiscrepancyReason: string | null;
+
   expiryDate: string | null;
 }
 
 /** Module 8 — Phiếu nhập kho / Đơn mua hàng (PO). */
 export interface PurchaseOrder {
-    id: ID;
-    /** Mã phiếu dạng PN-20260826-001. */
-    code: string;
-    supplierId: ID;
-    supplierName: string;
-    /** Kho nhận hàng. */
-    branchId: ID;
-    branchName: string;
-    orderDate: string;
-    expectedDate: string | null;
-    receivedDate: string | null;
-    status: DocumentStatus;
-    lines: PurchaseOrderLine[];
-    /** Tổng tiền hàng trước VAT. */
-    subTotal: VND;
-    vatTotal: VND;
-    discount: VND;
-    /** Tổng phải trả = subTotal + vatTotal - discount. */
-    grandTotal: VND;
-    /** Đã thanh toán cho NCC. */
-    paidAmount: VND;
-    createdBy: string;
-    note: string;
+  id: ID;
+
+  /** Mã phiếu dạng PN-20260826-001. */
+  code: string;
+
+  supplierId: ID;
+  supplierName: string;
+
+  /** Kho nhận hàng. */
+  branchId: ID;
+  branchName: string;
+
+  orderDate: string;
+  expectedDate: string | null;
+  receivedDate: string | null;
+
+  status: DocumentStatus;
+
+  lines: PurchaseOrderLine[];
+
+  /** Tổng tiền hàng trước VAT. */
+  subTotal: VND;
+
+  vatTotal: VND;
+
+  discount: VND;
+
+  /** Tổng phải trả = subTotal + vatTotal - discount. */
+  grandTotal: VND;
+
+  /** Đã thanh toán cho NCC. */
+  paidAmount: VND;
+
+  /** Công nợ còn lại = grandTotal - paidAmount. */
+  debtAmount: VND;
+
+  /** Người duyệt phiếu. */
+  approverId: ID | null;
+
+  /** Thời điểm duyệt phiếu. */
+  approvedAt: string | null;
+
+  /** Lý do từ chối phiếu. */
+  rejectReason: string | null;
+
+  /** Người kiểm nhận hàng. */
+  receiverId: ID | null;
+
+  /** Thời điểm kiểm nhận. */
+  receivedAt: string | null;
+
+  /** Lý do chênh lệch tổng thể của phiếu. */
+  discrepancyReason: string | null;
+
+  /**
+   * Giá trị ước tính = số lượng đặt × đơn giá.
+   * null khi phiếu đã COMPLETED / REJECTED / CANCELLED.
+   */
+  estimatedTotal: VND | null;
+
+  createdBy: string;
+  note: string;
 }
 
 /** Module 9 — Dòng chi tiết phiếu xuất nội bộ. */

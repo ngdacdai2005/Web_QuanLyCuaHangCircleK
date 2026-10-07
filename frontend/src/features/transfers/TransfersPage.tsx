@@ -32,10 +32,10 @@ import { fetchProducts } from '@/store/slices/productSlice';
 import { phieuXuatKhoApi } from '@/api/phieuXuatKho';
 import {
   DOCUMENT_STATUS,
+  DOCUMENT_STATUS_LABEL,
   USER_ROLE,
   type DocumentStatus,
   type StockTransfer,
-  // type TransferLine,
 } from '@/types';
 import { formatDate } from '@/utils/dateUtils';
 import { compareDateDescWithId, formatNumber, formatVND, matchKeyword } from '@/utils/formatters';
@@ -49,7 +49,7 @@ const { Text } = Typography;
 export const TransfersPage: FC = () => {
   const dispatch = useAppDispatch();
   const { message } = AntdApp.useApp();
-  const { user} = useAppSelector((state) => state.auth);
+  const { user } = useAppSelector((state) => state.auth);
   const { transfers, loading } = useAppSelector((state) => state.transfer);
   const branches = useAppSelector((state) => state.branch.branches);
   const products = useAppSelector((state) => state.product.products);
@@ -589,8 +589,17 @@ export const TransfersPage: FC = () => {
       placeholder: 'Trạng thái',
       value: statusFilter,
       onChange: setStatusFilter as (v: string | null) => void,
-      options: Object.values(DOCUMENT_STATUS).map((s) => ({ value: s, label: labelOfStatus(s) })),
-    },
+      options: [
+        DOCUMENT_STATUS.Draft,
+        DOCUMENT_STATUS.Pending,
+        DOCUMENT_STATUS.Approved,
+        DOCUMENT_STATUS.Shipped,
+        DOCUMENT_STATUS.Completed,
+        DOCUMENT_STATUS.Cancelled,
+      ].map((s) => ({
+        value: s,
+        label: labelOfStatus(s),
+      }))    },
   ];
 
   const handleExport = (): void => {
@@ -729,22 +738,5 @@ export const TransfersPage: FC = () => {
 };
 
 function labelOfStatus(status: DocumentStatus): string {
-  switch (status) {
-    case DOCUMENT_STATUS.Draft:
-      return 'Nháp';
-    case DOCUMENT_STATUS.Pending:
-      return 'Chờ duyệt';
-    case DOCUMENT_STATUS.Approved:
-      return 'Đã duyệt';
-    case DOCUMENT_STATUS.Shipped:
-      return 'Chờ nhận hàng';
-    case DOCUMENT_STATUS.Completed:
-      return 'Hoàn tất';
-    case DOCUMENT_STATUS.Cancelled:
-      return 'Đã huỷ';
-    case DOCUMENT_STATUS.Balanced:
-      return 'Đã cân bằng';
-    default:
-      return status;
-  }
+  return DOCUMENT_STATUS_LABEL[status];
 }

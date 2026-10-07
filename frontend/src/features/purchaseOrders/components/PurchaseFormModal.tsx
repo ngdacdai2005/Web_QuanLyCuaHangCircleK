@@ -60,9 +60,15 @@ const emptyRow = (): DraftRow => ({
 /**
  * Form lập phiếu nhập hàng từ nhà cung cấp (module 8).
  *
- * Luồng theo `luong_nghiep_vu.md` mục 3.1: Thủ kho kiểm đếm hàng thực tế trên
- * xe giao, đối chiếu với đơn hàng, rồi lập phiếu. Vì vậy form không có khái
- * niệm "số đặt / số thực nhận" tách rời — số nhập trên form là số đã đếm.
+ * Luồng:
+ * 1. Tạo phiếu ở trạng thái PENDING_CONFIRMATION.
+ * 2. Kế toán duyệt phiếu → PENDING_RECEIVING.
+ * 3. Thủ kho bắt đầu kiểm nhận → RECEIVING.
+ * 4. Thủ kho xác nhận số lượng thực nhận và xử lý hàng thừa.
+ * 5. Hệ thống cộng tồn Kho Tổng, ghi thẻ kho và tạo lô hàng → COMPLETED.
+ *
+ * Vì vậy form này chỉ ghi nhận số lượng ĐẶT.
+ * Số lượng THỰC NHẬN được xác định tại ReceivingModal.
  *
  * BR-05: hàng luôn vào Kho Tổng, không cho chọn chi nhánh.
  * Chỉ hiện sản phẩm do chính nhà cung cấp đã chọn cung ứng.
@@ -219,29 +225,24 @@ export const PurchaseFormModal: FC<PurchaseFormModalProps> = ({ open, onClose })
       isSubmittingRef.current = true;
       setSubmitting(true);
 
-      // Bước 1 của luồng mới: Thủ kho lập phiếu ở trạng thái "Chờ thanh toán".
-      // Chưa cộng tồn Kho Tổng — Kế toán bấm "Thanh toán" (/pay) hàng mới vào
-      // kho và phiếu chi trả NCC mới được lập.
+      // Bước 1 của luồng mới: tạo phiếu ở trạng thái PENDING_CONFIRMATION.
+      // Chưa duyệt, chưa kiểm nhận và chưa cộng tồn Kho Tổng.
       const createdOrder = await phieuNhapApi.createWithLines({
         idChiNhanh: branchId,
         idNcc: values.supplierId,
         ngayDatHang: values.orderDate.format('YYYY-MM-DD'),
-        trangThai: 'PENDING_PAYMENT',
         ghiChu: values.note?.trim() ?? '',
-        lines: validRows.map((row) => {
-          return {
-            idSanPham: row.productId,
-            soLuong: row.quantity,
-            soLuongNhan: row.quantity,
-            donGiaNhap: row.unitCost,
-            vatPhantram: row.vatPercent,
-          };
-        }),
+        lines: validRows.map((row) => ({
+          idSanPham: row.productId,
+          soLuong: row.quantity,
+          donGiaNhap: row.unitCost,
+          vatPhantram: row.vatPercent,
+        })),
       });
 
       message.success(
-        `Đã lưu phiếu nhập ${createdOrder.maPhieu} — trạng thái "Chờ thanh toán". ` +
-          'Kế toán kiểm tra và bấm Thanh toán thì tồn Kho Tổng mới tăng theo số thực nhận.',
+          `Đã lưu phiếu nhập ${createdOrder.maPhieu} — trạng thái "Chờ duyệt". ` +
+          'Kế toán duyệt, sau đó Thủ kho kiểm nhận thì tồn Kho Tổng mới tăng.',
       );
       dispatch(fetchPurchaseOrders());
       onClose();
@@ -398,11 +399,11 @@ export const PurchaseFormModal: FC<PurchaseFormModalProps> = ({ open, onClose })
       cancelButtonProps={{ disabled: submitting }}
     >
       <Alert
-        type="info"
-        showIcon
-        className="purchase-alert"
-        message={`Hàng nhập vào ${branchNameById(branchId || DISTRIBUTION_CENTER_ID)}`}
-        description="Lưu phiếu xong ở trạng thái “Chờ thanh toán” — Kế toán kiểm tra và bấm Thanh toán thì hệ thống mới cộng tồn Kho Tổng, ghi thẻ kho và lập phiếu chi sổ quỹ. Cửa hàng bán lẻ nhận hàng qua phiếu xuất kho nội bộ."
+          type="info"
+          showIcon
+          className="purchase-alert"
+          message={`Hàng nhập vào ${branchNameById(branchId || DISTRIBUTION_CENTER_ID)}`}
+          description="Lưu phiếu xong ở trạng thái “Chờ duyệt”. Kế toán duyệt phiếu, sau đó Thủ kho kiểm nhận số thực tế, xử lý hàng thừa và xác nhận nhận hàng. Khi kiểm nhận hoàn tất, hệ thống mới cộng tồn Kho Tổng, ghi thẻ kho và tạo lô hàng."
       />
 
       <Form<PurchaseFormValues>
@@ -515,8 +516,9 @@ export const PurchaseFormModal: FC<PurchaseFormModalProps> = ({ open, onClose })
       </Descriptions>
 
       <Paragraph type="secondary" className="purchase-foot-note">
-        {validRows.length} dòng hàng hợp lệ. Thanh toán ngay khi nhập hàng, hệ thống
-        không theo dõi công nợ nhà cung cấp.
+        {validRows.length} dòng hàng hợp lệ. Phiếu sẽ ở trạng thái Chờ duyệt.
+        Công nợ nhà cung cấp được theo dõi sau khi phiếu hoàn tất kiểm nhận và có thể
+        thanh toán nhiều lần.
       </Paragraph>
     </Modal>
   );

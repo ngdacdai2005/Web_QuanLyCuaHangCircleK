@@ -30,9 +30,13 @@ export const DOCUMENT_STATUS = {
   Draft: 'DRAFT',
   Pending: 'PENDING',
   Approved: 'APPROVED',
-  /** Phiếu nhập đã Thủ kho lập, chờ Kế toán bấm "Thanh toán". */
   PendingPayment: 'PENDING_PAYMENT',
-  /** Phiếu xuất đã Thủ kho xác nhận xuất, chờ chi nhánh bấm "Đã nhận hàng". */
+
+  PendingConfirmation: 'PENDING_CONFIRMATION',
+  Rejected: 'REJECTED',
+  PendingReceiving: 'PENDING_RECEIVING',
+  Receiving: 'RECEIVING',
+
   Shipped: 'SHIPPED',
   Completed: 'COMPLETED',
   Cancelled: 'CANCELLED',
@@ -43,11 +47,17 @@ export type DocumentStatus = (typeof DOCUMENT_STATUS)[keyof typeof DOCUMENT_STAT
 
 export const DOCUMENT_STATUS_LABEL: Record<DocumentStatus, string> = {
   DRAFT: 'Nháp',
-  PENDING: 'Chờ duyệt',
+  PENDING: 'Chờ xử lý',
   APPROVED: 'Đã duyệt',
   PENDING_PAYMENT: 'Chờ thanh toán',
+
+  PENDING_CONFIRMATION: 'Chờ duyệt',
+  REJECTED: 'Đã từ chối',
+  PENDING_RECEIVING: 'Chờ kiểm nhận',
+  RECEIVING: 'Đang kiểm nhận',
+
   SHIPPED: 'Chờ nhận hàng',
-  COMPLETED: 'Hoàn tất',
+  COMPLETED: 'Hoàn thành',
   CANCELLED: 'Đã huỷ',
   BALANCED: 'Đã cân bằng',
 };
@@ -55,14 +65,34 @@ export const DOCUMENT_STATUS_LABEL: Record<DocumentStatus, string> = {
 /** Màu Tag của antd tương ứng từng trạng thái phiếu. */
 export const DOCUMENT_STATUS_COLOR: Record<DocumentStatus, string> = {
   DRAFT: 'default',
-  PENDING: 'gold',
-  APPROVED: 'blue',
-  PENDING_PAYMENT: 'volcano',
-  SHIPPED: 'orange',
+  PENDING: 'orange',
+  APPROVED: 'green',
+  PENDING_PAYMENT: 'gold',
+
+  PENDING_CONFIRMATION: 'gold',
+  REJECTED: 'red',
+  PENDING_RECEIVING: 'blue',
+  RECEIVING: 'cyan',
+
+  SHIPPED: 'blue',
   COMPLETED: 'green',
   CANCELLED: 'red',
   BALANCED: 'purple',
 };
+
+/**
+ * Các trạng thái của phiếu nhập.
+ * Dùng riêng cho filter/detail của module phiếu nhập,
+ * không dùng toàn bộ DOCUMENT_STATUS vì DOCUMENT_STATUS dùng chung nhiều module.
+ */
+export const PURCHASE_STATUSES = [
+  DOCUMENT_STATUS.PendingConfirmation,
+  DOCUMENT_STATUS.PendingReceiving,
+  DOCUMENT_STATUS.Receiving,
+  DOCUMENT_STATUS.Completed,
+  DOCUMENT_STATUS.Rejected,
+  DOCUMENT_STATUS.Cancelled,
+] as const satisfies readonly DocumentStatus[];
 
 /** Option chuẩn cho Select/Segmented của antd. */
 export interface SelectOption<TValue extends string | number = string> {

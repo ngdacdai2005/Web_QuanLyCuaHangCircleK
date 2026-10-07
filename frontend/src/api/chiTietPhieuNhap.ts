@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '@/config/api';
 import { getAuthHeaders } from './http';
+import { parseApiError } from '@/utils/apiError';
 
 export interface ChiTietPhieuNhapDTO {
   id: string;
@@ -8,6 +9,10 @@ export interface ChiTietPhieuNhapDTO {
   soLuongDat: number;
   soLuongNhan: number;
   donGiaNhap: number;
+  soLuongThua?: number;
+  xuLyThua?: string;
+  donGiaNhapCu?: number | null;
+  lyDoChenhLechDong?: string | null;
   vatPhantram: number;
   thanhTien: number;
   hanSuDung?: string;
@@ -19,34 +24,71 @@ const getHeaders = (): HeadersInit => {
 };
 
 export const chiTietPhieuNhapApi = {
-  getByPhieuNhap: async (idPhieuNhap: string): Promise<ChiTietPhieuNhapDTO[]> => {
-    const response = await fetch(`${API_BASE_URL}/api/chi-tiet-phieu-nhap/by-phieu/${idPhieuNhap}`, {
-      headers: getHeaders(),
-    });
-    if (!response.ok) throw new Error('Failed to fetch');
-    return response.json();
-  },
-  create: async (data: ChiTietPhieuNhapDTO): Promise<ChiTietPhieuNhapDTO> => {
-    const response = await fetch(`${API_BASE_URL}/api/chi-tiet-phieu-nhap`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...getHeaders() },
-      body: JSON.stringify(data),
-    });
+  getByPhieuNhap: async (
+      idPhieuNhap: string,
+  ): Promise<ChiTietPhieuNhapDTO[]> => {
+    const response = await fetch(
+        `${API_BASE_URL}/api/chi-tiet-phieu-nhap/by-phieu/${idPhieuNhap}`,
+        {
+          headers: getHeaders(),
+        },
+    );
+
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to create');
+      throw await parseApiError(
+          response,
+          'Lỗi tải chi tiết phiếu nhập',
+      );
     }
+
     return response.json();
   },
-  createBatch: async (items: ChiTietPhieuNhapDTO[]): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/api/chi-tiet-phieu-nhap/batch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...getHeaders() },
-      body: JSON.stringify(items),
-    });
+
+  create: async (
+      data: ChiTietPhieuNhapDTO,
+  ): Promise<ChiTietPhieuNhapDTO> => {
+    const response = await fetch(
+        `${API_BASE_URL}/api/chi-tiet-phieu-nhap`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getHeaders(),
+          },
+          body: JSON.stringify(data),
+        },
+    );
+
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to create');
+      throw await parseApiError(
+          response,
+          'Lỗi tạo chi tiết phiếu nhập',
+      );
+    }
+
+    return response.json();
+  },
+
+  createBatch: async (
+      items: ChiTietPhieuNhapDTO[],
+  ): Promise<void> => {
+    const response = await fetch(
+        `${API_BASE_URL}/api/chi-tiet-phieu-nhap/batch`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getHeaders(),
+          },
+          body: JSON.stringify(items),
+        },
+    );
+
+    if (!response.ok) {
+      throw await parseApiError(
+          response,
+          'Lỗi tạo chi tiết phiếu nhập',
+      );
     }
   },
 };
