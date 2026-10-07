@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '@/config/api';
 import { getAuthHeaders } from './http';
+import type {InactiveSupplierRow} from "@/types";
 
 export interface NhaCungCapDTO {
   id: string;
@@ -27,6 +28,8 @@ export interface NhaCungCapDTO {
   ghiChu?: string;
   ngayTao?: string;
   ngayCapNhat?: string;
+  nguoiTao?: string;
+  nguoiCapNhat?: string;
 }
 
 const getHeaders = (): HeadersInit => {
@@ -48,6 +51,12 @@ export const nhaCungCapApi = {
       headers: getHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch');
+    return response.json();
+  },
+
+  getInactiveReport: async (months: number): Promise<InactiveSupplierRow[]> => {
+    const response = await fetch(`${API_BASE_URL}/api/nha-cung-cap/inactive-report?months=${months}`, { headers: getHeaders() });
+    if (!response.ok) throw await parseError(response, 'Lỗi tải báo cáo');
     return response.json();
   },
 

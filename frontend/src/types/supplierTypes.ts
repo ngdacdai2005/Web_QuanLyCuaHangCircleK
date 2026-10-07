@@ -13,7 +13,7 @@ export interface Supplier {
     contactPhone: string;
     creditDays: number;
     note: string;
-    paymentTerms: 'Công nợ 15 ngày' | 'Công nợ 30 ngày' | 'Thanh toán ngay' | 'Công nợ 45 ngày';
+    paymentTerms: 'Công nợ 15 ngày' | 'Công nợ 30 ngày' | 'Thanh toán ngay' | 'Công nợ 45 ngày' | 'Công nợ 60 ngày';
     totalDebt: number; // Công nợ hiện tại (VND)
     totalOrders: number;
     status: 'Active' | 'Inactive';
@@ -28,4 +28,10 @@ export interface SupplierStatSummary {
     activeSuppliers: number;
     totalDebt: number;
     dueThisWeek: number;
+}
+
+export interface InactiveSupplierRow {
+    id: string; maNcc: string; tenNcc: string;
+    ngayPhieuGanNhat: string | null;
+    tongDonHang: number; tongCongNo: number; dangHoatDong: boolean;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type FC } from 'react';
+import { useEffect, useMemo, useState, type FC } from 'react';
 import { isInitialLoading } from '@/utils/tableLoading';
 import {
   App as AntdApp,
@@ -12,6 +12,7 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
+  AuditOutlined,
   DeleteOutlined,
   EditOutlined,
   MailOutlined,
@@ -32,11 +33,12 @@ import {
   setSelectedSupplier,
   setStatusFilter,
 } from '@/store/slices/supplierSlice';
-import type { Supplier } from '@/types';
+import { USER_ROLE, type Supplier } from '@/types';
 import { formatDate, formatDateShort } from '@/utils/dateUtils';
 import { compareDateDescWithId, formatNumber, formatVND, matchKeyword } from '@/utils/formatters';
 import { exportToExcel } from '@/utils/exportUtils';
 import { SupplierFormModal } from './components/SupplierFormModal';
+import { InactiveSuppliersModal } from './components/InactiveSuppliersModal';
 import './SuppliersPage.css';
 
 const { Text } = Typography;
@@ -58,7 +60,10 @@ export const SuppliersPage: FC = () => {
   const { suppliers, searchQuery, categoryFilter, statusFilter, loading } = useAppSelector(
     (state) => state.supplier,
   );
+  const user = useAppSelector((state) => state.auth.user);
+  const isAdmin = user?.role === USER_ROLE.Admin;
   const products = useAppSelector((state) => state.product.products);
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     dispatch(fetchSuppliers());
@@ -122,9 +127,9 @@ export const SuppliersPage: FC = () => {
       },
       {
         key: 'orders',
-        title: 'Tổng đơn nhập đã thực hiện',
+        title: 'Tổng phiếu nhập',
         value: formatNumber(totalOrders),
-        suffix: 'đơn',
+        suffix: 'phiếu',
       },
     ];
   }, [suppliers]);
@@ -265,7 +270,7 @@ export const SuppliersPage: FC = () => {
       ),
     },
     {
-      title: 'Số đơn nhập',
+      title: 'Số phiếu nhập',
       dataIndex: 'totalOrders',
       align: 'center',
       width: 110,
@@ -340,7 +345,7 @@ export const SuppliersPage: FC = () => {
         { header: 'Nhóm hàng', accessor: (row) => row.categories.join(', ') },
         { header: 'Điều khoản', accessor: (row) => row.paymentTerms },
         { header: 'Công nợ', accessor: (row) => row.totalDebt },
-        { header: 'Số đơn nhập', accessor: (row) => row.totalOrders },
+        { header: 'Số phiếu nhập', accessor: (row) => row.totalOrders },
         { header: 'Số SKU', accessor: (row) => skuCountMap.get(row.id) ?? 0 },
         {
           header: 'Trạng thái',
@@ -358,9 +363,24 @@ export const SuppliersPage: FC = () => {
         title="Quản lý nhà cung cấp"
         description="Thông tin đối tác, nhóm hàng cung ứng, điều khoản và công nợ phải trả."
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-            Thêm nhà cung cấp
-          </Button>
+          <Space>
+            {isAdmin && (
+                <Button
+                    icon={<AuditOutlined />}
+                    onClick={() => setReportOpen(true)}
+                >
+                  Rà soát NCC
+                </Button>
+            )}
+
+            <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={handleAdd}
+            >
+              Thêm nhà cung cấp
+            </Button>
+          </Space>
         }
       />
 
@@ -397,6 +417,11 @@ export const SuppliersPage: FC = () => {
       </Card>
 
       <SupplierFormModal />
+
+      <InactiveSuppliersModal
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+      />
     </>
   );
 };

@@ -41,6 +41,7 @@ const PAYMENT_TERMS: readonly SupplierFormValues['paymentTerms'][] = [
   'Công nợ 15 ngày',
   'Công nợ 30 ngày',
   'Công nợ 45 ngày',
+  'Công nợ 60 ngày',
 ];
 
 /**
@@ -227,6 +228,32 @@ export const SupplierFormModal: FC = () => {
             </Form.Item>
           </Col>
         </Row>
+        <Row gutter={16}>
+          <Col xs={24} md={8}>
+            <Form.Item name="contactName" label="Người liên hệ">
+              <Input placeholder="Tên người phụ trách" maxLength={255} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item name="contactTitle" label="Chức danh">
+              <Input placeholder="VD: Trưởng phòng kinh doanh" maxLength={100} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={8}>
+            <Form.Item
+                name="contactPhone"
+                label="SĐT liên hệ"
+                normalize={(v: string | undefined) => v?.replace(/\s+/g, '')}
+                rules={[{ pattern: /^$|^0\d{9,10}$/, message: 'SĐT liên hệ không hợp lệ (bắt đầu 0, 10-11 chữ số).' }]}
+            >
+              <Input placeholder="09xx xxx xxx" />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Form.Item name="note" label="Ghi chú">
+          <Input.TextArea rows={2} placeholder="VD: NCC chiến lược, đang đàm phán giá mới..." />
+        </Form.Item>
       </Form>
     </Modal>
   );

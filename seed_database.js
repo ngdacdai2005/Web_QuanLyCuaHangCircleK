@@ -48,6 +48,7 @@ const sqlFiles = [
     'san_pham.sql',
 
     'nha_cung_cap.sql',
+    'migration_nha_cung_cap_quan_ly.sql',
 
     'ton_kho.sql',
     'migration_ton_kho_on_conflict.sql',

@@ -24,4 +24,8 @@ public interface PhieuNhapRepository extends JpaRepository<PhieuNhap, UUID> {
     List<PhieuNhap> findByIdNcc(UUID idNcc);
     List<PhieuNhap> findByIdNguoiNhap(UUID idNguoiNhap);
     List<PhieuNhap> findByTrangThai(String trangThai);
-    List<PhieuNhap> findByTrangThaiIn(Collection<String> trangThai);}
+    List<PhieuNhap> findByTrangThaiIn(Collection<String> trangThai);
+    boolean existsByIdNcc(UUID idNcc);
+
+}
+

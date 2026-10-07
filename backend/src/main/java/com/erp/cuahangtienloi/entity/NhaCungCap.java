@@ -67,4 +67,10 @@ public class NhaCungCap {
 
     @Column(name = "ngay_cap_nhat")
     private LocalDateTime ngayCapNhat;
+
+    @Column(name = "nguoi_tao")
+    private UUID nguoiTao;
+
+    @Column(name = "nguoi_cap_nhat")
+    private UUID nguoiCapNhat;
 }

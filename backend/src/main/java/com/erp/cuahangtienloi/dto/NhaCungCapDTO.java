@@ -1,24 +1,28 @@
 package com.erp.cuahangtienloi.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @Data
 public class NhaCungCapDTO {
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private UUID id;
 
     @Size(max = 20, message = "Mã NCC tối đa 20 ký tự")
     private String maNcc;
 
-    @Size(min = 1, max = 255, message = "Tên NCC tối đa 255 ký tự và không được rỗng")
+    @NotBlank(message = "Tên NCC không được rỗng")
+    @Size(max = 255, message = "Tên NCC tối đa 255 ký tự")
     private String tenNcc;
 
     private String maSoThue;
@@ -40,42 +44,45 @@ public class NhaCungCapDTO {
 
     private String dieuKhoanThanhToan;
 
-    @Min(value = 0, message = "Số ngày được nợ phải lớn hơn hoặc bằng 0")
+    // Do trigger tự tính từ dieuKhoanThanhToan
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Integer soNgayDuocNo;
 
+    // Do trigger đồng bộ từ phiếu nhập
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private BigDecimal tongCongNo;
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Integer tongDonHang;
 
     private Boolean dangHoatDong;
 
     private String ghiChu;
 
-    private java.time.LocalDateTime ngayTao;
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private LocalDateTime ngayTao;
 
-    private java.time.LocalDateTime ngayCapNhat;
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private LocalDateTime ngayCapNhat;
 
-    /**
-     * Dùng khi CREATE / UPDATE.
-     * Frontend gửi danh sách UUID của danh mục.
-     */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private UUID nguoiTao;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private UUID nguoiCapNhat;
+
+    /** Dùng khi CREATE / UPDATE: frontend gửi danh sách UUID danh mục. */
     private List<UUID> categoryIds;
 
-    /**
-     * Dùng khi GET.
-     * Backend trả thông tin danh mục để frontend hiển thị.
-     */
+    /** Dùng khi GET: backend trả thông tin danh mục để hiển thị. */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private List<DanhMucSummary> categories;
 
     @Data
     public static class DanhMucSummary {
-
         private UUID id;
-
         private String tenDanhMuc;
-
         private String iconEmoji;
-
         private String mauHex;
     }
 }

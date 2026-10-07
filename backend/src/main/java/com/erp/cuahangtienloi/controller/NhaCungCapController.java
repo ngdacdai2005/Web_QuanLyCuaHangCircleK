@@ -1,8 +1,12 @@
 package com.erp.cuahangtienloi.controller;
 
+import com.erp.cuahangtienloi.dto.NccActivityReportDTO;
 import com.erp.cuahangtienloi.dto.NhaCungCapDTO;
 import com.erp.cuahangtienloi.dto.Response.ApiResponse;
+import com.erp.cuahangtienloi.entity.NhanVien;
+import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.NhaCungCapService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +22,7 @@ import java.util.UUID;
 public class NhaCungCapController {
 
     private final NhaCungCapService nhaCungCapService;
+    private final BranchAccessService branchAccessService;
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
@@ -41,16 +46,28 @@ public class NhaCungCapController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> create(@Valid @RequestBody NhaCungCapDTO request) {
-        return ResponseEntity.ok(nhaCungCapService.create(request));
+    public ResponseEntity<?> create(@Valid @RequestBody NhaCungCapDTO request,
+                                    HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        return ResponseEntity.ok(nhaCungCapService.create(request, actor.getId()));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestBody NhaCungCapDTO request) {
-        return nhaCungCapService.update(id, request)
+    public ResponseEntity<?> update(@PathVariable UUID id,
+                                    @Valid @RequestBody NhaCungCapDTO request,
+                                    HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        return nhaCungCapService.update(id, request, actor.getId())
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/inactive-report")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<NccActivityReportDTO>> getInactiveReport(
+            @RequestParam(name = "months", defaultValue = "6") int months) {
+        return ResponseEntity.ok(nhaCungCapService.reportInactive(months));
     }
 
     @DeleteMapping("/{id}")
