@@ -44,19 +44,31 @@ export const buildCsv = <T>(rows: readonly T[], columns: readonly ExportColumn<T
   return [headerLine, ...bodyLines].join('\r\n');
 };
 
-/** Tải nội dung text về máy dưới dạng file. */
-const downloadTextFile = (content: string, fileName: string, mimeType: string): void => {
-  const blob = new Blob([content], { type: mimeType });
+/** Tải một Blob về máy dưới dạng file. */
+export const downloadBlob = (blob: Blob, fileName: string): void => {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
+
   anchor.href = url;
   anchor.download = fileName;
   anchor.style.display = 'none';
+
   document.body.appendChild(anchor);
   anchor.click();
   document.body.removeChild(anchor);
+
   // Giải phóng bộ nhớ sau khi trình duyệt đã bắt đầu tải.
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+/** Tải nội dung text về máy dưới dạng file. */
+const downloadTextFile = (
+    content: string,
+    fileName: string,
+    mimeType: string,
+): void => {
+  const blob = new Blob([content], { type: mimeType });
+  downloadBlob(blob, fileName);
 };
 
 /**

@@ -1,5 +1,8 @@
 import { API_BASE_URL } from '@/config/api';
-import { getAuthHeaders } from './http';
+import {
+    apiFetch,
+    getAuthHeaders,
+} from './http';
 import type { HopDongFilter, HopDongFormValues } from '@/types';
 
 export interface HopDongDTO {
@@ -104,5 +107,12 @@ export const hopDongApi = {
         const res = await fetch(`${API_BASE_URL}/api/hop-dong/${id}`, { method: 'DELETE', headers: headers() });
         if (!res.ok) throw await parseError(res, 'Chưa xóa được hợp đồng');
     },
-    downloadUrl: (id: string): string => `${API_BASE_URL}/api/hop-dong/${id}/file`,
+
+    download: async (id: string): Promise<Blob> => {
+        const res = await apiFetch(`${API_BASE_URL}/api/hop-dong/${id}/file`, {method: 'GET',},);
+        if (!res.ok) {
+            throw await parseError(res, 'Không thể tải file scan',);
+        }
+        return res.blob();
+    },
 };

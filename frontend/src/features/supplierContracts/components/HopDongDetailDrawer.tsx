@@ -1,10 +1,19 @@
-import type { FC } from 'react';
-import { Alert, Button, Descriptions, Drawer, Space, Typography } from 'antd';
+import { useState, type FC } from 'react';
+import {
+    Alert,
+    App as AntdApp,
+    Button,
+    Descriptions,
+    Drawer,
+    Space,
+    Typography,
+} from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import { hopDongApi } from '@/api/hopDongApi';
 import { HOP_DONG_LOAI_LABEL, type HopDong } from '@/types';
 import { formatDate, formatDateTime } from '@/utils/dateUtils';
 import { formatVND } from '@/utils/formatters';
+import { downloadBlob } from '@/utils/exportUtils';
 import { HopDongStatusTag } from './HopDongStatusTag';
 
 const { Text } = Typography;
@@ -18,12 +27,33 @@ interface HopDongDetailDrawerProps {
  * Drawer chi tiết hợp đồng NCC — thuần xem (read-only), mọi thao tác
  * sửa/trình/duyệt nằm ở cột actions của bảng.
  */
-export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({
-                                                                      hopDong,
-                                                                      onClose,
-                                                                  }) => {
+export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({hopDong, onClose,}) => {
+    const { message } = AntdApp.useApp();
+    const [downloading, setDownloading] = useState(false);
+
     const open = hopDong !== null;
     const hd = hopDong;
+
+    const handleDownload = async (): Promise<void> => {
+        if (hd === null || !hd.fileCo) return;
+
+        setDownloading(true);
+
+        try {
+            const blob = await hopDongApi.download(hd.id);
+
+            downloadBlob(
+                blob,
+                hd.fileTenGoc || `hop-dong-${hd.maHopDong}`,
+            );
+        } catch (e: any) {
+            message.error(
+                e?.message || 'Không thể tải file scan.',
+            );
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     return (
         <Drawer
@@ -47,8 +77,8 @@ export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({
                         {hd.fileCo && (
                             <Button
                                 icon={<DownloadOutlined />}
-                                href={hopDongApi.downloadUrl(hd.id)}
-                                target="_blank"
+                                loading={downloading}
+                                onClick={handleDownload}
                             >
                                 Tải file scan
                             </Button>
@@ -102,8 +132,8 @@ export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({
                                     type="link"
                                     size="small"
                                     icon={<DownloadOutlined />}
-                                    href={hopDongApi.downloadUrl(hd.id)}
-                                    target="_blank"
+                                    loading={downloading}
+                                    onClick={handleDownload}
                                     className="tag-no-margin"
                                 >
                                     {hd.fileTenGoc || 'Tải file scan'}

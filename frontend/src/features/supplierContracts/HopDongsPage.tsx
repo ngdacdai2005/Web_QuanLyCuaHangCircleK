@@ -54,8 +54,22 @@ import { formatVND, matchKeyword } from '@/utils/formatters';
 import { HopDongDetailDrawer } from './components/HopDongDetailDrawer';
 import { HopDongFormModal } from './components/HopDongFormModal';
 import { HopDongStatusTag } from './components/HopDongStatusTag';
+import {downloadBlob} from "@/utils/exportUtils.ts";
 
 const { Text } = Typography;
+
+const countActionButtons = (hd: HopDong, canEdit: boolean, isAdmin: boolean,): number => {
+    const st = hd.trangThai;
+    const isDraftOrRejected = st === 'DRAFT' || st === 'REJECTED';
+    const isPending = st === 'PENDING_APPROVAL';
+
+    let n = 2; // Chi tiết + Tải file
+    if (canEdit && isDraftOrRejected) n += 2; // Sửa + Trình
+    if (isAdmin && isPending) n += 2; // Duyệt + Từ chối
+    if (canEdit && (isDraftOrRejected || isPending)) n += 1; // Hủy
+    if (isAdmin && (isDraftOrRejected || st === 'CANCELLED')) n += 1; // Xóa
+    return n;
+};
 
 export const CONTRACT_EDITORS: ReadonlySet<string> = new Set([
     USER_ROLE.Admin,
@@ -105,6 +119,12 @@ export const HopDongsPage: FC = () => {
             })
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }, [items, filter.trangThai, keyword]);
+
+    const actionWidth = useMemo(() => {
+        const maxIcons = rows.reduce((max, hd) => Math.max(max, countActionButtons(hd, canEdit, isAdmin),), 2,);
+
+        return Math.min(Math.max(maxIcons * 32 + 24, 88), 224,);
+    }, [rows, canEdit, isAdmin]);
 
     const filters: ToolbarFilter[] = [
         {
@@ -242,7 +262,7 @@ export const HopDongsPage: FC = () => {
         {
             title: 'Hành động',
             key: 'actions',
-            width: 340,
+            width: actionWidth,
             fixed: 'right',
             render: (_, hd) => {
                 const st = hd.trangThai;
@@ -259,9 +279,16 @@ export const HopDongsPage: FC = () => {
                             <Button
                                 type="text"
                                 icon={<DownloadOutlined />}
-                                href={hd.fileCo ? hopDongApi.downloadUrl(hd.id) : undefined}
-                                target="_blank"
                                 disabled={!hd.fileCo}
+                                onClick={async () => {
+                                    if (!hd.fileCo) return;
+                                    try {
+                                        const blob = await hopDongApi.download(hd.id);
+                                        downloadBlob(blob, hd.fileTenGoc || `hop-dong-${hd.maHopDong}`,);
+                                    } catch (e: any) {
+                                        message.error(e?.message || 'Không thể tải file scan.',);
+                                    }
+                                }}
                             />
                         </Tooltip>
 
