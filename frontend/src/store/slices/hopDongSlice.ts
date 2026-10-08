@@ -4,7 +4,7 @@ import { HOP_DONG_STATUS, type HopDong, type HopDongFilter, type HopDongFormValu
 import { hopDongApi, type HopDongDTO } from '@/api/hopDongApi';
 import { today } from '@/utils/dateUtils';
 
-const mapDtoToHopDong = (dto: HopDongDTO): HopDong => ({
+export const mapDtoToHopDong = (dto: HopDongDTO): HopDong => ({
     id: dto.id,
     maHopDong: dto.maHopDong,
     tenHopDong: dto.tenHopDong,

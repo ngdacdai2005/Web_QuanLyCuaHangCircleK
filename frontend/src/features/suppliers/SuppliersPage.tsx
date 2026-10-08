@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { isInitialLoading } from '@/utils/tableLoading';
-import { useNavigate } from 'react-router-dom';
 import {
   App as AntdApp,
   Button,
@@ -41,6 +40,7 @@ import { compareDateDescWithId, formatNumber, formatVND, matchKeyword } from '@/
 import { exportToExcel } from '@/utils/exportUtils';
 import { SupplierFormModal } from './components/SupplierFormModal';
 import { InactiveSuppliersModal } from './components/InactiveSuppliersModal';
+import SupplierContractsDrawer from './components/SupplierContractsDrawer';
 import './SuppliersPage.css';
 
 const { Text } = Typography;
@@ -58,7 +58,6 @@ const collectCategories = (suppliers: readonly Supplier[]): string[] =>
 export const SuppliersPage: FC = () => {
   const dispatch = useAppDispatch();
   const { message } = AntdApp.useApp();
-  const navigate = useNavigate();
 
   const { suppliers, searchQuery, categoryFilter, statusFilter, loading } = useAppSelector(
     (state) => state.supplier,
@@ -68,6 +67,7 @@ export const SuppliersPage: FC = () => {
   const products = useAppSelector((state) => state.product.products);
   const counts = useAppSelector((state) => state.hopDong.counts);
   const [reportOpen, setReportOpen] = useState(false);
+  const [contractsFor, setContractsFor] = useState<Supplier | null>(null);
 
   useEffect(() => {
     dispatch(fetchSuppliers());
@@ -286,20 +286,42 @@ export const SuppliersPage: FC = () => {
       key: 'hopDong',
       align: 'center',
       width: 220,
-      sorter: (a, b) => (counts[a.id]?.tong ?? 0) - (counts[b.id]?.tong ?? 0),
+      sorter: (a, b) =>
+          (counts[a.id]?.tong ?? 0) - (counts[b.id]?.tong ?? 0),
       render: (_, row) => {
-        const c = counts[row.id];
-        if (!c || c.tong === 0) return <Text type="secondary">—</Text>;
+        const c = counts[row.id] ?? {
+          tong: 0,
+          dangHieuLuc: 0,
+          sapHetHan: 0,
+        };
+
         return (
-            <Space size={4} wrap>
-              <Tag className="tag-no-margin">{c.tong} HĐ</Tag>
-              {c.dangHieuLuc > 0 && (
-                  <Tag color="green" className="tag-no-margin">{c.dangHieuLuc} hiệu lực</Tag>
+            <div
+                onClick={() => setContractsFor(row)}
+                style={{ cursor: 'pointer' }}
+            >
+              {c.tong === 0 ? (
+                  <Text type="secondary">—</Text>
+              ) : (
+                  <Space size={4} wrap>
+                    <Tag className="tag-no-margin">
+                      {c.tong} HĐ
+                    </Tag>
+
+                    {c.dangHieuLuc > 0 && (
+                        <Tag color="green" className="tag-no-margin">
+                          {c.dangHieuLuc} hiệu lực
+                        </Tag>
+                    )}
+
+                    {c.sapHetHan > 0 && (
+                        <Tag color="orange" className="tag-no-margin">
+                          {c.sapHetHan} sắp hết hạn
+                        </Tag>
+                    )}
+                  </Space>
               )}
-              {c.sapHetHan > 0 && (
-                  <Tag color="orange" className="tag-no-margin">{c.sapHetHan} sắp hết hạn</Tag>
-              )}
-            </Space>
+            </div>
         );
       },
     },
@@ -342,8 +364,8 @@ export const SuppliersPage: FC = () => {
           <Button
               type="text"
               icon={<FileTextOutlined />}
-              onClick={() => navigate(`/hop-dong?idNcc=${row.id}`)}
-              title="Xem hợp đồng"
+              onClick={() => setContractsFor(row)}
+              title="Xem hợp đồng của NCC"
           />
           <Button
             type="text"
@@ -457,6 +479,11 @@ export const SuppliersPage: FC = () => {
       <InactiveSuppliersModal
           open={reportOpen}
           onClose={() => setReportOpen(false)}
+      />
+
+      <SupplierContractsDrawer
+          supplier={contractsFor}
+          onClose={() => setContractsFor(null)}
       />
     </>
   );
