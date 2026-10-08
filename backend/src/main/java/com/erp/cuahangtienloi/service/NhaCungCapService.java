@@ -180,14 +180,16 @@ public class NhaCungCapService {
 
     @Transactional
     public boolean delete(UUID id) {
-        if (hopDongRepository.existsByIdNcc(id)) {
-            throw new IllegalArgumentException("NCC có hợp đồng hoặc lịch sử hợp đồng — không thể xóa. Hãy chuyển sang 'Ngừng hợp tác'.");
-        }
         if (!nhaCungCapRepository.existsById(id)) {
             return false;
         }
         if (phieuNhapRepository.existsByIdNcc(id)) {
-            throw new IllegalArgumentException("NCC đã phát sinh phiếu nhập — không thể xóa. Hãy chuyển sang 'Ngừng hợp tác' thay vì xóa.");
+            throw new IllegalArgumentException(
+                    "NCC đã phát sinh phiếu nhập — không thể xóa. Hãy chuyển sang 'Ngừng hợp tác'.");
+        }
+        if (hopDongRepository.existsByIdNcc(id)) {
+            throw new IllegalArgumentException(
+                    "NCC đã phát sinh hợp đồng — không thể xóa. Hãy chuyển sang 'Ngừng hợp tác'.");
         }
         nhaCungCapRepository.deleteById(id);
         return true;

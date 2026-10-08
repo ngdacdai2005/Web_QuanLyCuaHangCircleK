@@ -24,4 +24,28 @@ public interface HopDongRepository extends JpaRepository<HopDong, UUID> {
     List<HopDong> filter(@Param("idNcc") UUID idNcc, @Param("trangThai") String trangThai);
 
     List<HopDong> findByTrangThaiAndNgayHetHanBetween(String trangThai, LocalDate from, LocalDate to);
+
+    /** Kết quả đếm hợp đồng theo từng NCC (Spring Data tự map theo tên alias trong query). */
+    interface NccContractCount {
+        UUID getIdNcc();
+        Long getTong();
+        Long getDangHieuLuc();
+        Long getSapHetHan();
+    }
+
+    @Query("""
+            SELECT h.idNcc AS idNcc,
+                   COUNT(h) AS tong,
+                   SUM(CASE WHEN h.trangThai = 'ACTIVE'
+                             AND (h.ngayHetHan IS NULL OR h.ngayHetHan >= :today)
+                            THEN 1 ELSE 0 END) AS dangHieuLuc,
+                   SUM(CASE WHEN h.trangThai = 'ACTIVE'
+                             AND h.ngayHetHan IS NOT NULL
+                             AND h.ngayHetHan >= :today
+                             AND h.ngayHetHan <= :limit
+                            THEN 1 ELSE 0 END) AS sapHetHan
+            FROM HopDong h
+            GROUP BY h.idNcc""")
+    List<NccContractCount> countByNcc(@Param("today") LocalDate today,
+                                      @Param("limit") LocalDate limit);
 }

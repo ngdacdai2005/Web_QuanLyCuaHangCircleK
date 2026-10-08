@@ -25,6 +25,7 @@ import { SummaryStrip, type SummaryItem } from '@/components/SummaryStrip';
 import { TableToolbar, type ToolbarFilter } from '@/components/TableToolbar';
 import { BRAND } from '@/config/brand';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchHopDongCounts } from '@/store/slices/hopDongSlice';
 import {
   deleteSupplierThunk,
   fetchSuppliers,
@@ -65,10 +66,12 @@ export const SuppliersPage: FC = () => {
   const user = useAppSelector((state) => state.auth.user);
   const isAdmin = user?.role === USER_ROLE.Admin;
   const products = useAppSelector((state) => state.product.products);
+  const counts = useAppSelector((state) => state.hopDong.counts);
   const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     dispatch(fetchSuppliers());
+    dispatch(fetchHopDongCounts());
   }, [dispatch]);
 
   const filtered = useMemo(
@@ -279,6 +282,28 @@ export const SuppliersPage: FC = () => {
       sorter: (a, b) => a.totalOrders - b.totalOrders,
     },
     {
+      title: 'Hợp đồng',
+      key: 'hopDong',
+      align: 'center',
+      width: 220,
+      sorter: (a, b) => (counts[a.id]?.tong ?? 0) - (counts[b.id]?.tong ?? 0),
+      render: (_, row) => {
+        const c = counts[row.id];
+        if (!c || c.tong === 0) return <Text type="secondary">—</Text>;
+        return (
+            <Space size={4} wrap>
+              <Tag className="tag-no-margin">{c.tong} HĐ</Tag>
+              {c.dangHieuLuc > 0 && (
+                  <Tag color="green" className="tag-no-margin">{c.dangHieuLuc} hiệu lực</Tag>
+              )}
+              {c.sapHetHan > 0 && (
+                  <Tag color="orange" className="tag-no-margin">{c.sapHetHan} sắp hết hạn</Tag>
+              )}
+            </Space>
+        );
+      },
+    },
+    {
       title: 'Hợp tác từ',
       dataIndex: 'createdAt',
       width: 110,
@@ -355,6 +380,9 @@ export const SuppliersPage: FC = () => {
         { header: 'Công nợ', accessor: (row) => row.totalDebt },
         { header: 'Số phiếu nhập', accessor: (row) => row.totalOrders },
         { header: 'Số SKU', accessor: (row) => skuCountMap.get(row.id) ?? 0 },
+        { header: 'Tổng HĐ', accessor: (row) => counts[row.id]?.tong ?? 0 },
+        { header: 'HĐ hiệu lực', accessor: (row) => counts[row.id]?.dangHieuLuc ?? 0 },
+        { header: 'HĐ sắp hết hạn', accessor: (row) => counts[row.id]?.sapHetHan ?? 0 },
         {
           header: 'Trạng thái',
           accessor: (row) => (row.status === 'Active' ? 'Đang hợp tác' : 'Ngừng hợp tác'),
@@ -414,7 +442,7 @@ export const SuppliersPage: FC = () => {
           rowKey="id"
           size="middle"
           loading={isInitialLoading(loading, suppliers)}
-          scroll={{ x: 1800 }}
+          scroll={{ x: 2040 }}
           pagination={{
             defaultPageSize: 10,
             showSizeChanger: true,

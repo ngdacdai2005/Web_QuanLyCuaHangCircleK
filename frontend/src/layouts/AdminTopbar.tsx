@@ -27,10 +27,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout, setActiveBranch } from '@/store/slices/authSlice';
 import {
-  clearNotifications,
   setGlobalSearch,
   toggleSidebar,
 } from '@/store/slices/uiSlice';
+import { hasPermission, PERMISSIONS } from '@/config/rbacConfig';
+import { daysToExpiry } from '@/types';
 import { setPosBranch } from '@/store/slices/posSlice';
 import {
   SYSTEM_WIDE_ROLES,
@@ -92,6 +93,35 @@ export const AdminTopbar: FC = () => {
     () => lowStockBalances(balances, activeBranchId).length,
     [balances, activeBranchId],
   );
+
+  const sapHetHan = useAppSelector((state) => state.hopDong.sapHetHanItems);
+  const canViewContracts = hasPermission(user, PERMISSIONS.CONTRACTS_VIEW);
+  const expiringCount = canViewContracts ? sapHetHan.length : 0;
+  const totalAlerts = alertCount + expiringCount;
+
+  const bellItems: MenuProps['items'] = [
+    ...(alertCount > 0
+        ? [{ key: 'inventory', label: `Kho hàng: ${alertCount} sản phẩm dưới ngưỡng` }]
+        : []),
+    ...(expiringCount > 0
+        ? [
+          ...sapHetHan.slice(0, 5).map((hd) => ({
+            key: `hd-${hd.id}`,
+            label: `${hd.maHopDong} — ${hd.tenNcc} (còn ${daysToExpiry(hd)} ngày)`,
+          })),
+          ...(expiringCount > 5
+              ? [{ key: 'more', label: `+${expiringCount - 5} hợp đồng khác...`, disabled: true }]
+              : []),
+          { type: 'divider' as const },
+          { key: 'contracts', label: 'Xem tất cả hợp đồng' },
+        ]
+        : []),
+  ];
+
+  const handleBellClick: MenuProps['onClick'] = ({ key }) => {
+    if (key === 'inventory') navigate('/inventory');
+    else if (key === 'contracts' || key.startsWith('hd-')) navigate('/hop-dong');
+  };
 
   /** Menu tài khoản: hồ sơ, đổi mật khẩu, đăng xuất. */
   const userMenuItems: MenuProps['items'] = [
@@ -197,15 +227,21 @@ export const AdminTopbar: FC = () => {
           </Button>
         )}
 
-        <Tooltip title={`${alertCount} mặt hàng dưới ngưỡng tồn tối thiểu`}>
-          <Badge count={alertCount} overflowCount={99}>
-            <Button
-              type="text"
-              shape="circle"
-              aria-label="Thông báo tồn kho"
-              icon={<BellOutlined className="bell-icon" />}
-              onClick={() => dispatch(clearNotifications())}
-            />
+        <Tooltip title={`${alertCount} mặt hàng dưới ngưỡng tồn • ${expiringCount} hợp đồng sắp hết hạn`}>
+          <Badge count={totalAlerts} overflowCount={99}>
+            <Dropdown
+                menu={{ items: bellItems, onClick: handleBellClick }}
+                trigger={['click']}
+                placement="bottomRight"
+                disabled={totalAlerts === 0}
+            >
+              <Button
+                  type="text"
+                  shape="circle"
+                  aria-label="Thông báo"
+                  icon={<BellOutlined className="bell-icon" />}
+              />
+            </Dropdown>
           </Badge>
         </Tooltip>
 

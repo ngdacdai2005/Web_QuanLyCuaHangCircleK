@@ -9,6 +9,8 @@ import { fetchProducts } from '@/store/slices/productSlice';
 import { fetchAttendance } from '@/store/slices/attendanceSlice';
 import { syncPosBranch } from '@/store/slices/posSlice';
 import { USER_ROLE } from '@/types';
+import { hasPermission, PERMISSIONS } from '@/config/rbacConfig';
+import { fetchSapHetHan } from '@/store/slices/hopDongSlice';
 
 /**
  * Load dữ liệu dùng chung (master data) 1 lần khi app khởi động.
@@ -35,6 +37,9 @@ export const AppBootstrap: FC = () => {
       }
       dispatch(fetchAttendance({}));
       dispatch(syncPosBranch(authUser.branchId));
+      if (hasPermission(authUser, PERMISSIONS.CONTRACTS_VIEW)) {
+        dispatch(fetchSapHetHan(30));
+      }
     }
   }, [dispatch, authUser]);
 

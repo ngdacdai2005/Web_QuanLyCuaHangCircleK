@@ -112,9 +112,10 @@ export const HopDongsPage: FC = () => {
             placeholder: 'Nhà cung cấp',
             value: filter.idNcc ?? null,
             span: 6,
-            options: suppliers
-                .filter((s) => s.status === 'Active')
-                .map((s) => ({ value: s.id, label: `${s.code} — ${s.name}` })),
+            options: suppliers.map((s) => ({
+                value: s.id,
+                label: `${s.code} — ${s.name}${s.status === 'Inactive' ? ' (Ngừng hợp tác)' : ''}`,
+            })),
             onChange: (value) =>
                 dispatch(setHopDongFilter({ ...filter, idNcc: value ?? undefined })),
         },

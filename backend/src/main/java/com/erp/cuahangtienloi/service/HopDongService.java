@@ -1,8 +1,10 @@
 package com.erp.cuahangtienloi.service;
 
+import com.erp.cuahangtienloi.dto.HopDongCountDTO;
 import com.erp.cuahangtienloi.dto.HopDongDTO;
 import com.erp.cuahangtienloi.dto.HopDongRejectDTO;
 import com.erp.cuahangtienloi.entity.HopDong;
+import com.erp.cuahangtienloi.entity.NhaCungCap;
 import com.erp.cuahangtienloi.repository.HopDongRepository;
 import com.erp.cuahangtienloi.repository.NhaCungCapRepository;
 import com.erp.cuahangtienloi.service.FileStorageService.StoredFile;
@@ -56,7 +58,7 @@ public class HopDongService {
 
     @Transactional
     public HopDongDTO create(HopDongDTO req, MultipartFile file, UUID actorId) {
-        validate(req);
+        validate(req, null);
         HopDong h = new HopDong();
         h.setId(UUID.randomUUID());
         h.setMaHopDong("HD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
@@ -84,7 +86,7 @@ public class HopDongService {
     public Optional<HopDongDTO> update(UUID id, HopDongDTO req, MultipartFile file, UUID actorId) {
         return hopDongRepository.findById(id).map(h -> {
             requireStatus(h, EDITABLE, "sửa");
-            validate(req);
+            validate(req, h.getIdNcc());
             h.setTenHopDong(req.getTenHopDong().trim());
             h.setLoaiHopDong(req.getLoaiHopDong() == null ? "MUA_HANG" : req.getLoaiHopDong());
             h.setIdNcc(req.getIdNcc());
@@ -195,17 +197,37 @@ public class HopDongService {
         applyFile(h, file);
     }
 
-    private void validate(HopDongDTO req) {
+    private void validate(HopDongDTO req, UUID currentIdNcc) {
         if (req.getTenHopDong() == null || req.getTenHopDong().isBlank())
             throw new IllegalArgumentException("Tên hợp đồng không được để trống");
-        if (req.getIdNcc() == null || !nhaCungCapRepository.existsById(req.getIdNcc()))
+        if (req.getIdNcc() == null)
             throw new IllegalArgumentException("Nhà cung cấp không tồn tại");
+        NhaCungCap ncc = nhaCungCapRepository.findById(req.getIdNcc())
+                .orElseThrow(() -> new IllegalArgumentException("Nhà cung cấp không tồn tại"));
         if (req.getNgayKy() == null || req.getNgayHieuLuc() == null)
             throw new IllegalArgumentException("Ngày ký và ngày hiệu lực là bắt buộc");
         if (req.getNgayHetHan() != null && req.getNgayHetHan().isBefore(req.getNgayHieuLuc()))
             throw new IllegalArgumentException("Ngày hết hạn phải sau hoặc bằng ngày hiệu lực");
         if (req.getGiaTriHopDong() != null && req.getGiaTriHopDong().signum() < 0)
             throw new IllegalArgumentException("Giá trị hợp đồng không được âm");
+
+        // NCC phải đang hoạt động, trừ khi hợp đồng giữ nguyên NCC hiện tại (khi sửa)
+        boolean keepingCurrentNcc = req.getIdNcc().equals(currentIdNcc);
+        if (!keepingCurrentNcc && !Boolean.TRUE.equals(ncc.getDangHoatDong()))
+            throw new IllegalArgumentException(
+                    "Nhà cung cấp đã ngừng hợp tác — không thể chọn làm NCC của hợp đồng.");
+    }
+
+    @Transactional(readOnly = true)
+    public List<HopDongCountDTO> countByNcc() {
+        LocalDate today = LocalDate.now();
+        return hopDongRepository.countByNcc(today, today.plusDays(30)).stream()
+                .map(c -> new HopDongCountDTO(
+                        c.getIdNcc(),
+                        c.getTong() == null ? 0 : c.getTong(),
+                        c.getDangHieuLuc() == null ? 0 : c.getDangHieuLuc(),
+                        c.getSapHetHan() == null ? 0 : c.getSapHetHan()))
+                .toList();
     }
 
     private void requireStatus(HopDong h, Set<String> allowed, String action) {

@@ -32,12 +32,21 @@ const mapDtoToHopDong = (dto: HopDongDTO): HopDong => ({
 
 interface HopDongState {
     items: HopDong[];
+    counts: Record<string, { tong: number; dangHieuLuc: number; sapHetHan: number }>;
+    sapHetHanItems: HopDong[];
     filter: HopDongFilter;
     isLoading: boolean;
     error: string | null;
 }
 
-const initialState: HopDongState = { items: [], filter: {}, isLoading: false, error: null };
+const initialState: HopDongState = {
+    items: [], counts: {}, sapHetHanItems: [], filter: {}, isLoading: false, error: null,
+};
+
+export const fetchSapHetHan = createAsyncThunk(
+    'hopDong/fetchSapHetHan',
+    async (days: number = 30) => (await hopDongApi.sapHetHan(days)).map(mapDtoToHopDong),
+);
 
 export const fetchHopDongs = createAsyncThunk(
     'hopDong/fetchAll',
@@ -47,11 +56,19 @@ export const fetchHopDongs = createAsyncThunk(
     },
 );
 
+export const fetchHopDongCounts = createAsyncThunk('hopDong/fetchCounts', async () => {
+    const data = await hopDongApi.counts();
+    return Object.fromEntries(
+        data.map((c) => [c.idNcc, { tong: c.tong, dangHieuLuc: c.dangHieuLuc, sapHetHan: c.sapHetHan }]),
+    );
+});
+
 export const createHopDong = createAsyncThunk(
     'hopDong/create',
-    async ({ values, file }: { values: HopDongFormValues; file?: File }) => {
-        const data = await hopDongApi.create(values as never, file);
-        return mapDtoToHopDong(data);
+    async ({ values, file }: { values: HopDongFormValues; file?: File }, thunkAPI) => {
+        const result = await hopDongApi.create(values as never, file);
+        thunkAPI.dispatch(fetchHopDongCounts());
+        return mapDtoToHopDong(result);
     },
 );
 
@@ -64,7 +81,17 @@ export const updateHopDong = createAsyncThunk(
 );
 
 export const submitHopDong = createAsyncThunk('hopDong/submit', async (id: string) => { await hopDongApi.submit(id); return id; });
-export const approveHopDong = createAsyncThunk('hopDong/approve', async (id: string) => { await hopDongApi.approve(id); return id; });
+export const approveHopDong = createAsyncThunk(
+    'hopDong/approve',
+    async (id: string, thunkAPI) => {
+        await hopDongApi.approve(id);
+
+        thunkAPI.dispatch(fetchHopDongCounts());
+        thunkAPI.dispatch(fetchSapHetHan(30));
+
+        return id;
+    }
+);
 export const rejectHopDong = createAsyncThunk(
     'hopDong/reject',
     async ({ id, lyDo }: { id: string; lyDo: string }) => {
@@ -72,8 +99,28 @@ export const rejectHopDong = createAsyncThunk(
         return { id, lyDo };
     },
 );
-export const cancelHopDong = createAsyncThunk('hopDong/cancel', async (id: string) => { await hopDongApi.cancel(id); return id; });
-export const deleteHopDong = createAsyncThunk('hopDong/delete', async (id: string) => { await hopDongApi.remove(id); return id; });
+export const cancelHopDong = createAsyncThunk(
+    'hopDong/cancel',
+    async (id: string, thunkAPI) => {
+        await hopDongApi.cancel(id);
+
+        thunkAPI.dispatch(fetchHopDongCounts());
+        thunkAPI.dispatch(fetchSapHetHan(30));
+
+        return id;
+    }
+);
+
+export const deleteHopDong = createAsyncThunk(
+    'hopDong/delete',
+    async (id: string, thunkAPI) => {
+        await hopDongApi.remove(id);
+
+        thunkAPI.dispatch(fetchHopDongCounts());
+
+        return id;
+    }
+);
 
 export const hopDongSlice = createSlice({
     name: 'hopDong',
@@ -86,11 +133,16 @@ export const hopDongSlice = createSlice({
             .addCase(fetchHopDongs.pending, (state) => { state.isLoading = true; state.error = null; })
             .addCase(fetchHopDongs.fulfilled, (state, action) => { state.isLoading = false; state.items = action.payload; })
             .addCase(fetchHopDongs.rejected, (state, action) => { state.isLoading = false; state.error = action.error.message || 'Lỗi tải danh sách'; })
-            .addCase(createHopDong.fulfilled, (state, action) => { state.items.unshift(action.payload); })
+            .addCase(fetchHopDongCounts.fulfilled, (state, action) => { state.counts = action.payload; })
+            .addCase(createHopDong.fulfilled, (state, action) => {
+                state.items.unshift(action.payload);
+            })
             .addCase(updateHopDong.fulfilled, (state, action) => {
                 const i = state.items.findIndex((h) => h.id === action.payload.id);
                 if (i !== -1) state.items[i] = action.payload;
             })
+            .addCase(fetchSapHetHan.fulfilled, (state, action) => { state.sapHetHanItems = action.payload; })
+            .addCase(fetchSapHetHan.rejected, (state) => { state.sapHetHanItems = []; })
             .addCase(submitHopDong.fulfilled, (state, action) => {
                 const hd = state.items.find((h) => h.id === action.payload);
                 if (hd) hd.trangThai = HOP_DONG_STATUS.PENDING_APPROVAL;

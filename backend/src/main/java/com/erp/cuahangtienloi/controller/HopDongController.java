@@ -1,5 +1,6 @@
 package com.erp.cuahangtienloi.controller;
 
+import com.erp.cuahangtienloi.dto.HopDongCountDTO;
 import com.erp.cuahangtienloi.dto.HopDongDTO;
 import com.erp.cuahangtienloi.dto.HopDongRejectDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
@@ -42,10 +43,17 @@ public class HopDongController {
     }
 
     @GetMapping("/sap-het-han")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
+    @PreAuthorize(VIEW)
     public ResponseEntity<List<HopDongDTO>> sapHetHan(
             @RequestParam(name = "days", defaultValue = "30") int days) {
         return ResponseEntity.ok(hopDongService.sapHetHan(days));
+    }
+
+
+    @GetMapping("/counts")
+    @PreAuthorize(VIEW)
+    public ResponseEntity<List<HopDongCountDTO>> counts() {
+        return ResponseEntity.ok(hopDongService.countByNcc());
     }
 
     @GetMapping("/{id}")

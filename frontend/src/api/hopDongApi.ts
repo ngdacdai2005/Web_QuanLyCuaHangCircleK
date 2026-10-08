@@ -14,6 +14,13 @@ export interface HopDongDTO {
     ngayTao?: string; ngayCapNhat?: string; nguoiTao?: string; nguoiCapNhat?: string;
 }
 
+export interface HopDongCountDTO {
+    idNcc: string;
+    tong: number;
+    dangHieuLuc: number;
+    sapHetHan: number;
+}
+
 const headers = (): HeadersInit => getAuthHeaders();
 
 const parseError = async (response: Response, fallback: string): Promise<Error> => {
@@ -42,6 +49,11 @@ export const hopDongApi = {
     sapHetHan: async (days = 30): Promise<HopDongDTO[]> => {
         const res = await fetch(`${API_BASE_URL}/api/hop-dong/sap-het-han?days=${days}`, { headers: headers() });
         if (!res.ok) throw await parseError(res, 'Lỗi tải cảnh báo hết hạn');
+        return res.json();
+    },
+    counts: async (): Promise<HopDongCountDTO[]> => {
+        const res = await fetch(`${API_BASE_URL}/api/hop-dong/counts`, { headers: headers() });
+        if (!res.ok) throw await parseError(res, 'Lỗi tải thống kê hợp đồng');
         return res.json();
     },
     detail: async (id: string): Promise<HopDongDTO> => {

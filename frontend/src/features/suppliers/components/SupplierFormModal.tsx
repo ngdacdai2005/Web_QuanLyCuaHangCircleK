@@ -1,5 +1,6 @@
 import { useEffect, type FC } from 'react';
 import {
+  Alert,
   App as AntdApp,
   Col,
   Form,
@@ -59,6 +60,12 @@ export const SupplierFormModal: FC = () => {
   const isEditing = selectedSupplier !== null;
   const allCategories = useAppSelector((state) => state.category.categories);
 
+  const counts = useAppSelector((s) => s.hopDong.counts);
+  const status = Form.useWatch('status', form);
+  const activeContracts =
+      selectedSupplier !== null ? (counts[selectedSupplier.id]?.dangHieuLuc ?? 0) : 0;
+  const showContractWarning = selectedSupplier !== null && status === 'Inactive' && activeContracts > 0;
+
   // Nạp dữ liệu mỗi lần mở modal để không dùng lại giá trị của lần trước.
   useEffect(() => {
     if (!isModalOpen) return;
@@ -114,6 +121,15 @@ export const SupplierFormModal: FC = () => {
       onCancel={() => dispatch(setModalOpen(false))}
       destroyOnHidden
     >
+      {showContractWarning && (
+          <Alert
+              type="warning"
+              showIcon
+              style={{ marginBottom: 12 }}
+              message={`NCC này đang có ${activeContracts} hợp đồng hiệu lực`}
+              description="Hợp đồng không bị ảnh hưởng, nhưng nên kiểm tra kỹ trước khi ngừng hợp tác. NCC ngừng hợp tác sẽ không nhận hợp đồng hoặc phiếu nhập mới."
+          />
+      )}
       <Form form={form} layout="vertical" className="supplier-form">
         <Row gutter={16}>
           <Col xs={24} md={14}>

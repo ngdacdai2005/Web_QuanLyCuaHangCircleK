@@ -87,9 +87,13 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
         }
     }, [open, editing, form]);
 
-    const nccOptions = suppliers
-        .filter((s) => s.status === 'Active')
-        .map((s) => ({ value: s.id, label: `${s.code} — ${s.name}` }));
+    const nccOptions = suppliers.map((s) => ({
+        value: s.id,
+        label: `${s.code} — ${s.name}${s.status === 'Inactive' ? ' (Ngừng hợp tác)' : ''}`,
+        // Tạo mới: khóa mọi NCC ngừng hợp tác.
+        // Sửa: chỉ giữ chọn được NCC hiện tại của hợp đồng, các NCC ngừng hợp tác khác vẫn bị khóa.
+        disabled: s.status === 'Inactive' && (editing === null || s.id !== editing.idNcc),
+    }));
 
     const handleBeforeUpload = (file: File): boolean => {
         const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
