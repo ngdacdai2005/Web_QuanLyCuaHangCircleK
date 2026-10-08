@@ -12,3 +12,4 @@ export * from './inventoryTypes';
 export * from './posTypes';
 export * from './cashbookTypes';
 export * from './reportTypes';
+export * from './hopDongTypes';

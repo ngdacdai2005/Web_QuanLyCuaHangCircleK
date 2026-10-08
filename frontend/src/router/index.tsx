@@ -13,6 +13,7 @@ import { EmployeesPage } from '@/features/employees/EmployeesPage';
 import { ProductsPage } from '@/features/products/ProductsPage';
 import { CategoriesPage } from '@/features/categories/CategoriesPage';
 import { SuppliersPage } from '@/features/suppliers/SuppliersPage';
+import { HopDongsPage } from '@/features/supplierContracts/HopDongsPage';
 import { InventoryPage } from '@/features/inventory/InventoryPage';
 import { PurchaseOrdersPage } from '@/features/purchaseOrders/PurchaseOrdersPage';
 import { TransfersPage } from '@/features/transfers/TransfersPage';
@@ -70,6 +71,7 @@ export const AppRouter: FC = () => (
         <Route path="/employees" element={<EmployeesPage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
+        <Route path="/hop-dong" element={<HopDongsPage />} />
         <Route path="/suppliers" element={<SuppliersPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />

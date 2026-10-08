@@ -111,4 +111,11 @@ public class GlobalExceptionHandler {
                 .badRequest()
                 .body(Map.of("message", msg != null ? msg : "Đã xảy ra lỗi khi xử lý yêu cầu."));
     }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<?> handleMaxUpload(org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+        return ResponseEntity
+                .badRequest()
+                .body(Map.of("message", "File đính kèm vượt quá dung lượng cho phép (tối đa 10MB)."));
+    }
 }

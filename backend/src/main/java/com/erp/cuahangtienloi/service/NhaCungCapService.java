@@ -4,10 +4,7 @@ import com.erp.cuahangtienloi.dto.NccActivityReportDTO;
 import com.erp.cuahangtienloi.dto.NhaCungCapDTO;
 import com.erp.cuahangtienloi.entity.NhaCungCap;
 import com.erp.cuahangtienloi.entity.NhaCungCapDanhMuc;
-import com.erp.cuahangtienloi.repository.DanhMucRepository;
-import com.erp.cuahangtienloi.repository.NhaCungCapDanhMucRepository;
-import com.erp.cuahangtienloi.repository.NhaCungCapRepository;
-import com.erp.cuahangtienloi.repository.PhieuNhapRepository;
+import com.erp.cuahangtienloi.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +23,7 @@ public class NhaCungCapService {
     private final NhaCungCapDanhMucRepository nccDanhMucRepository;
     private final DanhMucRepository danhMucRepository;
     private final PhieuNhapRepository phieuNhapRepository;
+    private final HopDongRepository hopDongRepository;
 
     @Transactional(readOnly = true)
     public List<NhaCungCapDTO> getAll() {
@@ -182,12 +180,14 @@ public class NhaCungCapService {
 
     @Transactional
     public boolean delete(UUID id) {
+        if (hopDongRepository.existsByIdNcc(id)) {
+            throw new IllegalArgumentException("NCC có hợp đồng hoặc lịch sử hợp đồng — không thể xóa. Hãy chuyển sang 'Ngừng hợp tác'.");
+        }
         if (!nhaCungCapRepository.existsById(id)) {
             return false;
         }
         if (phieuNhapRepository.existsByIdNcc(id)) {
-            throw new IllegalArgumentException(
-                    "NCC đã phát sinh phiếu nhập — không thể xóa. Hãy chuyển sang 'Ngừng hợp tác' thay vì xóa.");
+            throw new IllegalArgumentException("NCC đã phát sinh phiếu nhập — không thể xóa. Hãy chuyển sang 'Ngừng hợp tác' thay vì xóa.");
         }
         nhaCungCapRepository.deleteById(id);
         return true;

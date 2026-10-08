@@ -1,6 +1,7 @@
 node_modules/
 audit-context.xml
 branch_inactive_*.json
+backend/uploads/
 
 # Agent & Prompting metadata
 docs/agent/

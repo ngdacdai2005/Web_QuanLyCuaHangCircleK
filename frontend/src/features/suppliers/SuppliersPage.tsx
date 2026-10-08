@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { isInitialLoading } from '@/utils/tableLoading';
+import { useNavigate } from 'react-router-dom';
 import {
   App as AntdApp,
   Button,
@@ -14,7 +15,7 @@ import type { ColumnsType } from 'antd/es/table';
 import {
   AuditOutlined,
   DeleteOutlined,
-  EditOutlined,
+  EditOutlined, FileTextOutlined,
   MailOutlined,
   PhoneOutlined,
   PlusOutlined,
@@ -56,6 +57,7 @@ const collectCategories = (suppliers: readonly Supplier[]): string[] =>
 export const SuppliersPage: FC = () => {
   const dispatch = useAppDispatch();
   const { message } = AntdApp.useApp();
+  const navigate = useNavigate();
 
   const { suppliers, searchQuery, categoryFilter, statusFilter, loading } = useAppSelector(
     (state) => state.supplier,
@@ -308,10 +310,16 @@ export const SuppliersPage: FC = () => {
       title: '',
       key: 'actions',
       align: 'center',
-      width: 90,
+      width: 130,
       fixed: 'right',
       render: (_, row) => (
         <Space size={0}>
+          <Button
+              type="text"
+              icon={<FileTextOutlined />}
+              onClick={() => navigate(`/hop-dong?idNcc=${row.id}`)}
+              title="Xem hợp đồng"
+          />
           <Button
             type="text"
             icon={<EditOutlined className="action-edit-icon" />}

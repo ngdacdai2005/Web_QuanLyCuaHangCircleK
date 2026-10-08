@@ -24,6 +24,7 @@ export type ModuleIconKey =
   | 'attendance'
   | 'cashbook'
   | 'report'
+  | 'contract'
   | 'account-manage';
 
 export interface ModuleDefinition {
@@ -344,6 +345,18 @@ export const MODULES: readonly ModuleDefinition[] = [
     implemented: true,
     description:
       'Tạo, sửa, xóa tài khoản người dùng và phân quyền hệ thống.',
+  },
+  {
+    order: 17,
+    key: 'contracts',
+    path: '/hop-dong',
+    label: 'Hợp đồng NCC',
+    shortLabel: 'Hợp đồng',
+    icon: 'contract',
+    allowedRoles: [USER_ROLE.Admin, USER_ROLE.Accountant, USER_ROLE.StoreManager] as const,
+    group: MODULE_GROUP.MasterData,
+    implemented: true,
+    description: 'Hợp đồng với nhà cung cấp: lập nháp, trình duyệt, gia hạn và theo dõi hết hạn.',
   },
 ];
 

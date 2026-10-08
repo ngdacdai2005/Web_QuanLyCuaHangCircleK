@@ -17,6 +17,7 @@ import categoryReducer from './slices/categorySlice';
 import salesOrderReducer from './slices/salesOrderSlice';
 import internalExportReducer from './slices/internalExportSlice';
 import { cashbookPersistence } from './cashbookPersistence';
+import hopDongReducer from './slices/hopDongSlice';
 
 export const store = configureStore({
   reducer: {
@@ -38,6 +39,7 @@ export const store = configureStore({
     category: categoryReducer,
     salesOrder: salesOrderReducer,
     internalExport: internalExportReducer,
+    hopDong: hopDongReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().prepend(cashbookPersistence.middleware),

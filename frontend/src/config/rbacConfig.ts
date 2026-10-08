@@ -15,6 +15,7 @@ export const PERMISSIONS = {
     REPORTS_VIEW: 'reports.view',
     BRANCHES_VIEW: 'branches.view',
     BRANCHES_MANAGE: 'branches.manage',
+    CONTRACTS_VIEW: 'contracts.view',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -47,6 +48,7 @@ export const ROLES: Record<UserRole, RoleDefinition> = {
             PERMISSIONS.CUSTOMERS_VIEW,
             PERMISSIONS.REPORTS_VIEW,
             PERMISSIONS.BRANCHES_VIEW,
+            PERMISSIONS.CONTRACTS_VIEW,
         ],
     },
     [USER_ROLE.StoreManager]: {
@@ -63,6 +65,7 @@ export const ROLES: Record<UserRole, RoleDefinition> = {
             PERMISSIONS.CUSTOMERS_VIEW,
             PERMISSIONS.REPORTS_VIEW,
             PERMISSIONS.BRANCHES_VIEW,
+            PERMISSIONS.CONTRACTS_VIEW,
         ],
     },
     [USER_ROLE.WarehouseKeeper]: {
@@ -107,4 +110,5 @@ export const ROUTE_PERMISSIONS: Record<string, Permission> = {
     '/customers': PERMISSIONS.CUSTOMERS_VIEW,
     '/reports': PERMISSIONS.REPORTS_VIEW,
     '/branches': PERMISSIONS.BRANCHES_VIEW,
+    '/hop-dong': PERMISSIONS.CONTRACTS_VIEW,
 };

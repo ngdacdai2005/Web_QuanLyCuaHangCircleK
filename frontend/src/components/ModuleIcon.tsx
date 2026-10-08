@@ -6,7 +6,7 @@ import {
   ClockCircleOutlined,
   DashboardOutlined,
   DeploymentUnitOutlined,
-  FileDoneOutlined,
+  FileDoneOutlined, FileProtectOutlined,
   FileTextOutlined,
   ImportOutlined,
   ScanOutlined,
@@ -41,6 +41,7 @@ const ICON_MAP: Record<ModuleIconKey, FC> = {
   attendance: ClockCircleOutlined,
   cashbook: BankOutlined,
   report: BarChartOutlined,
+  contract: FileProtectOutlined,
   'account-manage': UserOutlined,
 };
 
