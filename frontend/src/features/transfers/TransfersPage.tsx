@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FC, type ReactElement } from 'react';
 import { isInitialLoading } from '@/utils/tableLoading';
+import {actionColumnWidth, labelButtonWidth,} from '@/utils/actionColumnWidth';
 import { chiTietPhieuXuatApi, type ChiTietPhieuXuatDTO } from '@/api/phieuXuatKho';
 import { tonKhoApi } from '@/api/tonKho';
 import {
@@ -80,7 +81,26 @@ export const TransfersPage: FC = () => {
   const isStoreManager = user?.role === USER_ROLE.StoreManager;
   const isWarehouseKeeper = user?.role === USER_ROLE.WarehouseKeeper;
   const isApprover = user?.role === USER_ROLE.Admin || user?.role === USER_ROLE.WarehouseKeeper;
-  // const branchScope = isStoreManager ? user?.branchId ?? null : null;
+  /** Quyền bấm "Đã nhận hàng": QL đúng chi nhánh nhận, hoặc Admin. */
+  const canReceive = (row: StockTransfer): boolean =>
+      row.status === DOCUMENT_STATUS.Shipped &&
+      (user?.role === USER_ROLE.Admin ||
+          (isStoreManager && row.toBranchId === user?.branchId));
+
+  const actionButtonWidthsOf = (row: StockTransfer,): number[] => {
+    const widths: number[] = [];
+    const approving = isApprover && row.status === DOCUMENT_STATUS.Pending;
+    const receiving = canReceive(row);
+
+    if (approving) {
+      widths.push(labelButtonWidth('Duyệt'));
+      widths.push(labelButtonWidth('Từ chối'));
+    }
+    if (receiving) {
+      widths.push(labelButtonWidth('Đã nhận hàng'));
+    }
+    return widths;
+  };
 
   useEffect(() => {
     dispatch(fetchTransfers());
@@ -161,6 +181,16 @@ export const TransfersPage: FC = () => {
         return matchSearch && matchTo && matchStatus;
       }).sort((a, b) => compareDateDescWithId(a, b, (row) => row.requestDate)),
     [scoped, search, toFilter, statusFilter],
+  );
+
+  const actionWidth = useMemo(
+      () => actionColumnWidth(filtered, actionButtonWidthsOf, {min: 72, max: 210,},), [
+        filtered,
+        isApprover,
+        isStoreManager,
+        user?.role,
+        user?.branchId,
+      ],
   );
 
   const pendingCount = useMemo(
@@ -315,12 +345,6 @@ export const TransfersPage: FC = () => {
     }
   };
 
-  /** Quyền bấm "Đã nhận hàng": QL đúng chi nhánh nhận, hoặc Admin. */
-  const canReceive = (row: StockTransfer): boolean =>
-    row.status === DOCUMENT_STATUS.Shipped &&
-    (user?.role === USER_ROLE.Admin ||
-      (isStoreManager && row.toBranchId === user?.branchId));
-
   const columns: ColumnsType<StockTransfer> = [
     {
       title: 'Mã phiếu',
@@ -420,7 +444,7 @@ export const TransfersPage: FC = () => {
       title: 'Thao tác',
       key: 'actions',
       align: 'center',
-      width: 170,
+      width: actionWidth,
       fixed: 'right',
       render: (_, row) => {
         const approving = isApprover && row.status === DOCUMENT_STATUS.Pending;

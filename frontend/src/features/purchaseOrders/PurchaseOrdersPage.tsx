@@ -18,6 +18,10 @@ import {
   Tag,
   Typography,
 } from 'antd';
+import {
+  actionColumnWidth,
+  labelButtonWidth,
+} from '@/utils/actionColumnWidth';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined } from '@ant-design/icons';
 
@@ -92,47 +96,31 @@ export const PurchaseOrdersPage: FC = () => {
   const { message } = AntdApp.useApp();
 
   const user = useAppSelector((state) => state.auth.user);
-  const { orders, loading } = useAppSelector(
-      (state) => state.purchase,
-  );
+  const { orders, loading } = useAppSelector((state) => state.purchase,);
 
-  const suppliers = useAppSelector(
-      (state) => state.supplier.suppliers,
-  );
-  const products = useAppSelector(
-      (state) => state.product.products,
-  );
-  const branches = useAppSelector(
-      (state) => state.branch.branches,
-  );
-  const employees = useAppSelector(
-      (state) => state.employee.employees,
-  );
+  const suppliers = useAppSelector((state) => state.supplier.suppliers,);
+  const products = useAppSelector((state) => state.product.products,);
+  const branches = useAppSelector((state) => state.branch.branches,);
+  const employees = useAppSelector((state) => state.employee.employees,);
 
   const [isFormOpen, setFormOpen] = useState(false);
 
-  const [rejectTarget, setRejectTarget] =
-      useState<PurchaseOrder | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<PurchaseOrder | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
-  const [payTarget, setPayTarget] =
-      useState<PurchaseOrder | null>(null);
+  const [payTarget, setPayTarget] = useState<PurchaseOrder | null>(null);
 
-  const [changePriceTarget, setChangePriceTarget] =
-      useState<PurchaseOrder | null>(null);
+  const [changePriceTarget, setChangePriceTarget] = useState<PurchaseOrder | null>(null);
 
-  const [receivingTarget, setReceivingTarget] =
-      useState<PurchaseOrder | null>(null);
+  const [receivingTarget, setReceivingTarget] = useState<PurchaseOrder | null>(null);
 
-  const [actionLoading, setActionLoading] = useState<
-      string | null
-  >(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] =
-      useState<string | null>(null);
-  const [supplierFilter, setSupplierFilter] =
-      useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [supplierFilter, setSupplierFilter] = useState<string | null>(null);
+
+
 
   /**
    * Cache chi tiết phiếu nhập theo orderId.
@@ -249,28 +237,42 @@ export const PurchaseOrdersPage: FC = () => {
   /**
    * Thủ kho chỉ lập phiếu NCC tại Kho Tổng được gán cho chính mình.
    */
-  const assignedBranch = branches.find(
-      (branch) => branch.id === user?.branchId,
-  );
+  const assignedBranch = branches.find((branch) => branch.id === user?.branchId,);
 
-  const canCreate =
-      user?.role === USER_ROLE.Admin ||
-      (user?.role === USER_ROLE.WarehouseKeeper &&
-          assignedBranch?.kind === 'DISTRIBUTION_CENTER');
+  const canCreate = user?.role === USER_ROLE.Admin || (user?.role === USER_ROLE.WarehouseKeeper && assignedBranch?.kind === 'DISTRIBUTION_CENTER');
 
   /**
    * Kế toán/Admin: duyệt, từ chối, thanh toán, đổi giá.
    */
-  const isApprover =
-      user?.role === USER_ROLE.Accountant ||
-      user?.role === USER_ROLE.Admin;
+  const isApprover = user?.role === USER_ROLE.Accountant || user?.role === USER_ROLE.Admin;
 
   /**
    * Thủ kho/Admin: bắt đầu kiểm nhận, kiểm nhận, hủy kiểm nhận.
    */
-  const canReceive =
-      user?.role === USER_ROLE.WarehouseKeeper ||
-      user?.role === USER_ROLE.Admin;
+  const canReceive = user?.role === USER_ROLE.WarehouseKeeper || user?.role === USER_ROLE.Admin;
+  const actionButtonWidthsOf = (row: PurchaseOrder,): number[] => {
+    const widths: number[] = [];
+    if (row.status === DOCUMENT_STATUS.PendingConfirmation && isApprover) {
+      widths.push(labelButtonWidth('Duyệt'));
+      widths.push(labelButtonWidth('Từ chối'));
+      widths.push(labelButtonWidth('Hủy'));
+    }
+    if (row.status === DOCUMENT_STATUS.PendingReceiving && canReceive) {
+      widths.push(labelButtonWidth('Bắt đầu kiểm nhận'),);
+      widths.push(labelButtonWidth('Hủy'));
+    }
+    if (row.status === DOCUMENT_STATUS.Receiving && canReceive) {
+      widths.push(labelButtonWidth('Kiểm nhận'));
+      widths.push(labelButtonWidth('Hủy kiểm nhận'),);
+      widths.push(labelButtonWidth('Hủy'));
+    }
+
+    if (row.status === DOCUMENT_STATUS.Completed && isApprover) {
+      widths.push(labelButtonWidth('Thanh toán'));
+      widths.push(labelButtonWidth('Đổi giá'));
+    }
+    return widths;
+  };
 
   /**
    * Lấy tên nhân viên từ ID.
@@ -467,6 +469,19 @@ export const PurchaseOrdersPage: FC = () => {
         statusFilter,
         supplierFilter,
       ],
+  );
+
+  const actionWidth = useMemo(
+      () =>
+          actionColumnWidth(
+              filtered,
+              actionButtonWidthsOf,
+              {
+                min: 72,
+                max: 220,
+              },
+          ),
+      [filtered, isApprover, canReceive],
   );
 
   /**
@@ -792,7 +807,7 @@ export const PurchaseOrdersPage: FC = () => {
             title: 'Thao tác',
             key: 'actions',
             align: 'center' as const,
-            width: 260,
+            width: actionWidth,
             fixed: 'right' as const,
             render: (
                 _: unknown,
