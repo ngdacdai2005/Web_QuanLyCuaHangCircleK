@@ -1,9 +1,9 @@
 package com.erp.cuahangtienloi.service;
 
 import com.erp.cuahangtienloi.config.JwtService;
-import com.erp.cuahangtienloi.dto.request.LoginRequest;
-import com.erp.cuahangtienloi.dto.response.LoginResponse;
-import com.erp.cuahangtienloi.dto.response.TaiKhoanDTO;
+import com.erp.cuahangtienloi.dto.request.LoginRequestDTO;
+import com.erp.cuahangtienloi.dto.response.LoginResponseDTO;
+import com.erp.cuahangtienloi.dto.response.TaiKhoanResponseDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.TaiKhoan;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
@@ -26,7 +26,7 @@ public class AuthService {
     @Value("${jwt.expiration-ms}")
     private long expirationMs;
 
-    public LoginResponse login(LoginRequest request) {
+    public LoginResponseDTO login(LoginRequestDTO request) {
         TaiKhoan taiKhoan = taiKhoanRepository.findByTenDangNhap(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("Tài khoản hoặc mật khẩu không đúng"));
 
@@ -57,7 +57,7 @@ public class AuthService {
         );
 //        String expiresAt = LocalDateTime.now().plusHours(24).toString();
 
-        return new LoginResponse(
+        return new LoginResponseDTO(
                 token,
                 toDTO(taiKhoan, nhanVien),
                 Instant.now()
@@ -66,8 +66,8 @@ public class AuthService {
         );
     }
 
-    public TaiKhoanDTO toDTO(TaiKhoan taiKhoan, NhanVien nhanVien) {
-        TaiKhoanDTO dto = new TaiKhoanDTO();
+    public TaiKhoanResponseDTO toDTO(TaiKhoan taiKhoan, NhanVien nhanVien) {
+        TaiKhoanResponseDTO dto = new TaiKhoanResponseDTO();
         dto.setId(taiKhoan.getId());
         dto.setTenDangNhap(taiKhoan.getTenDangNhap());
         dto.setTrangThai(taiKhoan.getTrangThai());

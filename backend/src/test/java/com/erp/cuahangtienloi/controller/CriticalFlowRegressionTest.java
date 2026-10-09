@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.response.SoQuyDTO;
+import com.erp.cuahangtienloi.dto.response.SoQuyResponseDTO;
 import com.erp.cuahangtienloi.entity.HoaDon;
 import com.erp.cuahangtienloi.entity.SoQuy;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
@@ -58,7 +58,7 @@ class CriticalFlowRegressionTest {
         var response = controller.create(request, mock(HttpServletRequest.class));
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        SoQuyDTO body = (SoQuyDTO) response.getBody();
+        SoQuyResponseDTO body = (SoQuyResponseDTO) response.getBody();
         assertEquals(new BigDecimal("1000000"), body.getRunningBalance());
         verify(chiNhanhRepository, never()).existsById(any());
     }

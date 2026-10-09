@@ -1,9 +1,9 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.request.CreateSanPhamRequest;
+import com.erp.cuahangtienloi.dto.request.CreateSanPhamRequestDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
-import com.erp.cuahangtienloi.dto.response.SanPhamDTO;
-import com.erp.cuahangtienloi.dto.request.UpdateSanPhamRequest;
+import com.erp.cuahangtienloi.dto.response.SanPhamResponseDTO;
+import com.erp.cuahangtienloi.dto.request.UpdateSanPhamRequestDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.repository.DanhMucRepository;
 import com.erp.cuahangtienloi.repository.NhaCungCapRepository;
@@ -70,7 +70,7 @@ public class SanPhamController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<SanPhamDTO>> getAll(HttpServletRequest request) {
+    public ResponseEntity<List<SanPhamResponseDTO>> getAll(HttpServletRequest request) {
         return ResponseEntity.ok(sanPhamService.getAll(resolveBranchId(request), isAdmin()));
     }
 
@@ -84,7 +84,7 @@ public class SanPhamController {
 
     @GetMapping("/by-danh-muc/{idDanhMuc}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<SanPhamDTO>> getByDanhMuc(@PathVariable UUID idDanhMuc) {
+    public ResponseEntity<List<SanPhamResponseDTO>> getByDanhMuc(@PathVariable UUID idDanhMuc) {
         return ResponseEntity.ok(sanPhamService.getByDanhMuc(idDanhMuc));
     }
 
@@ -98,19 +98,19 @@ public class SanPhamController {
 
     @GetMapping("/active")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<SanPhamDTO>> getActive(HttpServletRequest request) {
+    public ResponseEntity<List<SanPhamResponseDTO>> getActive(HttpServletRequest request) {
         return ResponseEntity.ok(sanPhamService.getActive(resolveBranchId(request), isAdmin()));
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> create(@Valid @RequestBody CreateSanPhamRequest request) {
+    public ResponseEntity<?> create(@Valid @RequestBody CreateSanPhamRequestDTO request) {
         return ResponseEntity.ok(sanPhamService.create(request));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestBody UpdateSanPhamRequest request) {
+    public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestBody UpdateSanPhamRequestDTO request) {
         return sanPhamService.update(id, request)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

@@ -5,7 +5,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @Data
-public class SanPhamDTO {
+public class SanPhamResponseDTO {
     private UUID id;
     private UUID idDanhMuc;
     private String tenDanhMuc;

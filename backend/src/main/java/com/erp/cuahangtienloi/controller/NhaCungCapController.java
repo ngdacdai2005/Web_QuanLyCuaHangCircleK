@@ -1,6 +1,7 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.response.NhaCungCapDTO;
+import com.erp.cuahangtienloi.dto.request.NhaCungCapRequestDTO;
+import com.erp.cuahangtienloi.dto.response.NhaCungCapResponseDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.service.NhaCungCapService;
 import jakarta.validation.Valid;
@@ -21,7 +22,7 @@ public class NhaCungCapController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<NhaCungCapDTO>> getAll() {
+    public ResponseEntity<List<NhaCungCapResponseDTO>> getAll() {
         return ResponseEntity.ok(nhaCungCapService.getAll());
     }
 
@@ -35,19 +36,19 @@ public class NhaCungCapController {
 
     @GetMapping("/active")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<NhaCungCapDTO>> getActive() {
+    public ResponseEntity<List<NhaCungCapResponseDTO>> getActive() {
         return ResponseEntity.ok(nhaCungCapService.getActive());
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> create(@Valid @RequestBody NhaCungCapDTO request) {
+    public ResponseEntity<?> create(@Valid @RequestBody NhaCungCapRequestDTO request) {
         return ResponseEntity.ok(nhaCungCapService.create(request));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestBody NhaCungCapDTO request) {
+    public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestBody NhaCungCapRequestDTO request) {
         return nhaCungCapService.update(id, request)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

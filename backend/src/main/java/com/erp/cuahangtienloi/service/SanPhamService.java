@@ -1,8 +1,8 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.request.CreateSanPhamRequest;
-import com.erp.cuahangtienloi.dto.response.SanPhamDTO;
-import com.erp.cuahangtienloi.dto.request.UpdateSanPhamRequest;
+import com.erp.cuahangtienloi.dto.request.CreateSanPhamRequestDTO;
+import com.erp.cuahangtienloi.dto.response.SanPhamResponseDTO;
+import com.erp.cuahangtienloi.dto.request.UpdateSanPhamRequestDTO;
 import com.erp.cuahangtienloi.entity.SanPham;
 import com.erp.cuahangtienloi.repository.DanhMucRepository;
 import com.erp.cuahangtienloi.repository.NhaCungCapRepository;
@@ -29,10 +29,10 @@ public class SanPhamService {
     private final BranchProductStatusService branchProductStatusService;
 
     @Transactional(readOnly = true)
-    public List<SanPhamDTO> getAll(UUID branchId, boolean isAdmin) {
+    public List<SanPhamResponseDTO> getAll(UUID branchId, boolean isAdmin) {
         return sanPhamRepository.findAll().stream()
                 .map(sp -> {
-                    SanPhamDTO dto = toDTO(sp);
+                    SanPhamResponseDTO dto = toDTO(sp);
                     if (Boolean.FALSE.equals(sp.getDangHoatDong())) {
                         dto.setDangHoatDong(false);
                     } else if (!isAdmin && branchId != null) {
@@ -47,24 +47,24 @@ public class SanPhamService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<SanPhamDTO> getById(UUID id) {
+    public Optional<SanPhamResponseDTO> getById(UUID id) {
         return sanPhamRepository.findById(id).map(this::toDTO);
     }
 
     @Transactional(readOnly = true)
-    public List<SanPhamDTO> getByDanhMuc(UUID idDanhMuc) {
+    public List<SanPhamResponseDTO> getByDanhMuc(UUID idDanhMuc) {
         return sanPhamRepository.findByIdDanhMuc(idDanhMuc).stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public Optional<SanPhamDTO> getByMaVach(String maVach) {
+    public Optional<SanPhamResponseDTO> getByMaVach(String maVach) {
         return sanPhamRepository.findByMaVach(maVach).map(this::toDTO);
     }
 
     @Transactional(readOnly = true)
-    public List<SanPhamDTO> getActive(UUID branchId, boolean isAdmin) {
+    public List<SanPhamResponseDTO> getActive(UUID branchId, boolean isAdmin) {
         return sanPhamRepository.findByDangHoatDong(true).stream()
                 .filter(sp -> {
                     if (isAdmin || branchId == null) return true;
@@ -77,7 +77,7 @@ public class SanPhamService {
     }
 
     @Transactional
-    public SanPhamDTO create(CreateSanPhamRequest request) {
+    public SanPhamResponseDTO create(CreateSanPhamRequestDTO request) {
         if (sanPhamRepository.existsBySku(request.getSku())) {
             throw new IllegalArgumentException("SKU đã tồn tại");
         }
@@ -123,7 +123,7 @@ public class SanPhamService {
     }
 
     @Transactional
-    public Optional<SanPhamDTO> update(UUID id, UpdateSanPhamRequest request) {
+    public Optional<SanPhamResponseDTO> update(UUID id, UpdateSanPhamRequestDTO request) {
         return sanPhamRepository.findById(id)
                 .map(sp -> {
                     if (request.getTenSanPham() != null && request.getTenSanPham().isBlank()) {
@@ -243,8 +243,8 @@ public class SanPhamService {
         }
     }
 
-    public SanPhamDTO toDTO(SanPham sp) {
-        SanPhamDTO dto = new SanPhamDTO();
+    public SanPhamResponseDTO toDTO(SanPham sp) {
+        SanPhamResponseDTO dto = new SanPhamResponseDTO();
         dto.setId(sp.getId());
         dto.setIdDanhMuc(sp.getIdDanhMuc());
         dto.setSku(sp.getSku());

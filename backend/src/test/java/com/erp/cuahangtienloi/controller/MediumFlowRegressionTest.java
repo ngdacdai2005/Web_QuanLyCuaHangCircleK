@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.request.UpdateSanPhamRequest;
+import com.erp.cuahangtienloi.dto.request.UpdateSanPhamRequestDTO;
 import com.erp.cuahangtienloi.entity.ChiTietKiemKe;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.SanPham;
@@ -48,7 +48,7 @@ class MediumFlowRegressionTest {
         product.setTenSanPham("Bánh mì");
         product.setTonToiThieu(null);
         product.setTonToiDa(null);
-        UpdateSanPhamRequest request = new UpdateSanPhamRequest();
+        UpdateSanPhamRequestDTO request = new UpdateSanPhamRequestDTO();
         request.setTenSanPham("Bánh mì mới");
 
         when(sanPhamRepository.findById(productId)).thenReturn(Optional.of(product));

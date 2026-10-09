@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.response.PhieuXuatKhoDTO;
+import com.erp.cuahangtienloi.dto.response.PhieuXuatKhoResponseDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.PhieuXuatKho;
@@ -46,7 +46,7 @@ public class PhieuXuatKhoController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<PhieuXuatKhoDTO>> getAll(HttpServletRequest request) {
+    public ResponseEntity<List<PhieuXuatKhoResponseDTO>> getAll(HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuXuatKhoService.getAll(actor));
     }
@@ -62,21 +62,21 @@ public class PhieuXuatKhoController {
 
     @GetMapping("/by-branch-xuat/{idChiNhanhXuat}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<PhieuXuatKhoDTO>> getByBranchXuat(@PathVariable UUID idChiNhanhXuat, HttpServletRequest request) {
+    public ResponseEntity<List<PhieuXuatKhoResponseDTO>> getByBranchXuat(@PathVariable UUID idChiNhanhXuat, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuXuatKhoService.getByBranchXuat(idChiNhanhXuat, actor));
     }
 
     @GetMapping("/by-branch-nhan/{idChiNhanhNhan}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<PhieuXuatKhoDTO>> getByBranchNhan(@PathVariable UUID idChiNhanhNhan, HttpServletRequest request) {
+    public ResponseEntity<List<PhieuXuatKhoResponseDTO>> getByBranchNhan(@PathVariable UUID idChiNhanhNhan, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuXuatKhoService.getByBranchNhan(idChiNhanhNhan, actor));
     }
 
     @GetMapping("/by-status/{trangThai}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<PhieuXuatKhoDTO>> getByStatus(@PathVariable String trangThai, HttpServletRequest request) {
+    public ResponseEntity<List<PhieuXuatKhoResponseDTO>> getByStatus(@PathVariable String trangThai, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuXuatKhoService.getByStatus(trangThai, actor));
     }

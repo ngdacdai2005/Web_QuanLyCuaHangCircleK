@@ -1,11 +1,11 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.request.ChangePasswordRequest;
-import com.erp.cuahangtienloi.dto.request.CreateTaiKhoanRequest;
+import com.erp.cuahangtienloi.dto.request.ChangePasswordRequestDTO;
+import com.erp.cuahangtienloi.dto.request.CreateTaiKhoanRequestDTO;
 import com.erp.cuahangtienloi.dto.response.NhanVienOption;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
-import com.erp.cuahangtienloi.dto.response.TaiKhoanDTO;
-import com.erp.cuahangtienloi.dto.request.UpdateTaiKhoanRequest;
+import com.erp.cuahangtienloi.dto.response.TaiKhoanResponseDTO;
+import com.erp.cuahangtienloi.dto.request.UpdateTaiKhoanRequestDTO;
 import com.erp.cuahangtienloi.service.TaiKhoanService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ public class TaiKhoanController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<TaiKhoanDTO>> getAllTaiKhoan() {
+    public ResponseEntity<List<TaiKhoanResponseDTO>> getAllTaiKhoan() {
         return ResponseEntity.ok(taiKhoanService.getAll());
     }
 
@@ -39,14 +39,14 @@ public class TaiKhoanController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> createTaiKhoan(@Valid @RequestBody CreateTaiKhoanRequest request) {
+    public ResponseEntity<?> createTaiKhoan(@Valid @RequestBody CreateTaiKhoanRequestDTO request) {
         taiKhoanService.create(request);
         return ResponseEntity.ok(ApiResponse.ok("Tạo tài khoản thành công"));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> updateTaiKhoan(@PathVariable UUID id, @Valid @RequestBody UpdateTaiKhoanRequest request) {
+    public ResponseEntity<?> updateTaiKhoan(@PathVariable UUID id, @Valid @RequestBody UpdateTaiKhoanRequestDTO request) {
         return taiKhoanService.update(id, request)
                 .map(tk -> ResponseEntity.ok(ApiResponse.ok("Cập nhật thành công")))
                 .orElse(ResponseEntity.notFound().build());
@@ -71,7 +71,7 @@ public class TaiKhoanController {
     @PreAuthorize("hasRole('ADMIN') or authentication.name == #id.toString()")
     public ResponseEntity<?> changePassword(
             @PathVariable UUID id,
-            @Valid @RequestBody ChangePasswordRequest request) {
+            @Valid @RequestBody ChangePasswordRequestDTO request) {
         if (taiKhoanService.changePassword(id, request)) {
             return ResponseEntity.ok(ApiResponse.ok("Đổi mật khẩu thành công"));
         }

@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.response.HoaDonDTO;
+import com.erp.cuahangtienloi.dto.response.HoaDonResponseDTO;
 import com.erp.cuahangtienloi.entity.*;
 import com.erp.cuahangtienloi.repository.*;
 import jakarta.validation.Valid;
@@ -40,7 +40,7 @@ public class HoaDonService {
     private final JdbcTemplate jdbcTemplate;
     private final LoHangService loHangService;
 
-    private final Map<String, HoaDonDTO> recentCheckoutCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, HoaDonResponseDTO> recentCheckoutCache = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<String, Long> recentCheckoutTimestamp = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<String, Object> checkoutLocks = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -123,21 +123,21 @@ public class HoaDonService {
                                           BigDecimal netAmount, BigDecimal unitCost) {}
 
     @Transactional(readOnly = true)
-    public List<HoaDonDTO> getAll(NhanVien actor) {
+    public List<HoaDonResponseDTO> getAll(NhanVien actor) {
         return findInvoicesVisibleTo(actor).stream()
                 .map(this::toDTO)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public Optional<HoaDonDTO> getById(UUID id, NhanVien actor) {
+    public Optional<HoaDonResponseDTO> getById(UUID id, NhanVien actor) {
         return hoaDonRepository.findById(id)
                 .filter(hd -> canReadInvoice(actor, hd))
                 .map(this::toDTO);
     }
 
     @Transactional(readOnly = true)
-    public List<HoaDonDTO> getByChiNhanh(UUID idChiNhanh, NhanVien actor) {
+    public List<HoaDonResponseDTO> getByChiNhanh(UUID idChiNhanh, NhanVien actor) {
         return findInvoicesVisibleTo(actor).stream()
                 .filter(hd -> idChiNhanh.equals(hd.getIdChiNhanh()))
                 .map(this::toDTO)
@@ -145,7 +145,7 @@ public class HoaDonService {
     }
 
     @Transactional(readOnly = true)
-    public List<HoaDonDTO> getByThuNgan(UUID idThuNgan, NhanVien actor) {
+    public List<HoaDonResponseDTO> getByThuNgan(UUID idThuNgan, NhanVien actor) {
         return findInvoicesVisibleTo(actor).stream()
                 .filter(hd -> idThuNgan.equals(hd.getIdThuNgan()))
                 .map(this::toDTO)
@@ -153,7 +153,7 @@ public class HoaDonService {
     }
 
     @Transactional(readOnly = true)
-    public List<HoaDonDTO> getByStatus(String trangThai, NhanVien actor) {
+    public List<HoaDonResponseDTO> getByStatus(String trangThai, NhanVien actor) {
         return findInvoicesVisibleTo(actor).stream()
                 .filter(hd -> trangThai.equals(hd.getTrangThai()))
                 .map(this::toDTO)
@@ -161,7 +161,7 @@ public class HoaDonService {
     }
 
     @Transactional
-    public HoaDonDTO create(HoaDon request) {
+    public HoaDonResponseDTO create(HoaDon request) {
         if (request.getIdChiNhanh() == null) {
             throw new IllegalArgumentException("Chi nhánh bán hàng không tồn tại");
         }
@@ -195,7 +195,7 @@ public class HoaDonService {
     }
 
     @Transactional
-    public HoaDonDTO createWithLines(CreateSaleRequest request, UUID authenticatedCashierId) {
+    public HoaDonResponseDTO createWithLines(CreateSaleRequest request, UUID authenticatedCashierId) {
         if (request.getIdChiNhanh() == null) {
             throw new IllegalArgumentException("Thiếu chi nhánh");
         }
@@ -269,14 +269,14 @@ public class HoaDonService {
     }
 
     @Transactional
-    public HoaDonDTO checkout(CheckoutRequest request, UUID cashierId, NhanVien cashier) {
+    public HoaDonResponseDTO checkout(CheckoutRequest request, UUID cashierId, NhanVien cashier) {
         String dedupKey = (request.getClientRequestId() != null && !request.getClientRequestId().isBlank())
                 ? "req:" + request.getClientRequestId().trim()
                 : "fallback:" + cashierId + ":" + request.getIdChiNhanh() + ":" + (System.currentTimeMillis() / 2000);
 
         evictExpiredCheckoutKeys();
 
-        HoaDonDTO cached = recentCheckoutCache.get(dedupKey);
+        HoaDonResponseDTO cached = recentCheckoutCache.get(dedupKey);
         if (cached != null) {
             return cached;
         }
@@ -426,7 +426,7 @@ public class HoaDonService {
                 cashEntry.setNgayCapNhat(LocalDateTime.now());
                 soQuyRepository.saveAndFlush(cashEntry);
 
-                HoaDonDTO result = toDTO(saved);
+                HoaDonResponseDTO result = toDTO(saved);
                 recentCheckoutCache.put(dedupKey, result);
                 recentCheckoutTimestamp.put(dedupKey, System.currentTimeMillis());
                 return result;
@@ -437,7 +437,7 @@ public class HoaDonService {
     }
 
     @Transactional
-    public Optional<HoaDonDTO> update(UUID id, HoaDon request) {
+    public Optional<HoaDonResponseDTO> update(UUID id, HoaDon request) {
         return hoaDonRepository.findById(id)
                 .map(hd -> {
                     if (request.getMaHoaDon() != null) hd.setMaHoaDon(request.getMaHoaDon());
@@ -600,8 +600,8 @@ public class HoaDonService {
         return "HD-" + dateStr + "-" + String.format("%04d", sequence);
     }
 
-    public HoaDonDTO toDTO(HoaDon hd) {
-        HoaDonDTO dto = new HoaDonDTO();
+    public HoaDonResponseDTO toDTO(HoaDon hd) {
+        HoaDonResponseDTO dto = new HoaDonResponseDTO();
         dto.setId(hd.getId());
         dto.setMaHoaDon(hd.getMaHoaDon());
         dto.setIdChiNhanh(hd.getIdChiNhanh());
@@ -635,7 +635,7 @@ public class HoaDonService {
     }
 
     @Transactional
-    public HoaDonDTO refund(UUID id, String lyDoHoan, NhanVien actor) {
+    public HoaDonResponseDTO refund(UUID id, String lyDoHoan, NhanVien actor) {
         HoaDon hd = hoaDonRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hoá đơn"));
         if (!"COMPLETED".equals(hd.getTrangThai())) {

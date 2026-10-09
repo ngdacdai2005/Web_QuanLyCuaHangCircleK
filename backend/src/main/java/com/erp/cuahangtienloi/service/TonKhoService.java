@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.response.TonKhoDTO;
+import com.erp.cuahangtienloi.dto.response.TonKhoResponseDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.TonKho;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
@@ -40,7 +40,7 @@ public class TonKhoService {
             String ghiChu, LocalDateTime ngayPhatSinh) {}
 
     @Transactional(readOnly = true)
-    public List<TonKhoDTO> getAll(NhanVien employee) {
+    public List<TonKhoResponseDTO> getAll(NhanVien employee) {
         List<TonKho> source = branchAccessService.isSystemWide(employee)
                 ? tonKhoRepository.findAll()
                 : tonKhoRepository.findByIdChiNhanh(branchAccessService.requiredOwnBranch(employee));
@@ -48,7 +48,7 @@ public class TonKhoService {
     }
 
     @Transactional(readOnly = true)
-    public List<TonKhoDTO> getByChiNhanh(UUID idChiNhanh, NhanVien employee) {
+    public List<TonKhoResponseDTO> getByChiNhanh(UUID idChiNhanh, NhanVien employee) {
         branchAccessService.requireReadableBranch(employee, idChiNhanh);
         return tonKhoRepository.findByIdChiNhanh(idChiNhanh).stream()
                 .map(this::toDTO)
@@ -56,7 +56,7 @@ public class TonKhoService {
     }
 
     @Transactional(readOnly = true)
-    public List<TonKhoDTO> getBySanPham(UUID idSanPham, NhanVien employee) {
+    public List<TonKhoResponseDTO> getBySanPham(UUID idSanPham, NhanVien employee) {
         List<TonKho> source = branchAccessService.isSystemWide(employee)
                 ? tonKhoRepository.findByIdSanPham(idSanPham)
                 : tonKhoRepository.findByIdSanPhamAndIdChiNhanh(idSanPham,
@@ -65,7 +65,7 @@ public class TonKhoService {
     }
 
     @Transactional(readOnly = true)
-    public List<TonKhoDTO> getAvailableForTransfer() {
+    public List<TonKhoResponseDTO> getAvailableForTransfer() {
         UUID khoTongId = chiNhanhRepository.findFirstByLoai("KHO_TONG")
                 .map(cn -> cn.getId())
                 .orElseThrow(() -> new IllegalStateException("Chưa cấu hình Kho Tổng"));
@@ -76,13 +76,13 @@ public class TonKhoService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<TonKhoDTO> getDetail(UUID idSanPham, UUID idChiNhanh, NhanVien employee) {
+    public Optional<TonKhoResponseDTO> getDetail(UUID idSanPham, UUID idChiNhanh, NhanVien employee) {
         branchAccessService.requireReadableBranch(employee, idChiNhanh);
         return tonKhoRepository.findByIdSanPhamAndIdChiNhanh(idSanPham, idChiNhanh).map(this::toDTO);
     }
 
     @Transactional
-    public TonKhoDTO create(TonKho request) {
+    public TonKhoResponseDTO create(TonKho request) {
         if (request.getIdSanPham() == null || !sanPhamRepository.existsById(request.getIdSanPham())) {
             throw new IllegalArgumentException("Sản phẩm không tồn tại");
         }
@@ -112,7 +112,7 @@ public class TonKhoService {
     }
 
     @Transactional
-    public Optional<TonKhoDTO> update(UUID idSanPham, UUID idChiNhanh, TonKho request) {
+    public Optional<TonKhoResponseDTO> update(UUID idSanPham, UUID idChiNhanh, TonKho request) {
         return tonKhoRepository.findByIdSanPhamAndIdChiNhanh(idSanPham, idChiNhanh)
                 .map(tk -> {
                     validateConfiguration(request);
@@ -127,7 +127,7 @@ public class TonKhoService {
     }
 
     @Transactional
-    public Optional<TonKhoDTO> adjust(TonKhoAdjustmentRequest request, NhanVien employee) {
+    public Optional<TonKhoResponseDTO> adjust(TonKhoAdjustmentRequest request, NhanVien employee) {
         if (request.idSanPham() == null || !sanPhamRepository.existsById(request.idSanPham())) {
             throw new IllegalArgumentException("Sản phẩm không tồn tại");
         }
@@ -172,8 +172,8 @@ public class TonKhoService {
         }
     }
 
-    public TonKhoDTO toDTO(TonKho tk) {
-        TonKhoDTO dto = new TonKhoDTO();
+    public TonKhoResponseDTO toDTO(TonKho tk) {
+        TonKhoResponseDTO dto = new TonKhoResponseDTO();
         dto.setIdSanPham(tk.getIdSanPham());
         dto.setIdChiNhanh(tk.getIdChiNhanh());
         dto.setSoLuongTon(tk.getSoLuongTon());

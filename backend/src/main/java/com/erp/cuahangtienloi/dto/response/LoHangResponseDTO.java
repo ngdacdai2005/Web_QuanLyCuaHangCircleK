@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
-public class LoHangDTO {
+public class LoHangResponseDTO {
     private UUID id;
     private String maLo;
     private UUID idSanPham;

@@ -7,7 +7,7 @@ import lombok.Data;
 import java.util.UUID;
 
 @Data
-public class CreateTaiKhoanRequest {
+public class CreateTaiKhoanRequestDTO {
     @NotBlank(message = "Tên đăng nhập không được để trống")
     @Size(min = 3, max = 50, message = "Tên đăng nhập phải từ 3 đến 50 ký tự")
     @Pattern(regexp = "^[A-Za-z0-9_]+$", message = "Tên đăng nhập chỉ gồm chữ, số và dấu gạch dưới")

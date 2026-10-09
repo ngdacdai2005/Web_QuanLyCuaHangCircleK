@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.response.PhieuKiemKeDTO;
+import com.erp.cuahangtienloi.dto.response.PhieuKiemKeResponseDTO;
 import com.erp.cuahangtienloi.entity.ChiTietKiemKe;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.PhieuKiemKe;
@@ -61,7 +61,7 @@ public class PhieuKiemKeService {
     }
 
     @Transactional(readOnly = true)
-    public List<PhieuKiemKeDTO> getAll(NhanVien actor) {
+    public List<PhieuKiemKeResponseDTO> getAll(NhanVien actor) {
         return phieuKiemKeRepository.findAll().stream()
                 .filter(pkk -> branchAccessService.canReadBranch(actor, pkk.getIdChiNhanh()))
                 .map(this::toDTO)
@@ -69,14 +69,14 @@ public class PhieuKiemKeService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<PhieuKiemKeDTO> getById(UUID id, NhanVien actor) {
+    public Optional<PhieuKiemKeResponseDTO> getById(UUID id, NhanVien actor) {
         return phieuKiemKeRepository.findById(id)
                 .filter(pkk -> branchAccessService.canReadBranch(actor, pkk.getIdChiNhanh()))
                 .map(this::toDTO);
     }
 
     @Transactional(readOnly = true)
-    public List<PhieuKiemKeDTO> getByChiNhanh(UUID idChiNhanh, NhanVien actor) {
+    public List<PhieuKiemKeResponseDTO> getByChiNhanh(UUID idChiNhanh, NhanVien actor) {
         branchAccessService.requireReadableBranch(actor, idChiNhanh);
         return phieuKiemKeRepository.findByIdChiNhanh(idChiNhanh).stream()
                 .map(this::toDTO)
@@ -84,7 +84,7 @@ public class PhieuKiemKeService {
     }
 
     @Transactional(readOnly = true)
-    public List<PhieuKiemKeDTO> getByStatus(String trangThai, NhanVien actor) {
+    public List<PhieuKiemKeResponseDTO> getByStatus(String trangThai, NhanVien actor) {
         return phieuKiemKeRepository.findByTrangThai(trangThai).stream()
                 .filter(pkk -> branchAccessService.canReadBranch(actor, pkk.getIdChiNhanh()))
                 .map(this::toDTO)
@@ -92,7 +92,7 @@ public class PhieuKiemKeService {
     }
 
     @Transactional
-    public PhieuKiemKeDTO create(PhieuKiemKe request, UUID idNguoiTao, NhanVien actor) {
+    public PhieuKiemKeResponseDTO create(PhieuKiemKe request, UUID idNguoiTao, NhanVien actor) {
         if (request.getIdChiNhanh() == null || !chiNhanhRepository.existsById(request.getIdChiNhanh())) {
             throw new IllegalArgumentException("Chi nhánh không tồn tại");
         }
@@ -116,7 +116,7 @@ public class PhieuKiemKeService {
     }
 
     @Transactional
-    public PhieuKiemKeDTO createWithLines(CreateStocktakeRequest request, UUID idNguoiTao, NhanVien actor) {
+    public PhieuKiemKeResponseDTO createWithLines(CreateStocktakeRequest request, UUID idNguoiTao, NhanVien actor) {
         if (request.getIdChiNhanh() == null) {
             throw new IllegalArgumentException("Thiếu chi nhánh");
         }
@@ -177,7 +177,7 @@ public class PhieuKiemKeService {
     }
 
     @Transactional
-    public Optional<PhieuKiemKeDTO> update(UUID id, PhieuKiemKe request, NhanVien actor) {
+    public Optional<PhieuKiemKeResponseDTO> update(UUID id, PhieuKiemKe request, NhanVien actor) {
         return phieuKiemKeRepository.findById(id)
                 .map(pkk -> {
                     branchAccessService.requireReadableBranch(actor, pkk.getIdChiNhanh());
@@ -205,7 +205,7 @@ public class PhieuKiemKeService {
     }
 
     @Transactional
-    public PhieuKiemKeDTO submit(UUID id, NhanVien actor) {
+    public PhieuKiemKeResponseDTO submit(UUID id, NhanVien actor) {
         PhieuKiemKe pkk = phieuKiemKeRepository.findById(id)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Không tìm thấy phiếu kiểm kê"));
@@ -225,7 +225,7 @@ public class PhieuKiemKeService {
     }
 
     @Transactional
-    public PhieuKiemKeDTO balance(UUID id, NhanVien actor) {
+    public PhieuKiemKeResponseDTO balance(UUID id, NhanVien actor) {
         PhieuKiemKe pkk = phieuKiemKeRepository.findById(id)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Không tìm thấy phiếu kiểm kê"));
@@ -249,7 +249,7 @@ public class PhieuKiemKeService {
     }
 
     @Transactional
-    public PhieuKiemKeDTO cancel(UUID id, NhanVien actor) {
+    public PhieuKiemKeResponseDTO cancel(UUID id, NhanVien actor) {
         PhieuKiemKe pkk = phieuKiemKeRepository.findById(id)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Không tìm thấy phiếu kiểm kê"));
@@ -403,8 +403,8 @@ public class PhieuKiemKeService {
         });
     }
 
-    public PhieuKiemKeDTO toDTO(PhieuKiemKe pkk) {
-        PhieuKiemKeDTO dto = new PhieuKiemKeDTO();
+    public PhieuKiemKeResponseDTO toDTO(PhieuKiemKe pkk) {
+        PhieuKiemKeResponseDTO dto = new PhieuKiemKeResponseDTO();
         dto.setId(pkk.getId());
         dto.setMaPhieu(pkk.getMaPhieu());
         dto.setIdChiNhanh(pkk.getIdChiNhanh());

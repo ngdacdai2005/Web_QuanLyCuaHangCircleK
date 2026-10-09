@@ -1,7 +1,7 @@
 package com.erp.cuahangtienloi.controller;
 
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
-import com.erp.cuahangtienloi.dto.response.TonKhoDTO;
+import com.erp.cuahangtienloi.dto.response.TonKhoResponseDTO;
 import com.erp.cuahangtienloi.entity.TonKho;
 import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.TonKhoService;
@@ -24,28 +24,28 @@ public class TonKhoController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<TonKhoDTO>> getAll(HttpServletRequest request) {
+    public ResponseEntity<List<TonKhoResponseDTO>> getAll(HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(tonKhoService.getAll(employee));
     }
 
     @GetMapping("/by-branch/{idChiNhanh}")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY', 'THU_NGAN')")
-    public ResponseEntity<List<TonKhoDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
+    public ResponseEntity<List<TonKhoResponseDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(tonKhoService.getByChiNhanh(idChiNhanh, employee));
     }
 
     @GetMapping("/by-product/{idSanPham}")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<TonKhoDTO>> getBySanPham(@PathVariable UUID idSanPham, HttpServletRequest request) {
+    public ResponseEntity<List<TonKhoResponseDTO>> getBySanPham(@PathVariable UUID idSanPham, HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(tonKhoService.getBySanPham(idSanPham, employee));
     }
 
     @GetMapping("/available-for-transfer")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<TonKhoDTO>> getAvailableForTransfer() {
+    public ResponseEntity<List<TonKhoResponseDTO>> getAvailableForTransfer() {
         return ResponseEntity.ok(tonKhoService.getAvailableForTransfer());
     }
 

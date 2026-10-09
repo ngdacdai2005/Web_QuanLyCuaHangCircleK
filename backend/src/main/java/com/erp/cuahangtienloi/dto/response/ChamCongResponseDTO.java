@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
-public class ChamCongDTO {
+public class ChamCongResponseDTO {
     private UUID id;
     private UUID idNhanVien;
     private String tenNhanVien;

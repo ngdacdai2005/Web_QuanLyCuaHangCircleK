@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.response.SoQuyDTO;
+import com.erp.cuahangtienloi.dto.response.SoQuyResponseDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.SoQuy;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
@@ -31,21 +31,21 @@ public class SoQuyService {
     private final BranchAccessService branchAccessService;
 
     @Transactional(readOnly = true)
-    public List<SoQuyDTO> getAll(NhanVien employee) {
+    public List<SoQuyResponseDTO> getAll(NhanVien employee) {
         return findEntriesVisibleTo(employee).stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public Optional<SoQuyDTO> getById(UUID id, NhanVien employee) {
+    public Optional<SoQuyResponseDTO> getById(UUID id, NhanVien employee) {
         return soQuyRepository.findById(id)
                 .filter(sq -> canReadEntry(employee, sq))
                 .map(this::toDTO);
     }
 
     @Transactional(readOnly = true)
-    public List<SoQuyDTO> getByChiNhanh(UUID idChiNhanh, NhanVien employee) {
+    public List<SoQuyResponseDTO> getByChiNhanh(UUID idChiNhanh, NhanVien employee) {
         branchAccessService.requireReadableBranch(employee, idChiNhanh);
         return soQuyRepository.findByIdChiNhanh(idChiNhanh).stream()
                 .map(this::toDTO)
@@ -53,7 +53,7 @@ public class SoQuyService {
     }
 
     @Transactional(readOnly = true)
-    public List<SoQuyDTO> getByDirection(String direction, NhanVien employee) {
+    public List<SoQuyResponseDTO> getByDirection(String direction, NhanVien employee) {
         return findEntriesVisibleTo(employee).stream()
                 .filter(sq -> direction.equals(sq.getDirection()))
                 .map(this::toDTO)
@@ -61,7 +61,7 @@ public class SoQuyService {
     }
 
     @Transactional(readOnly = true)
-    public List<SoQuyDTO> getByHangMuc(String hangMuc, NhanVien employee) {
+    public List<SoQuyResponseDTO> getByHangMuc(String hangMuc, NhanVien employee) {
         return findEntriesVisibleTo(employee).stream()
                 .filter(sq -> hangMuc.equals(sq.getHangMuc()))
                 .map(this::toDTO)
@@ -69,7 +69,7 @@ public class SoQuyService {
     }
 
     @Transactional(readOnly = true)
-    public List<SoQuyDTO> getByDateRange(LocalDate from, LocalDate to, NhanVien employee) {
+    public List<SoQuyResponseDTO> getByDateRange(LocalDate from, LocalDate to, NhanVien employee) {
         return findEntriesVisibleTo(employee).stream()
                 .filter(sq -> !sq.getEntryDate().isBefore(from) && !sq.getEntryDate().isAfter(to))
                 .map(this::toDTO)
@@ -77,7 +77,7 @@ public class SoQuyService {
     }
 
     @Transactional
-    public SoQuyDTO create(SoQuy request, UUID fallbackIdNguoiTao) {
+    public SoQuyResponseDTO create(SoQuy request, UUID fallbackIdNguoiTao) {
         if (request.getIdChiNhanh() != null && !chiNhanhRepository.existsById(request.getIdChiNhanh())) {
             throw new IllegalArgumentException("Chi nhánh không tồn tại");
         }
@@ -131,7 +131,7 @@ public class SoQuyService {
     }
 
     @Transactional
-    public Optional<SoQuyDTO> update(UUID id, SoQuy request) {
+    public Optional<SoQuyResponseDTO> update(UUID id, SoQuy request) {
         return soQuyRepository.findById(id)
                 .map(sq -> {
                     if (request.getSoTien() != null) positive(request.getSoTien(), "Số tiền");
@@ -177,8 +177,8 @@ public class SoQuyService {
                 && entry.getIdChiNhanh().equals(branchAccessService.requiredOwnBranch(employee)));
     }
 
-    public SoQuyDTO toDTO(SoQuy sq) {
-        SoQuyDTO dto = new SoQuyDTO();
+    public SoQuyResponseDTO toDTO(SoQuy sq) {
+        SoQuyResponseDTO dto = new SoQuyResponseDTO();
         dto.setId(sq.getId());
         dto.setMaChungTu(sq.getMaChungTu());
         dto.setMaChungTuLienQuan(sq.getMaChungTuLienQuan());

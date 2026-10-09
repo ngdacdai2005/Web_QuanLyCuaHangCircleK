@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
-public class SoQuyDTO {
+public class SoQuyResponseDTO {
     private UUID id;
     private String maChungTu;
     private String maChungTuLienQuan;

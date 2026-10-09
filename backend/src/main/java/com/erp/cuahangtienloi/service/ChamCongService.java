@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.response.ChamCongDTO;
+import com.erp.cuahangtienloi.dto.response.ChamCongResponseDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.entity.ChamCong;
 import com.erp.cuahangtienloi.entity.NhanVien;
@@ -59,7 +59,7 @@ public class ChamCongService {
     }
 
     @Transactional(readOnly = true)
-    public List<ChamCongDTO> getAll(HttpServletRequest request) {
+    public List<ChamCongResponseDTO> getAll(HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return chamCongRepository.findAll().stream()
                 .filter(cc -> canRead(actor, cc.getIdNhanVien()))
@@ -77,7 +77,7 @@ public class ChamCongService {
     }
 
     @Transactional(readOnly = true)
-    public List<ChamCongDTO> getByNhanVien(UUID idNhanVien, HttpServletRequest request) {
+    public List<ChamCongResponseDTO> getByNhanVien(UUID idNhanVien, HttpServletRequest request) {
         requireReadableEmployee(branchAccessService.requireAuthenticatedEmployee(request), idNhanVien);
         return chamCongRepository.findByIdNhanVien(idNhanVien).stream()
                 .map(this::toDTO)
@@ -85,7 +85,7 @@ public class ChamCongService {
     }
 
     @Transactional(readOnly = true)
-    public List<ChamCongDTO> getByDate(LocalDate workDate, HttpServletRequest request) {
+    public List<ChamCongResponseDTO> getByDate(LocalDate workDate, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return chamCongRepository.findByWorkDate(workDate).stream()
                 .filter(cc -> canRead(actor, cc.getIdNhanVien()))
@@ -94,7 +94,7 @@ public class ChamCongService {
     }
 
     @Transactional(readOnly = true)
-    public List<ChamCongDTO> getByNhanVienAndDateRange(UUID idNhanVien, LocalDate from, LocalDate to, HttpServletRequest request) {
+    public List<ChamCongResponseDTO> getByNhanVienAndDateRange(UUID idNhanVien, LocalDate from, LocalDate to, HttpServletRequest request) {
         requireReadableEmployee(branchAccessService.requireAuthenticatedEmployee(request), idNhanVien);
         return chamCongRepository
                 .findByIdNhanVienAndWorkDateBetween(idNhanVien, from, to).stream()
@@ -103,7 +103,7 @@ public class ChamCongService {
     }
 
     @Transactional(readOnly = true)
-    public List<ChamCongDTO> getByDateRange(LocalDate start, LocalDate end, HttpServletRequest request) {
+    public List<ChamCongResponseDTO> getByDateRange(LocalDate start, LocalDate end, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return chamCongRepository
                 .findByWorkDateBetween(start, end).stream()
@@ -311,7 +311,7 @@ public class ChamCongService {
 
         LocalDate from = LocalDate.parse(fromDate);
         LocalDate to = LocalDate.parse(toDate);
-        List<ChamCongDTO> created = new ArrayList<>();
+        List<ChamCongResponseDTO> created = new ArrayList<>();
         for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
             Optional<ChamCong> existing = chamCongRepository.findByIdNhanVienAndWorkDateAndCaLamViec(idNhanVien, d, ca);
             if (existing.isPresent()) {
@@ -337,8 +337,8 @@ public class ChamCongService {
         return ResponseEntity.ok(created);
     }
 
-    public ChamCongDTO toDTO(ChamCong cc) {
-        ChamCongDTO dto = new ChamCongDTO();
+    public ChamCongResponseDTO toDTO(ChamCong cc) {
+        ChamCongResponseDTO dto = new ChamCongResponseDTO();
         dto.setId(cc.getId());
         dto.setIdNhanVien(cc.getIdNhanVien());
         dto.setWorkDate(cc.getWorkDate());

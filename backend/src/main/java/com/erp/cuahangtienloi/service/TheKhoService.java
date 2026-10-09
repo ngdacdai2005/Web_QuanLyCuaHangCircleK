@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.response.TheKhoDTO;
+import com.erp.cuahangtienloi.dto.response.TheKhoResponseDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.TheKho;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
@@ -26,7 +26,7 @@ public class TheKhoService {
     private final BranchAccessService branchAccessService;
 
     @Transactional(readOnly = true)
-    public List<TheKhoDTO> getAll(NhanVien employee) {
+    public List<TheKhoResponseDTO> getAll(NhanVien employee) {
         List<TheKho> source = branchAccessService.isSystemWide(employee)
                 ? theKhoRepository.findAll()
                 : theKhoRepository.findByIdChiNhanhOrderByNgayPhatSinhDesc(
@@ -35,7 +35,7 @@ public class TheKhoService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<TheKhoDTO> getById(UUID id, NhanVien employee) {
+    public Optional<TheKhoResponseDTO> getById(UUID id, NhanVien employee) {
         return theKhoRepository.findById(id)
                 .map(tk -> {
                     branchAccessService.requireReadableBranch(employee, tk.getIdChiNhanh());
@@ -44,7 +44,7 @@ public class TheKhoService {
     }
 
     @Transactional(readOnly = true)
-    public List<TheKhoDTO> getByProductAndBranch(UUID idSanPham, UUID idChiNhanh, NhanVien employee) {
+    public List<TheKhoResponseDTO> getByProductAndBranch(UUID idSanPham, UUID idChiNhanh, NhanVien employee) {
         branchAccessService.requireReadableBranch(employee, idChiNhanh);
         return theKhoRepository.findByIdSanPhamAndIdChiNhanhOrderByNgayPhatSinhDesc(idSanPham, idChiNhanh).stream()
                 .map(this::toDTO)
@@ -52,7 +52,7 @@ public class TheKhoService {
     }
 
     @Transactional(readOnly = true)
-    public List<TheKhoDTO> getByBranch(UUID idChiNhanh, NhanVien employee) {
+    public List<TheKhoResponseDTO> getByBranch(UUID idChiNhanh, NhanVien employee) {
         branchAccessService.requireReadableBranch(employee, idChiNhanh);
         return theKhoRepository.findByIdChiNhanhOrderByNgayPhatSinhDesc(idChiNhanh).stream()
                 .map(this::toDTO)
@@ -60,7 +60,7 @@ public class TheKhoService {
     }
 
     @Transactional(readOnly = true)
-    public List<TheKhoDTO> getByTypeAndBranch(String loaiGiaoDich, UUID idChiNhanh, NhanVien employee) {
+    public List<TheKhoResponseDTO> getByTypeAndBranch(String loaiGiaoDich, UUID idChiNhanh, NhanVien employee) {
         branchAccessService.requireReadableBranch(employee, idChiNhanh);
         return theKhoRepository.findByLoaiGiaoDichAndIdChiNhanhOrderByNgayPhatSinhDesc(loaiGiaoDich, idChiNhanh).stream()
                 .map(this::toDTO)
@@ -68,15 +68,15 @@ public class TheKhoService {
     }
 
     @Transactional(readOnly = true)
-    public List<TheKhoDTO> getByBranchAndDateRange(UUID idChiNhanh, LocalDateTime from, LocalDateTime to, NhanVien employee) {
+    public List<TheKhoResponseDTO> getByBranchAndDateRange(UUID idChiNhanh, LocalDateTime from, LocalDateTime to, NhanVien employee) {
         branchAccessService.requireReadableBranch(employee, idChiNhanh);
         return theKhoRepository.findByIdChiNhanhAndNgayPhatSinhBetweenOrderByNgayPhatSinhDesc(idChiNhanh, from, to).stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
-    public TheKhoDTO toDTO(TheKho tk) {
-        TheKhoDTO dto = new TheKhoDTO();
+    public TheKhoResponseDTO toDTO(TheKho tk) {
+        TheKhoResponseDTO dto = new TheKhoResponseDTO();
         dto.setId(tk.getId());
         dto.setNgayPhatSinh(tk.getNgayPhatSinh());
         dto.setIdSanPham(tk.getIdSanPham());

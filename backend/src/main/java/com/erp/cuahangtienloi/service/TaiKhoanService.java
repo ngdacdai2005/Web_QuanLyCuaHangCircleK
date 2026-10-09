@@ -1,10 +1,10 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.request.ChangePasswordRequest;
-import com.erp.cuahangtienloi.dto.request.CreateTaiKhoanRequest;
+import com.erp.cuahangtienloi.dto.request.ChangePasswordRequestDTO;
+import com.erp.cuahangtienloi.dto.request.CreateTaiKhoanRequestDTO;
 import com.erp.cuahangtienloi.dto.response.NhanVienOption;
-import com.erp.cuahangtienloi.dto.response.TaiKhoanDTO;
-import com.erp.cuahangtienloi.dto.request.UpdateTaiKhoanRequest;
+import com.erp.cuahangtienloi.dto.response.TaiKhoanResponseDTO;
+import com.erp.cuahangtienloi.dto.request.UpdateTaiKhoanRequestDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.TaiKhoan;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
@@ -30,18 +30,18 @@ public class TaiKhoanService {
     private final ChiNhanhRepository chiNhanhRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public List<TaiKhoanDTO> getAll() {
+    public List<TaiKhoanResponseDTO> getAll() {
         return taiKhoanRepository.findAll().stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
-    public Optional<TaiKhoanDTO> getById(UUID id) {
+    public Optional<TaiKhoanResponseDTO> getById(UUID id) {
         return taiKhoanRepository.findById(id).map(this::toDTO);
     }
 
-    private TaiKhoanDTO toDTO(TaiKhoan tk) {
-        TaiKhoanDTO dto = new TaiKhoanDTO();
+    private TaiKhoanResponseDTO toDTO(TaiKhoan tk) {
+        TaiKhoanResponseDTO dto = new TaiKhoanResponseDTO();
         dto.setId(tk.getId());
         dto.setTenDangNhap(tk.getTenDangNhap());
         dto.setTrangThai(tk.getTrangThai());
@@ -59,7 +59,7 @@ public class TaiKhoanService {
     }
 
     @Transactional
-    public void create(CreateTaiKhoanRequest request) {
+    public void create(CreateTaiKhoanRequestDTO request) {
         if (taiKhoanRepository.findByTenDangNhap(request.getTenDangNhap()).isPresent()) {
             throw new IllegalArgumentException("Tên đăng nhập đã tồn tại");
         }
@@ -153,7 +153,7 @@ public class TaiKhoanService {
     }
 
     @Transactional
-    public Optional<TaiKhoan> update(UUID id, UpdateTaiKhoanRequest request) {
+    public Optional<TaiKhoan> update(UUID id, UpdateTaiKhoanRequestDTO request) {
         return taiKhoanRepository.findById(id).map(tk -> {
             if (request.getMatKhau() != null && !request.getMatKhau().isEmpty()) {
                 tk.setMatKhauHash(passwordEncoder.encode(request.getMatKhau()));
@@ -200,7 +200,7 @@ public class TaiKhoanService {
     }
 
     @Transactional
-    public boolean changePassword(UUID id, ChangePasswordRequest request) {
+    public boolean changePassword(UUID id, ChangePasswordRequestDTO request) {
         if (request.newPassword().equals(request.currentPassword())) {
             throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại");
         }

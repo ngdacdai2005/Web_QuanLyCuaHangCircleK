@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.response.PhieuNhapDTO;
+import com.erp.cuahangtienloi.dto.response.PhieuNhapResponseDTO;
 import com.erp.cuahangtienloi.entity.ChiNhanh;
 import com.erp.cuahangtienloi.entity.ChiTietPhieuNhap;
 import com.erp.cuahangtienloi.entity.NhaCungCap;
@@ -91,7 +91,7 @@ public class PhieuNhapService {
     }
 
     @Transactional(readOnly = true)
-    public List<PhieuNhapDTO> getAll(NhanVien actor) {
+    public List<PhieuNhapResponseDTO> getAll(NhanVien actor) {
         return phieuNhapRepository.findAll().stream()
                 .filter(pn -> branchAccessService.canReadBranch(actor, pn.getIdChiNhanh()))
                 .map(this::toDTO)
@@ -99,14 +99,14 @@ public class PhieuNhapService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<PhieuNhapDTO> getById(UUID id, NhanVien actor) {
+    public Optional<PhieuNhapResponseDTO> getById(UUID id, NhanVien actor) {
         return phieuNhapRepository.findById(id)
                 .filter(pn -> branchAccessService.canReadBranch(actor, pn.getIdChiNhanh()))
                 .map(this::toDTO);
     }
 
     @Transactional(readOnly = true)
-    public List<PhieuNhapDTO> getByChiNhanh(UUID idChiNhanh, NhanVien actor) {
+    public List<PhieuNhapResponseDTO> getByChiNhanh(UUID idChiNhanh, NhanVien actor) {
         branchAccessService.requireReadableBranch(actor, idChiNhanh);
         return phieuNhapRepository.findByIdChiNhanh(idChiNhanh).stream()
                 .map(this::toDTO)
@@ -114,7 +114,7 @@ public class PhieuNhapService {
     }
 
     @Transactional(readOnly = true)
-    public List<PhieuNhapDTO> getByNcc(UUID idNcc, NhanVien actor) {
+    public List<PhieuNhapResponseDTO> getByNcc(UUID idNcc, NhanVien actor) {
         return phieuNhapRepository.findByIdNcc(idNcc).stream()
                 .filter(pn -> branchAccessService.canReadBranch(actor, pn.getIdChiNhanh()))
                 .map(this::toDTO)
@@ -122,7 +122,7 @@ public class PhieuNhapService {
     }
 
     @Transactional(readOnly = true)
-    public List<PhieuNhapDTO> getByStatus(String trangThai, NhanVien actor) {
+    public List<PhieuNhapResponseDTO> getByStatus(String trangThai, NhanVien actor) {
         return phieuNhapRepository.findByTrangThai(trangThai).stream()
                 .filter(pn -> branchAccessService.canReadBranch(actor, pn.getIdChiNhanh()))
                 .map(this::toDTO)
@@ -130,7 +130,7 @@ public class PhieuNhapService {
     }
 
     @Transactional
-    public PhieuNhapDTO createWithLines(CreatePurchaseRequest request, NhanVien actor) {
+    public PhieuNhapResponseDTO createWithLines(CreatePurchaseRequest request, NhanVien actor) {
         if (request.getIdNcc() == null) {
             throw new IllegalArgumentException("Thiếu nhà cung cấp");
         }
@@ -263,7 +263,7 @@ public class PhieuNhapService {
      *   Lưu ý: Chưa cộng tồn kho và chưa tạo lô hàng tại bước này (hàng thực tế chưa về kho).
      */
     @Transactional
-    public Optional<PhieuNhapDTO> pay(UUID id, PayRequest request, NhanVien actor) {
+    public Optional<PhieuNhapResponseDTO> pay(UUID id, PayRequest request, NhanVien actor) {
         Optional<PhieuNhap> found = phieuNhapRepository.findByIdForUpdate(id);
         if (found.isEmpty()) {
             return Optional.empty();
@@ -344,7 +344,7 @@ public class PhieuNhapService {
      *   5. Tạo Lô hàng (lo_hang) theo FEFO chuẩn.
      */
     @Transactional
-    public Optional<PhieuNhapDTO> receive(UUID id, NhanVien actor) {
+    public Optional<PhieuNhapResponseDTO> receive(UUID id, NhanVien actor) {
         Optional<PhieuNhap> found = phieuNhapRepository.findByIdForUpdate(id);
         if (found.isEmpty()) {
             return Optional.empty();
@@ -403,7 +403,7 @@ public class PhieuNhapService {
     }
 
     @Transactional
-    public Optional<PhieuNhapDTO> update(UUID id, PhieuNhap request, NhanVien actor) {
+    public Optional<PhieuNhapResponseDTO> update(UUID id, PhieuNhap request, NhanVien actor) {
         return phieuNhapRepository.findById(id)
                 .map(pn -> {
                     branchAccessService.requireReadableBranch(actor, pn.getIdChiNhanh());
@@ -549,8 +549,8 @@ public class PhieuNhapService {
         }
     }
 
-    public PhieuNhapDTO toDTO(PhieuNhap pn) {
-        PhieuNhapDTO dto = new PhieuNhapDTO();
+    public PhieuNhapResponseDTO toDTO(PhieuNhap pn) {
+        PhieuNhapResponseDTO dto = new PhieuNhapResponseDTO();
         dto.setId(pn.getId());
         dto.setMaPhieu(pn.getMaPhieu());
         dto.setIdChiNhanh(pn.getIdChiNhanh());

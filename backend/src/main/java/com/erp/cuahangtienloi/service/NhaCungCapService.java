@@ -1,6 +1,7 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.response.NhaCungCapDTO;
+import com.erp.cuahangtienloi.dto.request.NhaCungCapRequestDTO;
+import com.erp.cuahangtienloi.dto.response.NhaCungCapResponseDTO;
 import com.erp.cuahangtienloi.entity.NhaCungCap;
 import com.erp.cuahangtienloi.entity.NhaCungCapDanhMuc;
 import com.erp.cuahangtienloi.repository.DanhMucRepository;
@@ -26,19 +27,19 @@ public class NhaCungCapService {
     private final DanhMucRepository danhMucRepository;
 
     @Transactional(readOnly = true)
-    public List<NhaCungCapDTO> getAll() {
+    public List<NhaCungCapResponseDTO> getAll() {
         return nhaCungCapRepository.findAll().stream()
                 .map(this::toDTO)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public Optional<NhaCungCapDTO> getById(UUID id) {
+    public Optional<NhaCungCapResponseDTO> getById(UUID id) {
         return nhaCungCapRepository.findById(id).map(this::toDTO);
     }
 
     @Transactional(readOnly = true)
-    public List<NhaCungCapDTO> getActive() {
+    public List<NhaCungCapResponseDTO> getActive() {
         return nhaCungCapRepository.findAll().stream()
                 .filter(ncc -> ncc.getDangHoatDong() != null && ncc.getDangHoatDong())
                 .map(this::toDTO)
@@ -46,7 +47,7 @@ public class NhaCungCapService {
     }
 
     @Transactional
-    public NhaCungCapDTO create(NhaCungCapDTO request) {
+    public NhaCungCapResponseDTO create(NhaCungCapRequestDTO request) {
         if (request.getTenNcc() == null || request.getTenNcc().isBlank()) {
             throw new IllegalArgumentException("Tên NCC không được để trống");
         }
@@ -92,7 +93,7 @@ public class NhaCungCapService {
     }
 
     @Transactional
-    public Optional<NhaCungCapDTO> update(UUID id, NhaCungCapDTO request) {
+    public Optional<NhaCungCapResponseDTO> update(UUID id, NhaCungCapRequestDTO  request) {
         return nhaCungCapRepository.findById(id)
                 .map(ncc -> {
                     if (request.getTenNcc() != null && request.getTenNcc().isBlank()) {
@@ -165,8 +166,8 @@ public class NhaCungCapService {
         nccDanhMucRepository.saveAll(links);
     }
 
-    public NhaCungCapDTO toDTO(NhaCungCap ncc) {
-        NhaCungCapDTO dto = new NhaCungCapDTO();
+    public NhaCungCapResponseDTO toDTO(NhaCungCap ncc) {
+        NhaCungCapResponseDTO dto = new NhaCungCapResponseDTO();
         dto.setId(ncc.getId());
         dto.setMaNcc(ncc.getMaNcc());
         dto.setTenNcc(ncc.getTenNcc());
@@ -187,10 +188,10 @@ public class NhaCungCapService {
         dto.setNgayCapNhat(ncc.getNgayCapNhat());
 
         List<NhaCungCapDanhMuc> links = nccDanhMucRepository.findByIdNhaCungCap(ncc.getId());
-        List<NhaCungCapDTO.DanhMucSummary> categories = links.stream()
+        List<NhaCungCapResponseDTO.DanhMucSummary> categories = links.stream()
                 .map(link -> danhMucRepository.findById(link.getIdDanhMuc())
                         .map(dm -> {
-                            NhaCungCapDTO.DanhMucSummary summary = new NhaCungCapDTO.DanhMucSummary();
+                            NhaCungCapResponseDTO.DanhMucSummary summary = new NhaCungCapResponseDTO.DanhMucSummary();
                             summary.setId(dm.getId());
                             summary.setTenDanhMuc(dm.getTenDanhMuc());
                             summary.setIconEmoji(dm.getIconEmoji());
@@ -204,7 +205,7 @@ public class NhaCungCapService {
         dto.setCategories(categories);
         dto.setCategoryIds(
                 categories.stream()
-                        .map(NhaCungCapDTO.DanhMucSummary::getId)
+                        .map(NhaCungCapResponseDTO.DanhMucSummary::getId)
                         .toList()
         );
 

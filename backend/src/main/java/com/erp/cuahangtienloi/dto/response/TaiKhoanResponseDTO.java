@@ -2,15 +2,18 @@ package com.erp.cuahangtienloi.dto.response;
 
 import lombok.Data;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 @Data
-public class NhanVienDTO {
+public class TaiKhoanResponseDTO {
     private UUID id;
-    private String maNhanVien;
-    private String hoTen;
+    private String tenDangNhap;
     private String email;
     private String soDienThoai;
+    private String hoTen;
     private String vaiTro;
+    private UUID idNhanVien;
     private UUID idChiNhanh;
     private String trangThai;
+    private LocalDateTime ngayTao;
 }

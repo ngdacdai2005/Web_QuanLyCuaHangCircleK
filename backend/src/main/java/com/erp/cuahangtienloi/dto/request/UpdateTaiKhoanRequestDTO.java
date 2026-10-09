@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
-public class UpdateTaiKhoanRequest {
+public class UpdateTaiKhoanRequestDTO {
     @Size(min = 8, max = 100, message = "Mật khẩu phải từ 8 đến 100 ký tự")
     private String matKhau;
     @Pattern(regexp = "ACTIVE|INACTIVE|LOCKED", message = "Trạng thái phải là ACTIVE, INACTIVE hoặc LOCKED")

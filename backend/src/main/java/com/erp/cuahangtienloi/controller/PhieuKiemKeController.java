@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.response.PhieuKiemKeDTO;
+import com.erp.cuahangtienloi.dto.response.PhieuKiemKeResponseDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.entity.PhieuKiemKe;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
@@ -41,7 +41,7 @@ public class PhieuKiemKeController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PhieuKiemKeDTO>> getAll(HttpServletRequest request) {
+    public ResponseEntity<List<PhieuKiemKeResponseDTO>> getAll(HttpServletRequest request) {
         var actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuKiemKeService.getAll(actor));
     }
@@ -55,13 +55,13 @@ public class PhieuKiemKeController {
     }
 
     @GetMapping("/by-chi-nhanh/{idChiNhanh}")
-    public ResponseEntity<List<PhieuKiemKeDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
+    public ResponseEntity<List<PhieuKiemKeResponseDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
         var actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuKiemKeService.getByChiNhanh(idChiNhanh, actor));
     }
 
     @GetMapping("/by-status/{trangThai}")
-    public ResponseEntity<List<PhieuKiemKeDTO>> getByStatus(@PathVariable String trangThai, HttpServletRequest request) {
+    public ResponseEntity<List<PhieuKiemKeResponseDTO>> getByStatus(@PathVariable String trangThai, HttpServletRequest request) {
         var actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuKiemKeService.getByStatus(trangThai, actor));
     }

@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.response.LoHangDTO;
+import com.erp.cuahangtienloi.dto.response.LoHangResponseDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.service.BranchAccessService;
@@ -25,12 +25,12 @@ public class LoHangController {
 
     @GetMapping("/by-product/{idSanPham}/{idChiNhanh}")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY', 'KE_TOAN')")
-    public ResponseEntity<List<LoHangDTO>> getLotsByProduct(
+    public ResponseEntity<List<LoHangResponseDTO>> getLotsByProduct(
             @PathVariable("idSanPham") UUID idSanPham,
             @PathVariable("idChiNhanh") UUID idChiNhanh,
             HttpServletRequest request) {
         branchAccessService.requireReadableBranch(branchAccessService.requireAuthenticatedEmployee(request), idChiNhanh);
-        List<LoHangDTO> list = loHangService.getDanhSachLoHang(idChiNhanh, idSanPham);
+        List<LoHangResponseDTO> list = loHangService.getDanhSachLoHang(idChiNhanh, idSanPham);
         return ResponseEntity.ok(list);
     }
 

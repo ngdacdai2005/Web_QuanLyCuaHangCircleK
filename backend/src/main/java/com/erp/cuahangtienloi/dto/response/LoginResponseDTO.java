@@ -5,8 +5,8 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class LoginResponse {
+public class LoginResponseDTO {
     private String token;
-    private TaiKhoanDTO user;
+    private TaiKhoanResponseDTO user;
     private String expiresAt;
 }

@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.response.PhieuNhapDTO;
+import com.erp.cuahangtienloi.dto.response.PhieuNhapResponseDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.PhieuNhap;
@@ -31,7 +31,7 @@ public class PhieuNhapController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO')")
-    public ResponseEntity<List<PhieuNhapDTO>> getAll(HttpServletRequest request) {
+    public ResponseEntity<List<PhieuNhapResponseDTO>> getAll(HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuNhapService.getAll(actor));
     }
@@ -47,21 +47,21 @@ public class PhieuNhapController {
 
     @GetMapping("/by-branch/{idChiNhanh}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO')")
-    public ResponseEntity<List<PhieuNhapDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
+    public ResponseEntity<List<PhieuNhapResponseDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuNhapService.getByChiNhanh(idChiNhanh, actor));
     }
 
     @GetMapping("/by-ncc/{idNcc}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO')")
-    public ResponseEntity<List<PhieuNhapDTO>> getByNcc(@PathVariable UUID idNcc, HttpServletRequest request) {
+    public ResponseEntity<List<PhieuNhapResponseDTO>> getByNcc(@PathVariable UUID idNcc, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuNhapService.getByNcc(idNcc, actor));
     }
 
     @GetMapping("/by-status/{trangThai}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO')")
-    public ResponseEntity<List<PhieuNhapDTO>> getByStatus(@PathVariable String trangThai, HttpServletRequest request) {
+    public ResponseEntity<List<PhieuNhapResponseDTO>> getByStatus(@PathVariable String trangThai, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuNhapService.getByStatus(trangThai, actor));
     }

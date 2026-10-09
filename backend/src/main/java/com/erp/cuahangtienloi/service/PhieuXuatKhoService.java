@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.response.PhieuXuatKhoDTO;
+import com.erp.cuahangtienloi.dto.response.PhieuXuatKhoResponseDTO;
 import com.erp.cuahangtienloi.entity.ChiNhanh;
 import com.erp.cuahangtienloi.entity.ChiTietPhieuXuat;
 import com.erp.cuahangtienloi.entity.NhanVien;
@@ -54,7 +54,7 @@ public class PhieuXuatKhoService {
     }
 
     @Transactional(readOnly = true)
-    public List<PhieuXuatKhoDTO> getAll(NhanVien actor) {
+    public List<PhieuXuatKhoResponseDTO> getAll(NhanVien actor) {
         return phieuXuatKhoRepository.findAll().stream()
                 .filter(pxk -> canReadTransfer(actor, pxk))
                 .map(this::toDTO)
@@ -62,14 +62,14 @@ public class PhieuXuatKhoService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<PhieuXuatKhoDTO> getById(UUID id, NhanVien actor) {
+    public Optional<PhieuXuatKhoResponseDTO> getById(UUID id, NhanVien actor) {
         return phieuXuatKhoRepository.findById(id)
                 .filter(pxk -> canReadTransfer(actor, pxk))
                 .map(this::toDTO);
     }
 
     @Transactional(readOnly = true)
-    public List<PhieuXuatKhoDTO> getByBranchXuat(UUID idChiNhanhXuat, NhanVien actor) {
+    public List<PhieuXuatKhoResponseDTO> getByBranchXuat(UUID idChiNhanhXuat, NhanVien actor) {
         return phieuXuatKhoRepository.findByIdChiNhanhXuat(idChiNhanhXuat).stream()
                 .filter(pxk -> canReadTransfer(actor, pxk))
                 .map(this::toDTO)
@@ -77,7 +77,7 @@ public class PhieuXuatKhoService {
     }
 
     @Transactional(readOnly = true)
-    public List<PhieuXuatKhoDTO> getByBranchNhan(UUID idChiNhanhNhan, NhanVien actor) {
+    public List<PhieuXuatKhoResponseDTO> getByBranchNhan(UUID idChiNhanhNhan, NhanVien actor) {
         return phieuXuatKhoRepository.findByIdChiNhanhNhan(idChiNhanhNhan).stream()
                 .filter(pxk -> canReadTransfer(actor, pxk))
                 .map(this::toDTO)
@@ -85,7 +85,7 @@ public class PhieuXuatKhoService {
     }
 
     @Transactional(readOnly = true)
-    public List<PhieuXuatKhoDTO> getByStatus(String trangThai, NhanVien actor) {
+    public List<PhieuXuatKhoResponseDTO> getByStatus(String trangThai, NhanVien actor) {
         return phieuXuatKhoRepository.findByTrangThai(trangThai).stream()
                 .filter(pxk -> canReadTransfer(actor, pxk))
                 .map(this::toDTO)
@@ -93,7 +93,7 @@ public class PhieuXuatKhoService {
     }
 
     @Transactional
-    public PhieuXuatKhoDTO create(PhieuXuatKho request, UUID idNguoiTao, NhanVien actor) {
+    public PhieuXuatKhoResponseDTO create(PhieuXuatKho request, UUID idNguoiTao, NhanVien actor) {
         if (request.getIdChiNhanhXuat() == null || request.getIdChiNhanhNhan() == null) {
             throw new IllegalArgumentException("Chi nhánh xuất hoặc nhận không được để trống");
         }
@@ -140,7 +140,7 @@ public class PhieuXuatKhoService {
     }
 
     @Transactional
-    public Optional<PhieuXuatKhoDTO> update(UUID id, PhieuXuatKho request, NhanVien actor) {
+    public Optional<PhieuXuatKhoResponseDTO> update(UUID id, PhieuXuatKho request, NhanVien actor) {
         return phieuXuatKhoRepository.findById(id)
                 .map(pxk -> {
                     requireTransferAccess(actor, pxk.getIdChiNhanhXuat(), pxk.getIdChiNhanhNhan());
@@ -186,7 +186,7 @@ public class PhieuXuatKhoService {
     }
 
     @Transactional
-    public Optional<PhieuXuatKhoDTO> approve(UUID id, ApproveRequest body, NhanVien actor) {
+    public Optional<PhieuXuatKhoResponseDTO> approve(UUID id, ApproveRequest body, NhanVien actor) {
         return phieuXuatKhoRepository.findById(id)
                 .map(pxk -> {
                     requireTransferAccess(actor, pxk.getIdChiNhanhXuat(), pxk.getIdChiNhanhNhan());
@@ -202,7 +202,7 @@ public class PhieuXuatKhoService {
     }
 
     @Transactional
-    public Optional<PhieuXuatKhoDTO> reject(UUID id, RejectRequest body, NhanVien actor) {
+    public Optional<PhieuXuatKhoResponseDTO> reject(UUID id, RejectRequest body, NhanVien actor) {
         return phieuXuatKhoRepository.findById(id)
                 .map(pxk -> {
                     requireTransferAccess(actor, pxk.getIdChiNhanhXuat(), pxk.getIdChiNhanhNhan());
@@ -219,7 +219,7 @@ public class PhieuXuatKhoService {
     }
 
     @Transactional
-    public Optional<PhieuXuatKhoDTO> ship(UUID id, MoveRequest body, UUID idNguoiDuyet, NhanVien actor) {
+    public Optional<PhieuXuatKhoResponseDTO> ship(UUID id, MoveRequest body, UUID idNguoiDuyet, NhanVien actor) {
         return phieuXuatKhoRepository.findById(id).map(pxk -> {
             requireTransferAccess(actor, pxk.getIdChiNhanhXuat(), pxk.getIdChiNhanhNhan());
             if (!"PENDING".equals(pxk.getTrangThai()) && !"APPROVED".equals(pxk.getTrangThai())) {
@@ -300,7 +300,7 @@ public class PhieuXuatKhoService {
     }
 
     @Transactional
-    public Optional<PhieuXuatKhoDTO> receive(UUID id, MoveRequest body, UUID idNguoiNhan, NhanVien actor) {
+    public Optional<PhieuXuatKhoResponseDTO> receive(UUID id, MoveRequest body, UUID idNguoiNhan, NhanVien actor) {
         return phieuXuatKhoRepository.findById(id).map(pxk -> {
             requireTransferAccess(actor, pxk.getIdChiNhanhXuat(), pxk.getIdChiNhanhNhan());
             if (!"SHIPPED".equals(pxk.getTrangThai())) {
@@ -480,8 +480,8 @@ public class PhieuXuatKhoService {
         }
     }
 
-    public PhieuXuatKhoDTO toDTO(PhieuXuatKho pxk) {
-        PhieuXuatKhoDTO dto = new PhieuXuatKhoDTO();
+    public PhieuXuatKhoResponseDTO toDTO(PhieuXuatKho pxk) {
+        PhieuXuatKhoResponseDTO dto = new PhieuXuatKhoResponseDTO();
         dto.setId(pxk.getId());
         dto.setMaPhieu(pxk.getMaPhieu());
         dto.setIdChiNhanhXuat(pxk.getIdChiNhanhXuat());

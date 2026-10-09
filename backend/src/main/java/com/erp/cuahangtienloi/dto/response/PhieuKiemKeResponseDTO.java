@@ -5,22 +5,17 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
-public class PhieuXuatKhoDTO {
+public class PhieuKiemKeResponseDTO {
     private UUID id;
     private String maPhieu;
-    private UUID idChiNhanhXuat;
-    private String tenChiNhanhXuat;
-    private UUID idChiNhanhNhan;
-    private String tenChiNhanhNhan;
+    private UUID idChiNhanh;
+    private String tenChiNhanh;
     private UUID idNguoiTao;
     private String tenNguoiTao;
     private UUID idNguoiDuyet;
     private String tenNguoiDuyet;
-    private UUID idNguoiNhan;
-    private String tenNguoiNhan;
-    private LocalDate ngayYeuCau;
-    private LocalDate ngayXuatThucTe;
-    private LocalDate ngayNhanThucTe;
+    private LocalDate ngayKiemKe;
+    private LocalDate ngayCanBang;
     private String trangThai;
     private String ghiChu;
 }

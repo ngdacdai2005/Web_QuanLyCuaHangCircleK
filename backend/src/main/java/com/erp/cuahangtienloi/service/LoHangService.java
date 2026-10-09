@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.response.LoHangDTO;
+import com.erp.cuahangtienloi.dto.response.LoHangResponseDTO;
 import com.erp.cuahangtienloi.entity.ChiNhanh;
 import com.erp.cuahangtienloi.entity.LoHang;
 import com.erp.cuahangtienloi.entity.SanPham;
@@ -346,7 +346,7 @@ public class LoHangService {
      * Lấy danh sách toàn bộ lô hàng của một sản phẩm tại một chi nhánh.
      */
     @Transactional
-    public List<LoHangDTO> getDanhSachLoHang(UUID idChiNhanh, UUID idSanPham) {
+    public List<LoHangResponseDTO> getDanhSachLoHang(UUID idChiNhanh, UUID idSanPham) {
         tuDongDongBoLoHangNeuThieu(idChiNhanh, idSanPham);
 
         List<LoHang> list = loHangRepository.findByIdChiNhanhAndIdSanPhamOrderByHanSuDungAscNgayTaoAsc(idChiNhanh, idSanPham);
@@ -354,7 +354,7 @@ public class LoHangService {
         ChiNhanh cn = chiNhanhRepository.findById(idChiNhanh).orElse(null);
 
         return list.stream().map(lo -> {
-            LoHangDTO dto = new LoHangDTO();
+            LoHangResponseDTO dto = new LoHangResponseDTO();
             dto.setId(lo.getId());
             dto.setMaLo(lo.getMaLo());
             dto.setIdSanPham(lo.getIdSanPham());

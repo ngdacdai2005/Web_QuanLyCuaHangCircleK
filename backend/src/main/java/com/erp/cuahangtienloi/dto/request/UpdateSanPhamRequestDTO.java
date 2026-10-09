@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @Data
-public class UpdateSanPhamRequest {
+public class UpdateSanPhamRequestDTO {
     private UUID idDanhMuc;
     @Size(min = 1, max = 50, message = "SKU phải từ 1 đến 50 ký tự")
     private String sku;

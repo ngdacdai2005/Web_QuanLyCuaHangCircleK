@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @Data
-public class CreateSanPhamRequest {
+public class CreateSanPhamRequestDTO {
     @NotNull(message = "Danh mục bắt buộc chọn")
     private UUID idDanhMuc;
     @NotBlank(message = "SKU không được để trống")

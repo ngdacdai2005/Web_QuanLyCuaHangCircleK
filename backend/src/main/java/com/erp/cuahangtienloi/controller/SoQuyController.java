@@ -1,7 +1,7 @@
 package com.erp.cuahangtienloi.controller;
 
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
-import com.erp.cuahangtienloi.dto.response.SoQuyDTO;
+import com.erp.cuahangtienloi.dto.response.SoQuyResponseDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.SoQuy;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
@@ -41,7 +41,7 @@ public class SoQuyController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
-    public ResponseEntity<List<SoQuyDTO>> getAll(HttpServletRequest request) {
+    public ResponseEntity<List<SoQuyResponseDTO>> getAll(HttpServletRequest request) {
         NhanVien employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(soQuyService.getAll(employee));
     }
@@ -57,28 +57,28 @@ public class SoQuyController {
 
     @GetMapping("/by-branch/{idChiNhanh}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
-    public ResponseEntity<List<SoQuyDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
+    public ResponseEntity<List<SoQuyResponseDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
         NhanVien employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(soQuyService.getByChiNhanh(idChiNhanh, employee));
     }
 
     @GetMapping("/by-direction/{direction}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
-    public ResponseEntity<List<SoQuyDTO>> getByDirection(@PathVariable String direction, HttpServletRequest request) {
+    public ResponseEntity<List<SoQuyResponseDTO>> getByDirection(@PathVariable String direction, HttpServletRequest request) {
         NhanVien employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(soQuyService.getByDirection(direction, employee));
     }
 
     @GetMapping("/by-hang-muc/{hangMuc}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
-    public ResponseEntity<List<SoQuyDTO>> getByHangMuc(@PathVariable String hangMuc, HttpServletRequest request) {
+    public ResponseEntity<List<SoQuyResponseDTO>> getByHangMuc(@PathVariable String hangMuc, HttpServletRequest request) {
         NhanVien employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(soQuyService.getByHangMuc(hangMuc, employee));
     }
 
     @GetMapping("/by-date-range")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
-    public ResponseEntity<List<SoQuyDTO>> getByDateRange(
+    public ResponseEntity<List<SoQuyResponseDTO>> getByDateRange(
             @RequestParam LocalDate from, @RequestParam LocalDate to, HttpServletRequest request) {
         NhanVien employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(soQuyService.getByDateRange(from, to, employee));
