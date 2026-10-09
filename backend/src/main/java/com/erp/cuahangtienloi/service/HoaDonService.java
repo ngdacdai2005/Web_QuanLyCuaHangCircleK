@@ -1,7 +1,11 @@
 package com.erp.cuahangtienloi.service;
 
+import com.erp.cuahangtienloi.dto.request.ChiTietHoaDonRequestDTO;
+import com.erp.cuahangtienloi.dto.response.ChiTietHoaDonResponseDTO;
 import com.erp.cuahangtienloi.dto.response.HoaDonResponseDTO;
 import com.erp.cuahangtienloi.entity.*;
+import com.erp.cuahangtienloi.mapper.ChiTietHoaDonMapper;
+import com.erp.cuahangtienloi.mapper.HoaDonMapper;
 import com.erp.cuahangtienloi.repository.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
@@ -39,6 +43,8 @@ public class HoaDonService {
     private final SoQuyRepository soQuyRepository;
     private final JdbcTemplate jdbcTemplate;
     private final LoHangService loHangService;
+    private final HoaDonMapper hoaDonMapper;
+    private final ChiTietHoaDonMapper chiTietHoaDonMapper;
 
     private final Map<String, HoaDonResponseDTO> recentCheckoutCache = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<String, Long> recentCheckoutTimestamp = new java.util.concurrent.ConcurrentHashMap<>();
@@ -125,7 +131,7 @@ public class HoaDonService {
     @Transactional(readOnly = true)
     public List<HoaDonResponseDTO> getAll(NhanVien actor) {
         return findInvoicesVisibleTo(actor).stream()
-                .map(this::toDTO)
+                .map(hoaDonMapper::toResponse)
                 .toList();
     }
 
@@ -133,14 +139,14 @@ public class HoaDonService {
     public Optional<HoaDonResponseDTO> getById(UUID id, NhanVien actor) {
         return hoaDonRepository.findById(id)
                 .filter(hd -> canReadInvoice(actor, hd))
-                .map(this::toDTO);
+                .map(hoaDonMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
     public List<HoaDonResponseDTO> getByChiNhanh(UUID idChiNhanh, NhanVien actor) {
         return findInvoicesVisibleTo(actor).stream()
                 .filter(hd -> idChiNhanh.equals(hd.getIdChiNhanh()))
-                .map(this::toDTO)
+                .map(hoaDonMapper::toResponse)
                 .toList();
     }
 
@@ -148,7 +154,7 @@ public class HoaDonService {
     public List<HoaDonResponseDTO> getByThuNgan(UUID idThuNgan, NhanVien actor) {
         return findInvoicesVisibleTo(actor).stream()
                 .filter(hd -> idThuNgan.equals(hd.getIdThuNgan()))
-                .map(this::toDTO)
+                .map(hoaDonMapper::toResponse)
                 .toList();
     }
 
@@ -156,7 +162,7 @@ public class HoaDonService {
     public List<HoaDonResponseDTO> getByStatus(String trangThai, NhanVien actor) {
         return findInvoicesVisibleTo(actor).stream()
                 .filter(hd -> trangThai.equals(hd.getTrangThai()))
-                .map(this::toDTO)
+                .map(hoaDonMapper::toResponse)
                 .toList();
     }
 
@@ -191,7 +197,7 @@ public class HoaDonService {
         hd.setNgayCapNhat(LocalDateTime.now());
 
         hoaDonRepository.save(hd);
-        return toDTO(hd);
+        return hoaDonMapper.toResponse(hd);
     }
 
     @Transactional
@@ -265,7 +271,7 @@ public class HoaDonService {
         chiTietHoaDonRepository.saveAll(lines);
         chiTietHoaDonRepository.flush();
 
-        return toDTO(saved);
+        return hoaDonMapper.toResponse(saved);
     }
 
     @Transactional
@@ -426,7 +432,7 @@ public class HoaDonService {
                 cashEntry.setNgayCapNhat(LocalDateTime.now());
                 soQuyRepository.saveAndFlush(cashEntry);
 
-                HoaDonResponseDTO result = toDTO(saved);
+                HoaDonResponseDTO result = hoaDonMapper.toResponse(saved);
                 recentCheckoutCache.put(dedupKey, result);
                 recentCheckoutTimestamp.put(dedupKey, System.currentTimeMillis());
                 return result;
@@ -459,7 +465,7 @@ public class HoaDonService {
                     if (request.getGhiChu() != null) hd.setGhiChu(request.getGhiChu());
                     hd.setNgayCapNhat(LocalDateTime.now());
                     hoaDonRepository.save(hd);
-                    return toDTO(hd);
+                    return hoaDonMapper.toResponse(hd);
                 });
     }
 
@@ -474,21 +480,25 @@ public class HoaDonService {
 
     // --- Logic ChiTietHoaDon ---
     @Transactional(readOnly = true)
-    public Optional<List<ChiTietHoaDon>> getLinesByHoaDon(UUID idHoaDon, NhanVien actor) {
+    public Optional<List<ChiTietHoaDonResponseDTO>> getLinesByHoaDon(UUID idHoaDon, NhanVien actor) {
         HoaDon invoice = hoaDonRepository.findById(idHoaDon).orElse(null);
         if (invoice == null || !canReadInvoice(actor, invoice)) {
             return Optional.empty();
         }
-        return Optional.of(chiTietHoaDonRepository.findByIdHoaDon(idHoaDon));
+        return Optional.of(chiTietHoaDonRepository.findByIdHoaDon(idHoaDon).stream()
+                .map(chiTietHoaDonMapper::toResponse)
+                .toList());
     }
 
     @Transactional(readOnly = true)
-    public List<ChiTietHoaDon> getLinesBySanPham(UUID idSanPham) {
-        return chiTietHoaDonRepository.findByIdSanPham(idSanPham);
+    public List<ChiTietHoaDonResponseDTO> getLinesBySanPham(UUID idSanPham) {
+        return chiTietHoaDonRepository.findByIdSanPham(idSanPham).stream()
+                .map(chiTietHoaDonMapper::toResponse)
+                .toList();
     }
 
     @Transactional
-    public ChiTietHoaDon createLine(ChiTietHoaDon request) {
+    public ChiTietHoaDonResponseDTO createLine(ChiTietHoaDonRequestDTO request) {
         validateLine(request);
         ChiTietHoaDon ct = new ChiTietHoaDon();
         ct.setId(UUID.randomUUID());
@@ -502,15 +512,15 @@ public class HoaDonService {
         ct.setDonGiaVon(request.getDonGiaVon());
         ct.setThuTu(request.getThuTu() != null ? request.getThuTu() : 0);
         ct.setNgayTao(LocalDateTime.now());
-        return chiTietHoaDonRepository.save(ct);
+        return chiTietHoaDonMapper.toResponse(chiTietHoaDonRepository.save(ct));
     }
 
     @Transactional
-    public void createBatchLines(List<ChiTietHoaDon> requests) {
+    public void createBatchLines(List<ChiTietHoaDonRequestDTO> requests) {
         if (requests == null || requests.isEmpty()) {
             throw new IllegalArgumentException("Danh sách chi tiết hóa đơn rỗng");
         }
-        for (ChiTietHoaDon request : requests) {
+        for (ChiTietHoaDonRequestDTO request : requests) {
             validateLine(request);
             ChiTietHoaDon ct = new ChiTietHoaDon();
             ct.setId(UUID.randomUUID());
@@ -543,7 +553,7 @@ public class HoaDonService {
         chiTietHoaDonRepository.deleteAll(list);
     }
 
-    private void validateLine(ChiTietHoaDon request) {
+    private void validateLine(ChiTietHoaDonRequestDTO request) {
         if (request.getIdHoaDon() == null || !hoaDonRepository.existsById(request.getIdHoaDon())) {
             throw new IllegalArgumentException("Hóa đơn không tồn tại");
         }
@@ -598,40 +608,6 @@ public class HoaDonService {
         String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         Long sequence = jdbcTemplate.queryForObject("SELECT nextval('seq_hoa_don_ma')", Long.class);
         return "HD-" + dateStr + "-" + String.format("%04d", sequence);
-    }
-
-    public HoaDonResponseDTO toDTO(HoaDon hd) {
-        HoaDonResponseDTO dto = new HoaDonResponseDTO();
-        dto.setId(hd.getId());
-        dto.setMaHoaDon(hd.getMaHoaDon());
-        dto.setIdChiNhanh(hd.getIdChiNhanh());
-        dto.setIdThuNgan(hd.getIdThuNgan());
-        dto.setCaLamViec(hd.getCaLamViec());
-        dto.setNgayBan(hd.getNgayBan());
-        dto.setHinhThucTt(hd.getHinhThucTt());
-        dto.setSdtThanhVien(hd.getSdtThanhVien());
-        dto.setSubTotal(hd.getSubTotal());
-        dto.setGiamGia(hd.getGiamGia());
-        dto.setVatTotal(hd.getVatTotal());
-        dto.setGrandTotal(hd.getGrandTotal());
-        dto.setTienKhachDua(hd.getTienKhachDua());
-        dto.setTienThoi(hd.getTienThoi());
-        dto.setTrangThai(hd.getTrangThai());
-        dto.setIdNguoiHoan(hd.getIdNguoiHoan());
-        dto.setNgayHoan(hd.getNgayHoan());
-        dto.setLyDoHoan(hd.getLyDoHoan());
-        dto.setGhiChu(hd.getGhiChu());
-
-        if (hd.getIdChiNhanh() != null) {
-            chiNhanhRepository.findById(hd.getIdChiNhanh())
-                    .ifPresent(cn -> dto.setTenChiNhanh(cn.getTenChiNhanh()));
-        }
-        if (hd.getIdThuNgan() != null) {
-            nhanVienRepository.findById(hd.getIdThuNgan())
-                    .ifPresent(nv -> dto.setTenThuNgan(nv.getHoTen()));
-        }
-
-        return dto;
     }
 
     @Transactional
@@ -696,6 +672,6 @@ public class HoaDonService {
             soQuyRepository.saveAndFlush(refundCashEntry);
         }
 
-        return toDTO(saved);
+        return hoaDonMapper.toResponse(saved);
     }
 }

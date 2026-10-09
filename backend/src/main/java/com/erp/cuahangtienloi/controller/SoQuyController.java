@@ -4,11 +4,15 @@ import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.dto.response.SoQuyResponseDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.SoQuy;
+import com.erp.cuahangtienloi.mapper.SoQuyMapper;
+import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
+import com.erp.cuahangtienloi.repository.SoQuyRepository;
 import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.SoQuyService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -19,12 +23,22 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/so-quy")
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class SoQuyController {
 
     private final SoQuyService soQuyService;
     private final BranchAccessService branchAccessService;
     private final NhanVienRepository nhanVienRepository;
+
+    public SoQuyController(
+            SoQuyRepository soQuyRepository,
+            ChiNhanhRepository chiNhanhRepository,
+            NhanVienRepository nhanVienRepository,
+            BranchAccessService branchAccessService
+    ) {
+        this(new SoQuyService(soQuyRepository, chiNhanhRepository, nhanVienRepository,
+                branchAccessService, new SoQuyMapper(chiNhanhRepository, nhanVienRepository)), branchAccessService, nhanVienRepository);
+    }
 
     private UUID resolveAuthenticatedIdNhanVien(HttpServletRequest request) {
         Object attr = request.getAttribute("authenticatedIdNhanVien");

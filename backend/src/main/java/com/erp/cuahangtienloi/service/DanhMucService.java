@@ -1,7 +1,10 @@
 package com.erp.cuahangtienloi.service;
 
+import com.erp.cuahangtienloi.dto.request.DanhMucRequestDTO;
+import com.erp.cuahangtienloi.dto.response.DanhMucResponseDTO;
 import com.erp.cuahangtienloi.entity.DanhMuc;
 import com.erp.cuahangtienloi.entity.SanPham;
+import com.erp.cuahangtienloi.mapper.DanhMucMapper;
 import com.erp.cuahangtienloi.repository.DanhMucRepository;
 import com.erp.cuahangtienloi.repository.SanPhamRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,67 +28,60 @@ public class DanhMucService {
     private final DanhMucRepository danhMucRepository;
     private final SanPhamRepository sanPhamRepository;
     private final BranchProductStatusService branchProductStatusService;
+    private final DanhMucMapper danhMucMapper;
 
     @Transactional(readOnly = true)
-    public List<DanhMuc> getAll(UUID branchId, boolean isAdmin) {
+    public List<DanhMucResponseDTO> getAll(UUID branchId, boolean isAdmin) {
         return danhMucRepository.findAll().stream()
                 .map(dm -> {
-                    DanhMuc res = new DanhMuc();
-                    res.setId(dm.getId());
-                    res.setMaDanhMuc(dm.getMaDanhMuc());
-                    res.setTenDanhMuc(dm.getTenDanhMuc());
-                    res.setParentId(dm.getParentId());
-                    res.setMoTa(dm.getMoTa());
-                    res.setIconEmoji(dm.getIconEmoji());
-                    res.setImageUrl(dm.getImageUrl());
-                    res.setMauHex(dm.getMauHex());
-                    res.setThuTuHienThi(dm.getThuTuHienThi());
-                    res.setProductCount(dm.getProductCount());
-                    res.setNgayTao(dm.getNgayTao());
-                    res.setNgayCapNhat(dm.getNgayCapNhat());
-
+                    DanhMucResponseDTO dto = danhMucMapper.toResponse(dm);
                     if (Boolean.FALSE.equals(dm.getDangHoatDong())) {
-                        res.setDangHoatDong(false);
-                    } else if (!isAdmin && branchId != null && branchProductStatusService.isCategoryInactiveForBranch(branchId, dm.getId())) {
-                        res.setDangHoatDong(false);
+                        dto.setDangHoatDong(false);
+                    } else if (!isAdmin && branchId != null
+                            && branchProductStatusService.isCategoryInactiveForBranch(branchId, dm.getId())) {
+                        dto.setDangHoatDong(false);
                     } else {
-                        res.setDangHoatDong(dm.getDangHoatDong() != null ? dm.getDangHoatDong() : true);
+                        dto.setDangHoatDong(dm.getDangHoatDong() != null ? dm.getDangHoatDong() : true);
                     }
-                    return res;
+                    return dto;
                 })
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public Optional<DanhMuc> getById(UUID id, UUID branchId, boolean isAdmin) {
+    public Optional<DanhMucResponseDTO> getById(UUID id, UUID branchId, boolean isAdmin) {
         return danhMucRepository.findById(id)
                 .map(dm -> {
+                    DanhMucResponseDTO dto = danhMucMapper.toResponse(dm);
                     if (Boolean.FALSE.equals(dm.getDangHoatDong())) {
-                        dm.setDangHoatDong(false);
-                    } else if (!isAdmin && branchId != null && branchProductStatusService.isCategoryInactiveForBranch(branchId, dm.getId())) {
-                        dm.setDangHoatDong(false);
+                        dto.setDangHoatDong(false);
+                    } else if (!isAdmin && branchId != null
+                            && branchProductStatusService.isCategoryInactiveForBranch(branchId, dm.getId())) {
+                        dto.setDangHoatDong(false);
                     }
-                    return dm;
+                    return dto;
                 });
     }
 
     @Transactional(readOnly = true)
-    public List<DanhMuc> getActive(UUID branchId, boolean isAdmin) {
+    public List<DanhMucResponseDTO> getActive(UUID branchId, boolean isAdmin) {
         return danhMucRepository.findAll().stream()
                 .filter(dm -> dm.getDangHoatDong() != null && dm.getDangHoatDong())
                 .filter(dm -> isAdmin || branchId == null || !branchProductStatusService.isCategoryInactiveForBranch(branchId, dm.getId()))
+                .map(danhMucMapper::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<DanhMuc> getByParent(UUID parentId) {
+    public List<DanhMucResponseDTO> getByParent(UUID parentId) {
         return danhMucRepository.findAll().stream()
                 .filter(dm -> parentId == null ? dm.getParentId() == null : parentId.equals(dm.getParentId()))
+                .map(danhMucMapper::toResponse)
                 .toList();
     }
 
     @Transactional
-    public DanhMuc create(DanhMuc request) {
+    public DanhMucResponseDTO create(DanhMucRequestDTO request) {
         request.setTenDanhMuc(requireText(request.getTenDanhMuc(), "Tên danh mục", 2, 100));
         if (request.getMaDanhMuc() != null && request.getMaDanhMuc().length() > 20) {
             throw new IllegalArgumentException("Mã danh mục tối đa 20 ký tự");
@@ -119,11 +115,11 @@ public class DanhMucService {
         dm.setNgayTao(LocalDateTime.now());
         dm.setNgayCapNhat(LocalDateTime.now());
 
-        return danhMucRepository.save(dm);
+        return danhMucMapper.toResponse(danhMucRepository.save(dm));
     }
 
     @Transactional
-    public Optional<DanhMuc> update(UUID id, DanhMuc request) {
+    public Optional<DanhMucResponseDTO> update(UUID id, DanhMucRequestDTO request) {
         return danhMucRepository.findById(id)
                 .map(dm -> {
                     if (request.getTenDanhMuc() != null) {
@@ -154,7 +150,7 @@ public class DanhMucService {
                     if (request.getThuTuHienThi() != null) dm.setThuTuHienThi(request.getThuTuHienThi());
                     if (request.getDangHoatDong() != null) dm.setDangHoatDong(request.getDangHoatDong());
                     dm.setNgayCapNhat(LocalDateTime.now());
-                    return danhMucRepository.save(dm);
+                    return danhMucMapper.toResponse(danhMucRepository.save(dm));
                 });
     }
 

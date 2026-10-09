@@ -1,7 +1,10 @@
 package com.erp.cuahangtienloi.service;
 
+import com.erp.cuahangtienloi.dto.request.ChiNhanhRequestDTO;
+import com.erp.cuahangtienloi.dto.response.ChiNhanhResponseDTO;
 import com.erp.cuahangtienloi.entity.ChiNhanh;
 import com.erp.cuahangtienloi.entity.NhanVien;
+import com.erp.cuahangtienloi.mapper.ChiNhanhMapper;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,41 +25,46 @@ public class ChiNhanhService {
 
     private final ChiNhanhRepository chiNhanhRepository;
     private final NhanVienRepository nhanVienRepository;
+    private final ChiNhanhMapper chiNhanhMapper;
 
-    public List<ChiNhanh> getAll() {
-        return chiNhanhRepository.findAll();
+    public List<ChiNhanhResponseDTO> getAll() {
+        return chiNhanhRepository.findAll().stream().map(chiNhanhMapper::toResponse).toList();
     }
 
-    public Optional<ChiNhanh> getById(UUID id) {
-        return chiNhanhRepository.findById(id);
+    public Optional<ChiNhanhResponseDTO> getById(UUID id) {
+        return chiNhanhRepository.findById(id).map(chiNhanhMapper::toResponse);
     }
 
-    public List<ChiNhanh> getActive() {
+    public List<ChiNhanhResponseDTO> getActive() {
         return chiNhanhRepository.findAll().stream()
                 .filter(cn -> cn.getDangHoatDong() != null && cn.getDangHoatDong())
+                .map(chiNhanhMapper::toResponse)
                 .toList();
     }
 
-    public List<ChiNhanh> getByLoai(String loai) {
+    public List<ChiNhanhResponseDTO> getByLoai(String loai) {
         return chiNhanhRepository.findAll().stream()
                 .filter(cn -> loai.equals(cn.getLoai()))
+                .map(chiNhanhMapper::toResponse)
                 .toList();
     }
 
-    public List<ChiNhanh> getKhoTong() {
+    public List<ChiNhanhResponseDTO> getKhoTong() {
         return chiNhanhRepository.findAll().stream()
                 .filter(cn -> "KHO_TONG".equals(cn.getLoai()) && Boolean.TRUE.equals(cn.getDangHoatDong()))
+                .map(chiNhanhMapper::toResponse)
                 .toList();
     }
 
-    public List<ChiNhanh> getCuaHang() {
+    public List<ChiNhanhResponseDTO> getCuaHang() {
         return chiNhanhRepository.findAll().stream()
                 .filter(cn -> "CUA_HANG_BAN_LE".equals(cn.getLoai()) && Boolean.TRUE.equals(cn.getDangHoatDong()))
+                .map(chiNhanhMapper::toResponse)
                 .toList();
     }
 
     @Transactional
-    public ChiNhanh create(ChiNhanh request) {
+    public ChiNhanhResponseDTO create(ChiNhanhRequestDTO request) {
         if (request.getMaChiNhanh() == null || request.getMaChiNhanh().trim().isEmpty()) {
             request.setMaChiNhanh(generateNextMaChiNhanh());
         } else {
@@ -94,11 +102,11 @@ public class ChiNhanhService {
         cn.setNgayCapNhat(LocalDateTime.now());
         cn.setNguoiCapNhat(request.getNguoiCapNhat());
 
-        return chiNhanhRepository.save(cn);
+        return chiNhanhMapper.toResponse(chiNhanhRepository.save(cn));
     }
 
     @Transactional
-    public Optional<ChiNhanh> update(UUID id, ChiNhanh request) {
+    public Optional<ChiNhanhResponseDTO> update(UUID id, ChiNhanhRequestDTO request) {
         return chiNhanhRepository.findById(id).map(cn -> {
             if (request.getTenChiNhanh() != null) {
                 request.setTenChiNhanh(requireText(request.getTenChiNhanh(), "Tên chi nhánh", 1, 255));
@@ -138,21 +146,21 @@ public class ChiNhanhService {
             if (request.getDangHoatDong() != null) cn.setDangHoatDong(request.getDangHoatDong());
             if (request.getNguoiCapNhat() != null) cn.setNguoiCapNhat(request.getNguoiCapNhat());
             cn.setNgayCapNhat(LocalDateTime.now());
-            return chiNhanhRepository.save(cn);
+            return chiNhanhMapper.toResponse(chiNhanhRepository.save(cn));
         });
     }
 
     @Transactional
-    public Optional<ChiNhanh> delete(UUID id) {
+    public Optional<ChiNhanhResponseDTO> delete(UUID id) {
         return chiNhanhRepository.findById(id).map(cn -> {
             cn.setDangHoatDong(false);
             cn.setNgayCapNhat(LocalDateTime.now());
-            return chiNhanhRepository.save(cn);
+            return chiNhanhMapper.toResponse(chiNhanhRepository.save(cn));
         });
     }
 
     @Transactional
-    public Optional<ChiNhanh> assignQuanLy(UUID id, UUID idQuanLy) {
+    public Optional<ChiNhanhResponseDTO> assignQuanLy(UUID id, UUID idQuanLy) {
         return chiNhanhRepository.findById(id).map(cn -> {
             NhanVien nv = nhanVienRepository.findById(idQuanLy).orElse(null);
             if (nv == null) {
@@ -167,16 +175,16 @@ public class ChiNhanhService {
             }
             cn.setIdQuanLy(idQuanLy);
             cn.setNgayCapNhat(LocalDateTime.now());
-            return chiNhanhRepository.save(cn);
+            return chiNhanhMapper.toResponse(chiNhanhRepository.save(cn));
         });
     }
 
     @Transactional
-    public Optional<ChiNhanh> clearQuanLy(UUID id) {
+    public Optional<ChiNhanhResponseDTO> clearQuanLy(UUID id) {
         return chiNhanhRepository.findById(id).map(cn -> {
             cn.setIdQuanLy(null);
             cn.setNgayCapNhat(LocalDateTime.now());
-            return chiNhanhRepository.save(cn);
+            return chiNhanhMapper.toResponse(chiNhanhRepository.save(cn));
         });
     }
 

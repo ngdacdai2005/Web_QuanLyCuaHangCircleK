@@ -7,6 +7,7 @@ import com.erp.cuahangtienloi.dto.response.TaiKhoanResponseDTO;
 import com.erp.cuahangtienloi.dto.request.UpdateTaiKhoanRequestDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.TaiKhoan;
+import com.erp.cuahangtienloi.mapper.TaiKhoanMapper;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
 import com.erp.cuahangtienloi.repository.TaiKhoanRepository;
@@ -29,34 +30,18 @@ public class TaiKhoanService {
     private final NhanVienRepository nhanVienRepository;
     private final ChiNhanhRepository chiNhanhRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TaiKhoanMapper taiKhoanMapper;
 
     public List<TaiKhoanResponseDTO> getAll() {
         return taiKhoanRepository.findAll().stream()
-                .map(this::toDTO)
+                .map(taiKhoanMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
     public Optional<TaiKhoanResponseDTO> getById(UUID id) {
-        return taiKhoanRepository.findById(id).map(this::toDTO);
+        return taiKhoanRepository.findById(id).map(taiKhoanMapper::toResponse);
     }
-
-    private TaiKhoanResponseDTO toDTO(TaiKhoan tk) {
-        TaiKhoanResponseDTO dto = new TaiKhoanResponseDTO();
-        dto.setId(tk.getId());
-        dto.setTenDangNhap(tk.getTenDangNhap());
-        dto.setTrangThai(tk.getTrangThai());
-        dto.setNgayTao(tk.getNgayTao());
-        dto.setIdNhanVien(tk.getIdNhanVien());
-        if (tk.getIdNhanVien() != null) {
-            nhanVienRepository.findById(tk.getIdNhanVien()).ifPresent(nv -> {
-                dto.setEmail(nv.getEmail());
-                dto.setHoTen(nv.getHoTen());
-                dto.setVaiTro(nv.getVaiTro());
-                dto.setIdChiNhanh(nv.getIdChiNhanh());
-            });
-        }
-        return dto;
-    }
+    
 
     @Transactional
     public void create(CreateTaiKhoanRequestDTO request) {

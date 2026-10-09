@@ -1,5 +1,7 @@
 package com.erp.cuahangtienloi.service;
 
+import com.erp.cuahangtienloi.dto.request.ChiTietPhieuNhapRequestDTO;
+import com.erp.cuahangtienloi.dto.response.ChiTietPhieuNhapResponseDTO;
 import com.erp.cuahangtienloi.dto.response.PhieuNhapResponseDTO;
 import com.erp.cuahangtienloi.entity.ChiNhanh;
 import com.erp.cuahangtienloi.entity.ChiTietPhieuNhap;
@@ -8,6 +10,8 @@ import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.PhieuNhap;
 import com.erp.cuahangtienloi.entity.SanPham;
 import com.erp.cuahangtienloi.entity.SoQuy;
+import com.erp.cuahangtienloi.mapper.ChiTietPhieuNhapMapper;
+import com.erp.cuahangtienloi.mapper.PhieuNhapMapper;
 import com.erp.cuahangtienloi.repository.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -42,6 +46,8 @@ public class PhieuNhapService {
     private final SoQuyRepository soQuyRepository;
     private final JdbcTemplate jdbcTemplate;
     private final BranchAccessService branchAccessService;
+    private final PhieuNhapMapper phieuNhapMapper;
+    private final ChiTietPhieuNhapMapper chiTietPhieuNhapMapper;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -94,7 +100,7 @@ public class PhieuNhapService {
     public List<PhieuNhapResponseDTO> getAll(NhanVien actor) {
         return phieuNhapRepository.findAll().stream()
                 .filter(pn -> branchAccessService.canReadBranch(actor, pn.getIdChiNhanh()))
-                .map(this::toDTO)
+                .map(phieuNhapMapper::toResponse)
                 .toList();
     }
 
@@ -102,14 +108,14 @@ public class PhieuNhapService {
     public Optional<PhieuNhapResponseDTO> getById(UUID id, NhanVien actor) {
         return phieuNhapRepository.findById(id)
                 .filter(pn -> branchAccessService.canReadBranch(actor, pn.getIdChiNhanh()))
-                .map(this::toDTO);
+                .map(phieuNhapMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
     public List<PhieuNhapResponseDTO> getByChiNhanh(UUID idChiNhanh, NhanVien actor) {
         branchAccessService.requireReadableBranch(actor, idChiNhanh);
         return phieuNhapRepository.findByIdChiNhanh(idChiNhanh).stream()
-                .map(this::toDTO)
+                .map(phieuNhapMapper::toResponse)
                 .toList();
     }
 
@@ -117,7 +123,7 @@ public class PhieuNhapService {
     public List<PhieuNhapResponseDTO> getByNcc(UUID idNcc, NhanVien actor) {
         return phieuNhapRepository.findByIdNcc(idNcc).stream()
                 .filter(pn -> branchAccessService.canReadBranch(actor, pn.getIdChiNhanh()))
-                .map(this::toDTO)
+                .map(phieuNhapMapper::toResponse)
                 .toList();
     }
 
@@ -125,7 +131,7 @@ public class PhieuNhapService {
     public List<PhieuNhapResponseDTO> getByStatus(String trangThai, NhanVien actor) {
         return phieuNhapRepository.findByTrangThai(trangThai).stream()
                 .filter(pn -> branchAccessService.canReadBranch(actor, pn.getIdChiNhanh()))
-                .map(this::toDTO)
+                .map(phieuNhapMapper::toResponse)
                 .toList();
     }
 
@@ -214,7 +220,7 @@ public class PhieuNhapService {
                 || "PENDING".equalsIgnoreCase(saved.getTrangThai());
         if (awaitingPayment) {
             entityManager.clear();
-            return toDTO(phieuNhapRepository.findById(saved.getId()).orElseThrow());
+            return phieuNhapMapper.toResponse(phieuNhapRepository.findById(saved.getId()).orElseThrow());
         }
 
         BigDecimal paid = request.getDaThanhToan() != null
@@ -251,7 +257,7 @@ public class PhieuNhapService {
         ghiSoQuyNhapHang(reloaded, paid, actor.getId(), null);
 
         entityManager.clear();
-        return toDTO(phieuNhapRepository.findById(saved.getId()).orElseThrow());
+        return phieuNhapMapper.toResponse(phieuNhapRepository.findById(saved.getId()).orElseThrow());
     }
 
     /**
@@ -298,7 +304,7 @@ public class PhieuNhapService {
         ghiSoQuyNhapHang(pn, paid, actor.getId(), request != null ? request.getHinhThucTt() : null);
 
         entityManager.clear();
-        return Optional.of(toDTO(phieuNhapRepository.findById(id).orElseThrow()));
+        return Optional.of(phieuNhapMapper.toResponse(phieuNhapRepository.findById(id).orElseThrow()));
     }
 
     /**
@@ -399,7 +405,7 @@ public class PhieuNhapService {
                 ngayNhan, id);
 
         entityManager.clear();
-        return Optional.of(toDTO(phieuNhapRepository.findById(id).orElseThrow()));
+        return Optional.of(phieuNhapMapper.toResponse(phieuNhapRepository.findById(id).orElseThrow()));
     }
 
     @Transactional
@@ -422,7 +428,7 @@ public class PhieuNhapService {
                     if (request.getGhiChu() != null) pn.setGhiChu(request.getGhiChu());
                     pn.setNgayCapNhat(LocalDateTime.now());
                     phieuNhapRepository.save(pn);
-                    return toDTO(pn);
+                    return phieuNhapMapper.toResponse(pn);
                 });
     }
 
@@ -446,20 +452,23 @@ public class PhieuNhapService {
 
     // --- Logic ChiTietPhieuNhap ---
     @Transactional(readOnly = true)
-    public List<ChiTietPhieuNhap> getLinesByPhieuNhap(UUID idPhieuNhap, NhanVien actor) {
-        requireReadableHeader(idPhieuNhap, actor);
-        return chiTietPhieuNhapRepository.findByIdPhieuNhap(idPhieuNhap);
+    public List<ChiTietPhieuNhapResponseDTO> getLinesByPhieuNhap(UUID idPhieuNhap, NhanVien actor) {
+        requireReadableHeader(idPhieuNhap, actor);   // giữ nguyên, phải gọi trước khi trả
+        return chiTietPhieuNhapRepository.findByIdPhieuNhap(idPhieuNhap).stream()
+                .map(chiTietPhieuNhapMapper::toResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<ChiTietPhieuNhap> getLinesBySanPham(UUID idSanPham, NhanVien actor) {
+    public List<ChiTietPhieuNhapResponseDTO> getLinesBySanPham(UUID idSanPham, NhanVien actor) {
         return chiTietPhieuNhapRepository.findByIdSanPham(idSanPham).stream()
                 .filter(ct -> canReadHeader(actor, ct.getIdPhieuNhap()))
+                .map(chiTietPhieuNhapMapper::toResponse)
                 .toList();
     }
 
     @Transactional
-    public ChiTietPhieuNhap createLine(ChiTietPhieuNhap request, NhanVien actor) {
+    public ChiTietPhieuNhapResponseDTO createLine(ChiTietPhieuNhapRequestDTO request, NhanVien actor) {
         validateLine(request, actor);
         ChiTietPhieuNhap ct = new ChiTietPhieuNhap();
         ct.setId(UUID.randomUUID());
@@ -473,15 +482,15 @@ public class PhieuNhapService {
         ct.setHanSuDung(request.getHanSuDung());
         ct.setThuTu(request.getThuTu() != null ? request.getThuTu() : 0);
         ct.setNgayTao(LocalDateTime.now());
-        return chiTietPhieuNhapRepository.save(ct);
+        return chiTietPhieuNhapMapper.toResponse(chiTietPhieuNhapRepository.save(ct));
     }
 
     @Transactional
-    public void createBatchLines(List<ChiTietPhieuNhap> requests, NhanVien actor) {
+    public void createBatchLines(List<ChiTietPhieuNhapRequestDTO> requests, NhanVien actor) {
         if (requests == null || requests.isEmpty()) {
             throw new IllegalArgumentException("Danh sách chi tiết phiếu nhập rỗng");
         }
-        for (ChiTietPhieuNhap request : requests) {
+        for (ChiTietPhieuNhapRequestDTO request : requests) {
             validateLine(request, actor);
             ChiTietPhieuNhap ct = new ChiTietPhieuNhap();
             ct.setId(UUID.randomUUID());
@@ -515,7 +524,7 @@ public class PhieuNhapService {
         chiTietPhieuNhapRepository.deleteAll(list);
     }
 
-    private void validateLine(ChiTietPhieuNhap request, NhanVien actor) {
+    private void validateLine(ChiTietPhieuNhapRequestDTO  request, NhanVien actor) {
         if (request.getIdPhieuNhap() == null || !phieuNhapRepository.existsById(request.getIdPhieuNhap())) {
             throw new IllegalArgumentException("Phiếu nhập không tồn tại");
         }
@@ -547,40 +556,5 @@ public class PhieuNhapService {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.FORBIDDEN, "Không được xem hoặc sửa chi tiết phiếu nhập của chi nhánh khác");
         }
-    }
-
-    public PhieuNhapResponseDTO toDTO(PhieuNhap pn) {
-        PhieuNhapResponseDTO dto = new PhieuNhapResponseDTO();
-        dto.setId(pn.getId());
-        dto.setMaPhieu(pn.getMaPhieu());
-        dto.setIdChiNhanh(pn.getIdChiNhanh());
-        dto.setIdNcc(pn.getIdNcc());
-        dto.setIdNguoiNhap(pn.getIdNguoiNhap());
-        dto.setNgayDatHang(pn.getNgayDatHang());
-        dto.setNgayDuKienGiao(pn.getNgayDuKienGiao());
-        dto.setNgayNhanThucTe(pn.getNgayNhanThucTe());
-        dto.setSubTotal(pn.getSubTotal());
-        dto.setVatTotal(pn.getVatTotal());
-        dto.setGiamGia(pn.getGiamGia());
-        dto.setGrandTotal(pn.getGrandTotal());
-        dto.setDaThanhToan(pn.getDaThanhToan());
-        dto.setCongNo(pn.getCongNo());
-        dto.setTrangThai(pn.getTrangThai());
-        dto.setGhiChu(pn.getGhiChu());
-
-        if (pn.getIdChiNhanh() != null) {
-            chiNhanhRepository.findById(pn.getIdChiNhanh())
-                    .ifPresent(cn -> dto.setTenChiNhanh(cn.getTenChiNhanh()));
-        }
-        if (pn.getIdNcc() != null) {
-            nhaCungCapRepository.findById(pn.getIdNcc())
-                    .ifPresent(ncc -> dto.setTenNcc(ncc.getTenNcc()));
-        }
-        if (pn.getIdNguoiNhap() != null) {
-            nhanVienRepository.findById(pn.getIdNguoiNhap())
-                    .ifPresent(nv -> dto.setTenNguoiNhap(nv.getHoTen()));
-        }
-
-        return dto;
     }
 }

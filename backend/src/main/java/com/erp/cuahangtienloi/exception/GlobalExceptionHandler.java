@@ -2,19 +2,28 @@ package com.erp.cuahangtienloi.exception;
 
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.core.NestedExceptionUtils;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse> handleValidation(MethodArgumentNotValidException ex) {
@@ -40,6 +49,23 @@ public class GlobalExceptionHandler {
                 ? "Dữ liệu không hợp lệ."
                 : ex.getMessage();
         return ResponseEntity.badRequest().body(ApiResponse.err(message));
+    }
+
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<ApiResponse> handleNotFound(NoSuchElementException ex) {
+        log.warn("Not found: {}", ex.getMessage());
+        return ResponseEntity.status(404).body(ApiResponse.err("Không tìm thấy dữ liệu yêu cầu."));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<?> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(403).body(Map.of("message", "Bạn không có quyền thực hiện thao tác này."));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<?> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity.badRequest()
+                .body(Map.of("message", "Giá trị tham số '" + ex.getName() + "' không hợp lệ."));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -106,9 +132,17 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleGeneral(Exception ex) {
-        String msg = NestedExceptionUtils.getMostSpecificCause(ex).getMessage();
-        return ResponseEntity
-                .badRequest()
-                .body(Map.of("message", msg != null ? msg : "Đã xảy ra lỗi khi xử lý yêu cầu."));
+        // Lỗi framework (405, 404 resource, thiếu param, 415...) đã mang sẵn status đúng
+        if (ex instanceof ErrorResponse er) {
+            HttpStatusCode status = er.getStatusCode();
+            String message = status.value() == 404 ? "Không tìm thấy tài nguyên."
+                    : status.value() == 405 ? "Phương thức không được hỗ trợ."
+                      : status.is4xxClientError() ? "Yêu cầu không hợp lệ."
+                        : "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.";
+            return ResponseEntity.status(status).body(Map.of("message", message));
+        }
+        log.error("Unhandled exception", ex);
+        return ResponseEntity.status(500)
+                .body(Map.of("message", "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau."));
     }
 }

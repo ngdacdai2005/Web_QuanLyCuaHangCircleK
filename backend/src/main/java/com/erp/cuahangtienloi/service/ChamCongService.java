@@ -4,6 +4,7 @@ import com.erp.cuahangtienloi.dto.response.ChamCongResponseDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.entity.ChamCong;
 import com.erp.cuahangtienloi.entity.NhanVien;
+import com.erp.cuahangtienloi.mapper.ChamCongMapper;
 import com.erp.cuahangtienloi.repository.ChamCongRepository;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,6 +35,7 @@ public class ChamCongService {
     private final ChamCongRepository chamCongRepository;
     private final NhanVienRepository nhanVienRepository;
     private final BranchAccessService branchAccessService;
+    private final ChamCongMapper chamCongMapper;
 
     /**
      * Khoảng thời gian mặc định của mỗi ca (giờ).
@@ -63,7 +65,7 @@ public class ChamCongService {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return chamCongRepository.findAll().stream()
                 .filter(cc -> canRead(actor, cc.getIdNhanVien()))
-                .map(this::toDTO)
+                .map(chamCongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -72,7 +74,7 @@ public class ChamCongService {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return chamCongRepository.findById(id)
                 .filter(cc -> canRead(actor, cc.getIdNhanVien()))
-                .map(cc -> ResponseEntity.ok(toDTO(cc)))
+                .map(cc -> ResponseEntity.ok(chamCongMapper.toResponse(cc)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -80,7 +82,7 @@ public class ChamCongService {
     public List<ChamCongResponseDTO> getByNhanVien(UUID idNhanVien, HttpServletRequest request) {
         requireReadableEmployee(branchAccessService.requireAuthenticatedEmployee(request), idNhanVien);
         return chamCongRepository.findByIdNhanVien(idNhanVien).stream()
-                .map(this::toDTO)
+                .map(chamCongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -89,7 +91,7 @@ public class ChamCongService {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return chamCongRepository.findByWorkDate(workDate).stream()
                 .filter(cc -> canRead(actor, cc.getIdNhanVien()))
-                .map(this::toDTO)
+                .map(chamCongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -98,7 +100,7 @@ public class ChamCongService {
         requireReadableEmployee(branchAccessService.requireAuthenticatedEmployee(request), idNhanVien);
         return chamCongRepository
                 .findByIdNhanVienAndWorkDateBetween(idNhanVien, from, to).stream()
-                .map(this::toDTO)
+                .map(chamCongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -108,7 +110,7 @@ public class ChamCongService {
         return chamCongRepository
                 .findByWorkDateBetween(start, end).stream()
                 .filter(cc -> canRead(actor, cc.getIdNhanVien()))
-                .map(this::toDTO)
+                .map(chamCongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -143,7 +145,7 @@ public class ChamCongService {
         cc.setNgayCapNhat(LocalDateTime.now());
 
         chamCongRepository.save(cc);
-        return ResponseEntity.ok(toDTO(cc));
+        return ResponseEntity.ok(chamCongMapper.toResponse(cc));
     }
 
     @Transactional
@@ -173,7 +175,7 @@ public class ChamCongService {
                     if (request.getGhiChu() != null) cc.setGhiChu(request.getGhiChu());
                     cc.setNgayCapNhat(LocalDateTime.now());
                     chamCongRepository.save(cc);
-                    return ResponseEntity.ok(toDTO(cc));
+                    return ResponseEntity.ok(chamCongMapper.toResponse(cc));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -208,7 +210,7 @@ public class ChamCongService {
         // Bỏ qua nếu đã có record cho (nv, date, ca)
         Optional<ChamCong> existing = chamCongRepository.findByIdNhanVienAndWorkDateAndCaLamViec(idNhanVien, date, ca);
         if (existing.isPresent()) {
-            return ResponseEntity.ok(List.of(toDTO(existing.get())));
+            return ResponseEntity.ok(List.of(chamCongMapper.toResponse(existing.get())));
         }
 
         ChamCong cc = new ChamCong();
@@ -226,7 +228,7 @@ public class ChamCongService {
         cc.setNgayCapNhat(LocalDateTime.now());
 
         chamCongRepository.save(cc);
-        return ResponseEntity.ok(List.of(toDTO(cc)));
+        return ResponseEntity.ok(List.of(chamCongMapper.toResponse(cc)));
     }
 
     @Transactional
@@ -255,7 +257,7 @@ public class ChamCongService {
         }
         cc.setNgayCapNhat(LocalDateTime.now());
         chamCongRepository.save(cc);
-        return ResponseEntity.ok(toDTO(cc));
+        return ResponseEntity.ok(chamCongMapper.toResponse(cc));
     }
 
     @Transactional
@@ -295,7 +297,7 @@ public class ChamCongService {
                     .divide(BigDecimal.valueOf(60), 2, java.math.RoundingMode.HALF_UP));
         }
         chamCongRepository.save(cc);
-        return ResponseEntity.ok(toDTO(cc));
+        return ResponseEntity.ok(chamCongMapper.toResponse(cc));
     }
 
     @Transactional
@@ -315,7 +317,7 @@ public class ChamCongService {
         for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
             Optional<ChamCong> existing = chamCongRepository.findByIdNhanVienAndWorkDateAndCaLamViec(idNhanVien, d, ca);
             if (existing.isPresent()) {
-                created.add(toDTO(existing.get()));
+                created.add(chamCongMapper.toResponse(existing.get()));
                 continue;
             }
             ChamCong cc = new ChamCong();
@@ -332,39 +334,9 @@ public class ChamCongService {
             cc.setNgayTao(LocalDateTime.now());
             cc.setNgayCapNhat(LocalDateTime.now());
             chamCongRepository.save(cc);
-            created.add(toDTO(cc));
+            created.add(chamCongMapper.toResponse(cc));
         }
         return ResponseEntity.ok(created);
-    }
-
-    public ChamCongResponseDTO toDTO(ChamCong cc) {
-        ChamCongResponseDTO dto = new ChamCongResponseDTO();
-        dto.setId(cc.getId());
-        dto.setIdNhanVien(cc.getIdNhanVien());
-        dto.setWorkDate(cc.getWorkDate());
-        dto.setCaLamViec(cc.getCaLamViec());
-        dto.setCheckInAt(cc.getCheckInAt());
-        dto.setCheckOutAt(cc.getCheckOutAt());
-        dto.setClockInAt(cc.getClockInAt());
-        dto.setClockOutAt(cc.getClockOutAt());
-        dto.setDiTrePhut(cc.getDiTrePhut());
-        dto.setOvertimeHours(cc.getOvertimeHours());
-        dto.setBreakHours(cc.getBreakHours());
-        dto.setTongGioLam(cc.getTongGioLam());
-        dto.setTrangThai(cc.getTrangThai());
-        dto.setDaThanhToan(cc.getDaThanhToan());
-        dto.setGhiChu(cc.getGhiChu());
-
-        if (cc.getIdNhanVien() != null) {
-            nhanVienRepository.findById(cc.getIdNhanVien())
-                    .ifPresent(nv -> {
-                        dto.setTenNhanVien(nv.getHoTen());
-                        dto.setMaNhanVien(nv.getMaNhanVien());
-                        dto.setIdChiNhanh(nv.getIdChiNhanh());
-                    });
-        }
-
-        return dto;
     }
 
     public boolean canRead(NhanVien actor, UUID employeeId) {

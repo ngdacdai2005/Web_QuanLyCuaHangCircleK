@@ -1,6 +1,8 @@
 package com.erp.cuahangtienloi.controller;
 
+import com.erp.cuahangtienloi.dto.request.ChiTietHoaDonRequestDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
+import com.erp.cuahangtienloi.dto.response.ChiTietHoaDonResponseDTO;
 import com.erp.cuahangtienloi.entity.ChiTietHoaDon;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
@@ -37,7 +39,7 @@ public class ChiTietHoaDonController {
 
     @GetMapping("/by-hoa-don/{idHoaDon}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY', 'THU_NGAN')")
-    public ResponseEntity<List<ChiTietHoaDon>> getByHoaDon(@PathVariable UUID idHoaDon, HttpServletRequest request) {
+    public ResponseEntity<List<ChiTietHoaDonResponseDTO>> getByHoaDon(@PathVariable UUID idHoaDon, HttpServletRequest request) {
         return hoaDonService.getLinesByHoaDon(idHoaDon, requireAuthenticatedEmployee(request))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -45,20 +47,20 @@ public class ChiTietHoaDonController {
 
     @GetMapping("/by-san-pham/{idSanPham}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
-    public ResponseEntity<List<ChiTietHoaDon>> getBySanPham(@PathVariable UUID idSanPham) {
+    public ResponseEntity<List<ChiTietHoaDonResponseDTO>> getBySanPham(@PathVariable UUID idSanPham) {
         return ResponseEntity.ok(hoaDonService.getLinesBySanPham(idSanPham));
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
-    public ResponseEntity<?> create(@RequestBody ChiTietHoaDon request) {
+    public ResponseEntity<?> create(@RequestBody ChiTietHoaDonRequestDTO request) {
         return ResponseEntity.ok(hoaDonService.createLine(request));
     }
 
     @PostMapping("/batch")
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
-    public ResponseEntity<?> createBatch(@RequestBody List<ChiTietHoaDon> requests) {
-        hoaDonService.createBatchLines(requests);
+    public ResponseEntity<?> createBatch(@RequestBody List<ChiTietHoaDonRequestDTO> requests) {
+        hoaDonService.createBatchLines(requests);   
         return ResponseEntity.ok(ApiResponse.ok("Tạo chi tiết thành công"));
     }
 

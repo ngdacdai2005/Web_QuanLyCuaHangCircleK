@@ -1,5 +1,7 @@
 package com.erp.cuahangtienloi.controller;
 
+import com.erp.cuahangtienloi.dto.request.ChiNhanhRequestDTO;
+import com.erp.cuahangtienloi.dto.response.ChiNhanhResponseDTO;
 import com.erp.cuahangtienloi.entity.ChiNhanh;
 import com.erp.cuahangtienloi.service.ChiNhanhService;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +21,7 @@ public class ChiNhanhController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY', 'THU_KHO', 'THU_NGAN', 'KE_TOAN')")
-    public ResponseEntity<List<ChiNhanh>> getAll() {
+    public ResponseEntity<List<ChiNhanhResponseDTO>> getAll() {
         return ResponseEntity.ok(chiNhanhService.getAll());
     }
 
@@ -33,38 +35,38 @@ public class ChiNhanhController {
 
     @GetMapping("/active")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<ChiNhanh>> getActive() {
+    public ResponseEntity<List<ChiNhanhResponseDTO>> getActive() {
         return ResponseEntity.ok(chiNhanhService.getActive());
     }
 
     @GetMapping("/by-loai/{loai}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<ChiNhanh>> getByLoai(@PathVariable String loai) {
+    public ResponseEntity<List<ChiNhanhResponseDTO>> getByLoai(@PathVariable String loai) {
         return ResponseEntity.ok(chiNhanhService.getByLoai(loai));
     }
 
     @GetMapping("/kho-tong")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<ChiNhanh>> getKhoTong() {
+    public ResponseEntity<List<ChiNhanhResponseDTO>> getKhoTong() {
         return ResponseEntity.ok(chiNhanhService.getKhoTong());
     }
 
     @GetMapping("/cua-hang")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<ChiNhanh>> getCuaHang() {
+    public ResponseEntity<List<ChiNhanhResponseDTO>> getCuaHang() {
         return ResponseEntity.ok(chiNhanhService.getCuaHang());
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> create(@RequestBody ChiNhanh request) {
-        ChiNhanh created = chiNhanhService.create(request);
+    public ResponseEntity<?> create(@RequestBody ChiNhanhRequestDTO request) {
+        ChiNhanhResponseDTO created = chiNhanhService.create(request);
         return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody ChiNhanh request) {
+    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody ChiNhanhRequestDTO request) {
         return chiNhanhService.update(id, request)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

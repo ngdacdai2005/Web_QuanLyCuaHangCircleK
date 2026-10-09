@@ -4,15 +4,19 @@ import com.erp.cuahangtienloi.dto.response.HoaDonResponseDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.entity.HoaDon;
 import com.erp.cuahangtienloi.entity.NhanVien;
-import com.erp.cuahangtienloi.repository.NhanVienRepository;
+import com.erp.cuahangtienloi.mapper.ChiTietHoaDonMapper;
+import com.erp.cuahangtienloi.mapper.HoaDonMapper;
+import com.erp.cuahangtienloi.repository.*;
 import com.erp.cuahangtienloi.service.HoaDonService;
 import com.erp.cuahangtienloi.service.HoaDonService.CheckoutRequest;
 import com.erp.cuahangtienloi.service.HoaDonService.CreateSaleRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -22,11 +26,27 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/hoa-don")
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class HoaDonController {
 
     private final HoaDonService hoaDonService;
     private final NhanVienRepository nhanVienRepository;
+
+    public HoaDonController(
+            HoaDonRepository hoaDonRepository,
+            ChiNhanhRepository chiNhanhRepository,
+            NhanVienRepository nhanVienRepository,
+            ChiTietHoaDonRepository chiTietHoaDonRepository,
+            SanPhamRepository sanPhamRepository,
+            TonKhoRepository tonKhoRepository,
+            SoQuyRepository soQuyRepository,
+            JdbcTemplate jdbcTemplate
+    ) {
+        this(new HoaDonService(hoaDonRepository, chiNhanhRepository, nhanVienRepository,
+                chiTietHoaDonRepository, sanPhamRepository, tonKhoRepository, soQuyRepository,
+                jdbcTemplate, null, new HoaDonMapper(chiNhanhRepository, nhanVienRepository),
+                new ChiTietHoaDonMapper()), nhanVienRepository);
+    }
 
     private UUID resolveAuthenticatedIdNhanVien(HttpServletRequest request) {
         Object attr = request.getAttribute("authenticatedIdNhanVien");

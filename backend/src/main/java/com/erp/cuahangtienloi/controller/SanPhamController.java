@@ -5,6 +5,7 @@ import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.dto.response.SanPhamResponseDTO;
 import com.erp.cuahangtienloi.dto.request.UpdateSanPhamRequestDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
+import com.erp.cuahangtienloi.mapper.SanPhamMapper;
 import com.erp.cuahangtienloi.repository.DanhMucRepository;
 import com.erp.cuahangtienloi.repository.NhaCungCapRepository;
 import com.erp.cuahangtienloi.repository.SanPhamRepository;
@@ -43,8 +44,13 @@ public class SanPhamController {
             BranchAccessService branchAccessService,
             BranchProductStatusService branchProductStatusService
     ) {
-        this(new SanPhamService(sanPhamRepository, danhMucRepository, nhaCungCapRepository, branchProductStatusService), branchAccessService);
-    }
+        this(new SanPhamService(
+                        sanPhamRepository,
+                        danhMucRepository,
+                        nhaCungCapRepository,
+                        branchProductStatusService,
+                        new SanPhamMapper(danhMucRepository, nhaCungCapRepository)),
+                branchAccessService);    }
 
     private boolean isAdmin() {
         var auth = SecurityContextHolder.getContext().getAuthentication();

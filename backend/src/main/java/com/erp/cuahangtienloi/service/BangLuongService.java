@@ -8,6 +8,7 @@ import com.erp.cuahangtienloi.entity.BangLuong;
 import com.erp.cuahangtienloi.entity.ChamCong;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.SoQuy;
+import com.erp.cuahangtienloi.mapper.BangLuongMapper;
 import com.erp.cuahangtienloi.repository.BangLuongRepository;
 import com.erp.cuahangtienloi.repository.ChamCongRepository;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
@@ -45,6 +46,7 @@ public class BangLuongService {
     private final ChamCongRepository chamCongRepository;
     private final SoQuyRepository soQuyRepository;
     private final BranchAccessService branchAccessService;
+    private final BangLuongMapper bangLuongMapper;
 
     public record PayrollMetrics(BigDecimal totalHours, BigDecimal overtimeHours,
                                  BigDecimal regularHours, int completedShifts) {}
@@ -134,7 +136,7 @@ public class BangLuongService {
                 : bangLuongRepository.findByThangNam(requirePeriod(period));
         return source.stream()
                 .filter(bl -> branchAccessService.canReadBranch(actor, bl.getIdChiNhanh()))
-                .map(this::toDTO)
+                .map(bangLuongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -144,7 +146,7 @@ public class BangLuongService {
         String requestedPeriod = period == null || period.isBlank() ? null : requirePeriod(period);
         return bangLuongRepository.findByIdNhanVien(actor.getId()).stream()
                 .filter(bl -> requestedPeriod == null || bl.getThangNam().equals(requestedPeriod))
-                .map(this::toDTO)
+                .map(bangLuongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -153,7 +155,7 @@ public class BangLuongService {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return bangLuongRepository.findById(id)
                 .filter(bl -> branchAccessService.canReadBranch(actor, bl.getIdChiNhanh()))
-                .map(bl -> ResponseEntity.ok(toDTO(bl)))
+                .map(bl -> ResponseEntity.ok(bangLuongMapper.toResponse(bl)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -162,7 +164,7 @@ public class BangLuongService {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return bangLuongRepository.findByIdNhanVien(idNhanVien).stream()
                 .filter(bl -> branchAccessService.canReadBranch(actor, bl.getIdChiNhanh()))
-                .map(this::toDTO)
+                .map(bangLuongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -171,7 +173,7 @@ public class BangLuongService {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return bangLuongRepository.findByThangNam(thangNam).stream()
                 .filter(bl -> branchAccessService.canReadBranch(actor, bl.getIdChiNhanh()))
-                .map(this::toDTO)
+                .map(bangLuongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -180,7 +182,7 @@ public class BangLuongService {
         branchAccessService.requireReadableBranch(branchAccessService.requireAuthenticatedEmployee(request), idChiNhanh);
         return bangLuongRepository
                 .findByIdChiNhanhAndThangNam(idChiNhanh, thangNam).stream()
-                .map(this::toDTO)
+                .map(bangLuongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -189,7 +191,7 @@ public class BangLuongService {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return bangLuongRepository.findByTrangThai(trangThai).stream()
                 .filter(bl -> branchAccessService.canReadBranch(actor, bl.getIdChiNhanh()))
-                .map(this::toDTO)
+                .map(bangLuongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -228,7 +230,7 @@ public class BangLuongService {
         bl.setNgayCapNhat(LocalDateTime.now());
 
         bangLuongRepository.save(bl);
-        return ResponseEntity.ok(toDTO(bl));
+        return ResponseEntity.ok(bangLuongMapper.toResponse(bl));
     }
 
     @Transactional
@@ -260,7 +262,7 @@ public class BangLuongService {
                     }
                     bl.setNgayCapNhat(LocalDateTime.now());
                     bangLuongRepository.save(bl);
-                    return ResponseEntity.ok(toDTO(bl));
+                    return ResponseEntity.ok(bangLuongMapper.toResponse(bl));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -305,7 +307,7 @@ public class BangLuongService {
         recalculatePayrollAmounts(payroll);
         payroll.setNgayCapNhat(LocalDateTime.now());
         bangLuongRepository.save(payroll);
-        return ResponseEntity.ok(toDTO(payroll));
+        return ResponseEntity.ok(bangLuongMapper.toResponse(payroll));
     }
 
     @Transactional
@@ -332,7 +334,7 @@ public class BangLuongService {
         payroll.setIdNguoiXacNhan(actor.getId());
         payroll.setNgayXacNhan(LocalDateTime.now());
         bangLuongRepository.save(payroll);
-        return ResponseEntity.ok(toDTO(payroll));
+        return ResponseEntity.ok(bangLuongMapper.toResponse(payroll));
     }
 
     @Transactional
@@ -433,65 +435,9 @@ public class BangLuongService {
                         && cc.getClockOutAt() != null && cc.getTongGioLam() != null)
                 .forEach(cc -> cc.setDaThanhToan(true));
         chamCongRepository.flush();
-        return toDTO(payroll);
+        return bangLuongMapper.toResponse(payroll);
     }
-
-    public BangLuongResponseDTO toDTO(BangLuong bl) {
-        BangLuongResponseDTO dto = new BangLuongResponseDTO();
-        dto.setId(bl.getId());
-        dto.setIdNhanVien(bl.getIdNhanVien());
-        dto.setIdChiNhanh(bl.getIdChiNhanh());
-        dto.setLoaiHopDong(bl.getLoaiHopDong());
-        dto.setThangNam(bl.getThangNam());
-        dto.setTongGioLam(bl.getTongGioLam());
-        dto.setOvertimeHours(bl.getOvertimeHours());
-        dto.setTongSoCa(bl.getTongSoCa());
-        dto.setGioDieuChinh(bl.getGioDieuChinh());
-        dto.setLyDoDieuChinh(bl.getLyDoDieuChinh());
-        dto.setLuongTheoGio(bl.getLuongTheoGio());
-        dto.setLuongCung(bl.getLuongCung());
-        dto.setLuongCungThucTe(bl.getLuongCungThucTe());
-        dto.setTienCongTheoGio(bl.getTienCongTheoGio());
-        dto.setTienOt(bl.getTienOt());
-        dto.setThuong(bl.getThuong());
-        dto.setKhauTru(bl.getKhauTru());
-        dto.setTongTienLuong(bl.getTongTienLuong());
-        dto.setTrangThai(bl.getTrangThai());
-        dto.setIdNguoiXacNhan(bl.getIdNguoiXacNhan());
-        dto.setNgayXacNhan(bl.getNgayXacNhan());
-        dto.setIdNguoiDuyetChi(bl.getIdNguoiDuyetChi());
-        dto.setNgayDuyetChi(bl.getNgayDuyetChi());
-        dto.setIdNguoiThanhToan(bl.getIdNguoiThanhToan());
-        dto.setNgayThanhToan(bl.getNgayThanhToan());
-        dto.setMaPhieuChi(bl.getMaPhieuChi());
-
-        if (bl.getIdNhanVien() != null) {
-            nhanVienRepository.findById(bl.getIdNhanVien())
-                    .ifPresent(nv -> {
-                        dto.setTenNhanVien(nv.getHoTen());
-                        dto.setMaNhanVien(nv.getMaNhanVien());
-                        dto.setVaiTro(nv.getVaiTro());
-                    });
-        }
-        if (bl.getIdChiNhanh() != null) {
-            chiNhanhRepository.findById(bl.getIdChiNhanh())
-                    .ifPresent(cn -> dto.setTenChiNhanh(cn.getTenChiNhanh()));
-        }
-        if (bl.getIdNguoiXacNhan() != null) {
-            nhanVienRepository.findById(bl.getIdNguoiXacNhan())
-                    .ifPresent(nv -> dto.setTenNguoiXacNhan(nv.getHoTen()));
-        }
-        if (bl.getIdNguoiDuyetChi() != null) {
-            nhanVienRepository.findById(bl.getIdNguoiDuyetChi())
-                    .ifPresent(nv -> dto.setTenNguoiDuyetChi(nv.getHoTen()));
-        }
-        if (bl.getIdNguoiThanhToan() != null) {
-            nhanVienRepository.findById(bl.getIdNguoiThanhToan())
-                    .ifPresent(nv -> dto.setTenNguoiThanhToan(nv.getHoTen()));
-        }
-
-        return dto;
-    }
+    
 
     private void validateAmounts(BangLuong request) {
         nonNegative(request.getTongGioLam(), "Tổng giờ làm");

@@ -3,6 +3,7 @@ package com.erp.cuahangtienloi.service;
 import com.erp.cuahangtienloi.dto.response.SoQuyResponseDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.SoQuy;
+import com.erp.cuahangtienloi.mapper.SoQuyMapper;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
 import com.erp.cuahangtienloi.repository.SoQuyRepository;
@@ -29,11 +30,12 @@ public class SoQuyService {
     private final ChiNhanhRepository chiNhanhRepository;
     private final NhanVienRepository nhanVienRepository;
     private final BranchAccessService branchAccessService;
+    private final SoQuyMapper soQuyMapper;
 
     @Transactional(readOnly = true)
     public List<SoQuyResponseDTO> getAll(NhanVien employee) {
         return findEntriesVisibleTo(employee).stream()
-                .map(this::toDTO)
+                .map(soQuyMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -41,14 +43,14 @@ public class SoQuyService {
     public Optional<SoQuyResponseDTO> getById(UUID id, NhanVien employee) {
         return soQuyRepository.findById(id)
                 .filter(sq -> canReadEntry(employee, sq))
-                .map(this::toDTO);
+                .map(soQuyMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
     public List<SoQuyResponseDTO> getByChiNhanh(UUID idChiNhanh, NhanVien employee) {
         branchAccessService.requireReadableBranch(employee, idChiNhanh);
         return soQuyRepository.findByIdChiNhanh(idChiNhanh).stream()
-                .map(this::toDTO)
+                .map(soQuyMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -56,7 +58,7 @@ public class SoQuyService {
     public List<SoQuyResponseDTO> getByDirection(String direction, NhanVien employee) {
         return findEntriesVisibleTo(employee).stream()
                 .filter(sq -> direction.equals(sq.getDirection()))
-                .map(this::toDTO)
+                .map(soQuyMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -64,7 +66,7 @@ public class SoQuyService {
     public List<SoQuyResponseDTO> getByHangMuc(String hangMuc, NhanVien employee) {
         return findEntriesVisibleTo(employee).stream()
                 .filter(sq -> hangMuc.equals(sq.getHangMuc()))
-                .map(this::toDTO)
+                .map(soQuyMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -72,7 +74,7 @@ public class SoQuyService {
     public List<SoQuyResponseDTO> getByDateRange(LocalDate from, LocalDate to, NhanVien employee) {
         return findEntriesVisibleTo(employee).stream()
                 .filter(sq -> !sq.getEntryDate().isBefore(from) && !sq.getEntryDate().isAfter(to))
-                .map(this::toDTO)
+                .map(soQuyMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -127,7 +129,7 @@ public class SoQuyService {
         }
 
         soQuyRepository.save(sq);
-        return toDTO(sq);
+        return soQuyMapper.toResponse(sq);
     }
 
     @Transactional
@@ -152,7 +154,7 @@ public class SoQuyService {
                     if (request.getTrangThai() != null) sq.setTrangThai(request.getTrangThai());
                     sq.setNgayCapNhat(LocalDateTime.now());
                     soQuyRepository.save(sq);
-                    return toDTO(sq);
+                    return soQuyMapper.toResponse(sq);
                 });
     }
 
@@ -176,33 +178,5 @@ public class SoQuyService {
                 || (entry.getIdChiNhanh() != null
                 && entry.getIdChiNhanh().equals(branchAccessService.requiredOwnBranch(employee)));
     }
-
-    public SoQuyResponseDTO toDTO(SoQuy sq) {
-        SoQuyResponseDTO dto = new SoQuyResponseDTO();
-        dto.setId(sq.getId());
-        dto.setMaChungTu(sq.getMaChungTu());
-        dto.setMaChungTuLienQuan(sq.getMaChungTuLienQuan());
-        dto.setIdChiNhanh(sq.getIdChiNhanh());
-        dto.setIdNguoiTao(sq.getIdNguoiTao());
-        dto.setDirection(sq.getDirection());
-        dto.setHangMuc(sq.getHangMuc());
-        dto.setHinhThucTt(sq.getHinhThucTt());
-        dto.setEntryDate(sq.getEntryDate());
-        dto.setSoTien(sq.getSoTien());
-        dto.setDoiTuong(sq.getDoiTuong());
-        dto.setDienGiai(sq.getDienGiai());
-        dto.setRunningBalance(sq.getRunningBalance());
-        dto.setTrangThai(sq.getTrangThai());
-
-        if (sq.getIdChiNhanh() != null) {
-            chiNhanhRepository.findById(sq.getIdChiNhanh())
-                    .ifPresent(cn -> dto.setTenChiNhanh(cn.getTenChiNhanh()));
-        }
-        if (sq.getIdNguoiTao() != null) {
-            nhanVienRepository.findById(sq.getIdNguoiTao())
-                    .ifPresent(nv -> dto.setTenNguoiTao(nv.getHoTen()));
-        }
-
-        return dto;
-    }
+    
 }

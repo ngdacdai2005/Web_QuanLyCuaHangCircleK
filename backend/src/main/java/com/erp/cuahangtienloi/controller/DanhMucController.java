@@ -1,6 +1,8 @@
 package com.erp.cuahangtienloi.controller;
 
+import com.erp.cuahangtienloi.dto.request.DanhMucRequestDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
+import com.erp.cuahangtienloi.dto.response.DanhMucResponseDTO;
 import com.erp.cuahangtienloi.entity.DanhMuc;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.service.BranchAccessService;
@@ -47,7 +49,7 @@ public class DanhMucController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<DanhMuc>> getAll(HttpServletRequest request) {
+    public ResponseEntity<List<DanhMucResponseDTO>> getAll(HttpServletRequest request) {
         return ResponseEntity.ok(danhMucService.getAll(resolveBranchId(request), isAdmin()));
     }
 
@@ -61,25 +63,25 @@ public class DanhMucController {
 
     @GetMapping("/active")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<DanhMuc>> getActive(HttpServletRequest request) {
+    public ResponseEntity<List<DanhMucResponseDTO>> getActive(HttpServletRequest request) {
         return ResponseEntity.ok(danhMucService.getActive(resolveBranchId(request), isAdmin()));
     }
 
     @GetMapping("/parent/{parentId}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<DanhMuc>> getByParent(@PathVariable UUID parentId) {
+    public ResponseEntity<List<DanhMucResponseDTO>> getByParent(@PathVariable UUID parentId) {
         return ResponseEntity.ok(danhMucService.getByParent(parentId));
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> create(@RequestBody DanhMuc request) {
+    public ResponseEntity<?> create(@RequestBody DanhMucRequestDTO request) {
         return ResponseEntity.ok(danhMucService.create(request));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody DanhMuc request) {
+    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody DanhMucRequestDTO  request) {
         return danhMucService.update(id, request)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

@@ -1,7 +1,10 @@
 package com.erp.cuahangtienloi.controller;
 
+import com.erp.cuahangtienloi.dto.request.NhanVienRequestDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
+import com.erp.cuahangtienloi.dto.response.NhanVienResponseDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
+import com.erp.cuahangtienloi.mapper.NhanVienMapper;
 import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.NhanVienService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,12 +35,12 @@ public class NhanVienController {
             com.erp.cuahangtienloi.repository.TaiKhoanRepository taiKhoanRepository,
             BranchAccessService branchAccessService
     ) {
-        this(new NhanVienService(nhanVienRepository, chiNhanhRepository, taiKhoanRepository, branchAccessService), branchAccessService);
-    }
+        this(new NhanVienService(nhanVienRepository, chiNhanhRepository, taiKhoanRepository,
+                branchAccessService, new NhanVienMapper()), branchAccessService);    }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
-    public ResponseEntity<List<NhanVien>> getAll(HttpServletRequest request) {
+    public ResponseEntity<List<NhanVienResponseDTO>> getAll(HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(nhanVienService.getAll(actor));
     }
@@ -53,24 +56,24 @@ public class NhanVienController {
 
     @GetMapping("/by-chi-nhanh/{idChiNhanh}")
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
-    public ResponseEntity<List<NhanVien>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
+    public ResponseEntity<List<NhanVienResponseDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(nhanVienService.getByChiNhanh(idChiNhanh, actor));
     }
 
     @GetMapping("/active")
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
-    public ResponseEntity<List<NhanVien>> getActive(HttpServletRequest request) {
+    public ResponseEntity<List<NhanVienResponseDTO>> getActive(HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(nhanVienService.getActive(actor));
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
-    public ResponseEntity<?> create(@RequestBody NhanVien request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> create(@RequestBody NhanVienRequestDTO request, HttpServletRequest httpRequest) {
         try {
             NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
-            NhanVien created = nhanVienService.create(request, actor);
+            NhanVienResponseDTO  created = nhanVienService.create(request, actor);
             return ResponseEntity.ok(created);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
@@ -79,7 +82,7 @@ public class NhanVienController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody NhanVien request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody NhanVienRequestDTO request, HttpServletRequest httpRequest) {
         try {
             NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
             return nhanVienService.update(id, request, actor)
@@ -91,7 +94,7 @@ public class NhanVienController {
     }
 
     // Overload for testing without HttpServletRequest
-    public ResponseEntity<?> update(UUID id, NhanVien request) {
+    public ResponseEntity<?> update(UUID id, NhanVienRequestDTO request) {
         try {
             return nhanVienService.update(id, request)
                     .map(ResponseEntity::ok)

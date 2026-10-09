@@ -1,7 +1,9 @@
 package com.erp.cuahangtienloi.controller;
 
 import com.erp.cuahangtienloi.dto.response.SoQuyResponseDTO;
+import com.erp.cuahangtienloi.entity.ChiNhanh;
 import com.erp.cuahangtienloi.entity.HoaDon;
+import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.SoQuy;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
 import com.erp.cuahangtienloi.repository.ChiTietHoaDonRepository;
@@ -15,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -78,7 +81,10 @@ class CriticalFlowRegressionTest {
                 mock(JdbcTemplate.class)
         );
         UUID branchId = UUID.randomUUID();
-        when(chiNhanhRepository.existsById(branchId)).thenReturn(true);
+        ChiNhanh cn = new ChiNhanh();
+        cn.setLoai("CUA_HANG_BAN_LE");
+        cn.setDangHoatDong(true);
+        when(chiNhanhRepository.findById(branchId)).thenReturn(java.util.Optional.of(cn));
         when(hoaDonRepository.save(any(HoaDon.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         for (String method : List.of("CASH", "CARD", "MOMO", "ZALOPAY", "VNPAY", "BANK_TRANSFER")) {
@@ -105,35 +111,50 @@ class CriticalFlowRegressionTest {
                 mock(JdbcTemplate.class)
         );
         UUID branchId = UUID.randomUUID();
-        when(chiNhanhRepository.existsById(branchId)).thenReturn(true);
+        ChiNhanh cn = new ChiNhanh();
+        cn.setLoai("CUA_HANG_BAN_LE");
+        cn.setDangHoatDong(true);
+        when(chiNhanhRepository.findById(branchId)).thenReturn(java.util.Optional.of(cn));
 
         HoaDon cashInvoice = invoice(branchId, "CASH", new BigDecimal("100000"));
         cashInvoice.setTienKhachDua(new BigDecimal("99999"));
 
-        assertThrows(IllegalArgumentException.class, () -> controller.create(cashInvoice));
+        var ex = assertThrows(IllegalArgumentException.class, () -> controller.create(cashInvoice));
+        assertEquals("Tiền khách đưa phải lớn hơn hoặc bằng tổng tiền", ex.getMessage());
     }
 
     @Test
     void refundRejectsNonCompletedInvoice() {
         HoaDonRepository hoaDonRepository = mock(HoaDonRepository.class);
+        NhanVienRepository nhanVienRepository = mock(NhanVienRepository.class);
         HoaDonController controller = new HoaDonController(
                 hoaDonRepository,
                 mock(ChiNhanhRepository.class),
-                mock(NhanVienRepository.class),
+                nhanVienRepository,
                 mock(ChiTietHoaDonRepository.class),
                 mock(SanPhamRepository.class),
                 mock(TonKhoRepository.class),
                 mock(SoQuyRepository.class),
                 mock(JdbcTemplate.class)
         );
+
+        UUID actorId = UUID.randomUUID();
+        NhanVien actor = new NhanVien();
+        actor.setId(actorId);
+        actor.setVaiTro("ADMIN");
+        when(nhanVienRepository.findById(actorId)).thenReturn(java.util.Optional.of(actor));
+        HttpServletRequest http = mock(HttpServletRequest.class);
+        when(http.getAttribute("authenticatedIdNhanVien")).thenReturn(actorId.toString());
+
         UUID invoiceId = UUID.randomUUID();
         HoaDon hd = new HoaDon();
         hd.setId(invoiceId);
         hd.setTrangThai("CANCELLED");
         when(hoaDonRepository.findById(invoiceId)).thenReturn(java.util.Optional.of(hd));
 
-        var response = controller.refund(invoiceId, new HoaDonController.RefundRequest(null), mock(HttpServletRequest.class));
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        var ex = assertThrows(ResponseStatusException.class,
+                () -> controller.refund(invoiceId, new HoaDonController.RefundRequest(null), http));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
     }
 
     private HoaDon invoice(UUID branchId, String method, BigDecimal total) {

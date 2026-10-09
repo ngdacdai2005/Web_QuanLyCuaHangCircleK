@@ -6,6 +6,7 @@ import com.erp.cuahangtienloi.dto.response.LoginResponseDTO;
 import com.erp.cuahangtienloi.dto.response.TaiKhoanResponseDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.TaiKhoan;
+import com.erp.cuahangtienloi.mapper.TaiKhoanMapper;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
 import com.erp.cuahangtienloi.repository.TaiKhoanRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class AuthService {
 
     private final TaiKhoanRepository taiKhoanRepository;
     private final NhanVienRepository nhanVienRepository;
+    private final TaiKhoanMapper taiKhoanMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     @Value("${jwt.expiration-ms}")
@@ -59,28 +61,12 @@ public class AuthService {
 
         return new LoginResponseDTO(
                 token,
-                toDTO(taiKhoan, nhanVien),
+                taiKhoanMapper.toResponse(taiKhoan, nhanVien),
                 Instant.now()
                         .plusMillis(expirationMs)
                         .toString()
         );
     }
 
-    public TaiKhoanResponseDTO toDTO(TaiKhoan taiKhoan, NhanVien nhanVien) {
-        TaiKhoanResponseDTO dto = new TaiKhoanResponseDTO();
-        dto.setId(taiKhoan.getId());
-        dto.setTenDangNhap(taiKhoan.getTenDangNhap());
-        dto.setTrangThai(taiKhoan.getTrangThai());
-        dto.setIdNhanVien(taiKhoan.getIdNhanVien());
-        
-        if (nhanVien != null) {
-            dto.setEmail(nhanVien.getEmail());
-            dto.setSoDienThoai(nhanVien.getSoDienThoai());
-            dto.setHoTen(nhanVien.getHoTen());
-            dto.setVaiTro(nhanVien.getVaiTro());
-            dto.setIdChiNhanh(nhanVien.getIdChiNhanh());
-        }
-        
-        return dto;
-    }
+
 }
