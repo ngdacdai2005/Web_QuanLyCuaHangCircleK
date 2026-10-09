@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.PhieuXuatKhoDTO;
+import com.erp.cuahangtienloi.dto.response.PhieuXuatKhoDTO;
 import com.erp.cuahangtienloi.entity.ChiNhanh;
 import com.erp.cuahangtienloi.entity.ChiTietPhieuXuat;
 import com.erp.cuahangtienloi.entity.NhanVien;

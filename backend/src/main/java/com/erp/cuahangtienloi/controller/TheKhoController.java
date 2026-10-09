@@ -1,7 +1,7 @@
 package com.erp.cuahangtienloi.controller;
 
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
-import com.erp.cuahangtienloi.dto.TheKhoDTO;
+import com.erp.cuahangtienloi.dto.response.TheKhoDTO;
 import com.erp.cuahangtienloi.entity.TheKho;
 import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.TheKhoService;

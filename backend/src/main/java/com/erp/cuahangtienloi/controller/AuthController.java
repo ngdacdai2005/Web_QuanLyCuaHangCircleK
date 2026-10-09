@@ -1,8 +1,8 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.LoginRequest;
+import com.erp.cuahangtienloi.dto.request.LoginRequest;
 import jakarta.validation.Valid;
-import com.erp.cuahangtienloi.dto.LoginResponse;
+import com.erp.cuahangtienloi.dto.response.LoginResponse;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.service.AuthService;
 import lombok.RequiredArgsConstructor;

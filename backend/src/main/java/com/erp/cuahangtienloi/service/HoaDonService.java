@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.HoaDonDTO;
+import com.erp.cuahangtienloi.dto.response.HoaDonDTO;
 import com.erp.cuahangtienloi.entity.*;
 import com.erp.cuahangtienloi.repository.*;
 import jakarta.validation.Valid;

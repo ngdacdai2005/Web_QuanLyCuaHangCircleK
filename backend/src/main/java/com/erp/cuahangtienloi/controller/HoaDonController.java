@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.HoaDonDTO;
+import com.erp.cuahangtienloi.dto.response.HoaDonDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.entity.HoaDon;
 import com.erp.cuahangtienloi.entity.NhanVien;

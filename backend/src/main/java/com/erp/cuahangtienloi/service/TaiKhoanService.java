@@ -1,10 +1,10 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.ChangePasswordRequest;
-import com.erp.cuahangtienloi.dto.CreateTaiKhoanRequest;
-import com.erp.cuahangtienloi.dto.NhanVienOption;
-import com.erp.cuahangtienloi.dto.TaiKhoanDTO;
-import com.erp.cuahangtienloi.dto.UpdateTaiKhoanRequest;
+import com.erp.cuahangtienloi.dto.request.ChangePasswordRequest;
+import com.erp.cuahangtienloi.dto.request.CreateTaiKhoanRequest;
+import com.erp.cuahangtienloi.dto.response.NhanVienOption;
+import com.erp.cuahangtienloi.dto.response.TaiKhoanDTO;
+import com.erp.cuahangtienloi.dto.request.UpdateTaiKhoanRequest;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.TaiKhoan;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;

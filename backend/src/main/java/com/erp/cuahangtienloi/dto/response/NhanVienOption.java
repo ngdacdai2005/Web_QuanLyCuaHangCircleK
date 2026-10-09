@@ -1,4 +1,4 @@
-package com.erp.cuahangtienloi.dto;
+package com.erp.cuahangtienloi.dto.response;
 
 import java.util.UUID;
 

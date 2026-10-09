@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.NhaCungCapDTO;
+import com.erp.cuahangtienloi.dto.response.NhaCungCapDTO;
 import com.erp.cuahangtienloi.entity.NhaCungCap;
 import com.erp.cuahangtienloi.entity.NhaCungCapDanhMuc;
 import com.erp.cuahangtienloi.repository.DanhMucRepository;

@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.NhaCungCapDTO;
+import com.erp.cuahangtienloi.dto.response.NhaCungCapDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.service.NhaCungCapService;
 import jakarta.validation.Valid;

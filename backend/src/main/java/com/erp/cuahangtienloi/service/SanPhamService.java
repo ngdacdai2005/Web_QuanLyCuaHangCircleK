@@ -1,8 +1,8 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.CreateSanPhamRequest;
-import com.erp.cuahangtienloi.dto.SanPhamDTO;
-import com.erp.cuahangtienloi.dto.UpdateSanPhamRequest;
+import com.erp.cuahangtienloi.dto.request.CreateSanPhamRequest;
+import com.erp.cuahangtienloi.dto.response.SanPhamDTO;
+import com.erp.cuahangtienloi.dto.request.UpdateSanPhamRequest;
 import com.erp.cuahangtienloi.entity.SanPham;
 import com.erp.cuahangtienloi.repository.DanhMucRepository;
 import com.erp.cuahangtienloi.repository.NhaCungCapRepository;

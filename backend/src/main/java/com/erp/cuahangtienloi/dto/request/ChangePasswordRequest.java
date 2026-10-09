@@ -1,4 +1,4 @@
-package com.erp.cuahangtienloi.dto;
+package com.erp.cuahangtienloi.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

@@ -1,8 +1,8 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.BangLuongDTO;
-import com.erp.cuahangtienloi.dto.BatchApproveRequest;
-import com.erp.cuahangtienloi.dto.HourAdjustmentRequest;
+import com.erp.cuahangtienloi.dto.response.BangLuongDTO;
+import com.erp.cuahangtienloi.dto.request.BatchApproveRequest;
+import com.erp.cuahangtienloi.dto.request.HourAdjustmentRequest;
 import com.erp.cuahangtienloi.entity.BangLuong;
 import com.erp.cuahangtienloi.service.BangLuongService;
 import jakarta.servlet.http.HttpServletRequest;

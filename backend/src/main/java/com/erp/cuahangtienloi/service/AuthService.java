@@ -1,9 +1,9 @@
 package com.erp.cuahangtienloi.service;
 
 import com.erp.cuahangtienloi.config.JwtService;
-import com.erp.cuahangtienloi.dto.LoginRequest;
-import com.erp.cuahangtienloi.dto.LoginResponse;
-import com.erp.cuahangtienloi.dto.TaiKhoanDTO;
+import com.erp.cuahangtienloi.dto.request.LoginRequest;
+import com.erp.cuahangtienloi.dto.response.LoginResponse;
+import com.erp.cuahangtienloi.dto.response.TaiKhoanDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.TaiKhoan;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
@@ -14,8 +14,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor

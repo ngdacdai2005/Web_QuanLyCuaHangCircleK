@@ -1,11 +1,11 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.ChangePasswordRequest;
-import com.erp.cuahangtienloi.dto.CreateTaiKhoanRequest;
-import com.erp.cuahangtienloi.dto.NhanVienOption;
+import com.erp.cuahangtienloi.dto.request.ChangePasswordRequest;
+import com.erp.cuahangtienloi.dto.request.CreateTaiKhoanRequest;
+import com.erp.cuahangtienloi.dto.response.NhanVienOption;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
-import com.erp.cuahangtienloi.dto.TaiKhoanDTO;
-import com.erp.cuahangtienloi.dto.UpdateTaiKhoanRequest;
+import com.erp.cuahangtienloi.dto.response.TaiKhoanDTO;
+import com.erp.cuahangtienloi.dto.request.UpdateTaiKhoanRequest;
 import com.erp.cuahangtienloi.service.TaiKhoanService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

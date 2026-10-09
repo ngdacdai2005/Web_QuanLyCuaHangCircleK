@@ -1,8 +1,8 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.BangLuongDTO;
-import com.erp.cuahangtienloi.dto.BatchApproveRequest;
-import com.erp.cuahangtienloi.dto.HourAdjustmentRequest;
+import com.erp.cuahangtienloi.dto.response.BangLuongDTO;
+import com.erp.cuahangtienloi.dto.request.BatchApproveRequest;
+import com.erp.cuahangtienloi.dto.request.HourAdjustmentRequest;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.entity.BangLuong;
 import com.erp.cuahangtienloi.entity.ChamCong;

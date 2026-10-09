@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.ChamCongDTO;
+import com.erp.cuahangtienloi.dto.response.ChamCongDTO;
 import com.erp.cuahangtienloi.entity.ChamCong;
 import com.erp.cuahangtienloi.service.ChamCongService;
 import jakarta.servlet.http.HttpServletRequest;

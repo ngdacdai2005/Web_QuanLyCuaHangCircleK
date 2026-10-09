@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.UpdateSanPhamRequest;
+import com.erp.cuahangtienloi.dto.request.UpdateSanPhamRequest;
 import com.erp.cuahangtienloi.entity.ChiTietKiemKe;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.SanPham;
@@ -16,7 +16,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import jakarta.servlet.http.HttpServletRequest;
 
 import java.lang.reflect.Method;
 import java.util.List;

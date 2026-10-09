@@ -1,8 +1,8 @@
 package com.erp.cuahangtienloi.validation;
 
-import com.erp.cuahangtienloi.dto.CreateSanPhamRequest;
-import com.erp.cuahangtienloi.dto.CreateTaiKhoanRequest;
-import com.erp.cuahangtienloi.dto.UpdateTaiKhoanRequest;
+import com.erp.cuahangtienloi.dto.request.CreateSanPhamRequest;
+import com.erp.cuahangtienloi.dto.request.CreateTaiKhoanRequest;
+import com.erp.cuahangtienloi.dto.request.UpdateTaiKhoanRequest;
 import com.erp.cuahangtienloi.controller.TaiKhoanController;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
