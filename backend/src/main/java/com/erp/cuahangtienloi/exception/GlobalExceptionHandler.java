@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.exception;
 
-import com.erp.cuahangtienloi.dto.Response.ApiResponse;
+import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;

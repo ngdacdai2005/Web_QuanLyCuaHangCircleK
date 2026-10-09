@@ -1,8 +1,7 @@
 package com.erp.cuahangtienloi.controller;
 
 import com.erp.cuahangtienloi.dto.PhieuKiemKeDTO;
-import com.erp.cuahangtienloi.dto.Response.ApiResponse;
-import com.erp.cuahangtienloi.entity.NhanVien;
+import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.entity.PhieuKiemKe;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
 import com.erp.cuahangtienloi.service.BranchAccessService;

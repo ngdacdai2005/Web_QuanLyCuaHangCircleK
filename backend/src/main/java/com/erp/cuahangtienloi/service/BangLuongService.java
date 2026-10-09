@@ -3,7 +3,7 @@ package com.erp.cuahangtienloi.service;
 import com.erp.cuahangtienloi.dto.BangLuongDTO;
 import com.erp.cuahangtienloi.dto.BatchApproveRequest;
 import com.erp.cuahangtienloi.dto.HourAdjustmentRequest;
-import com.erp.cuahangtienloi.dto.Response.ApiResponse;
+import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.entity.BangLuong;
 import com.erp.cuahangtienloi.entity.ChamCong;
 import com.erp.cuahangtienloi.entity.NhanVien;

@@ -1,4 +1,4 @@
-package com.erp.cuahangtienloi.dto.Response;
+package com.erp.cuahangtienloi.dto.response;
 
 public record ApiResponse(boolean success, String message) {
 

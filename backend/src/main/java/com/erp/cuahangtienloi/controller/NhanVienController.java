@@ -1,11 +1,10 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.Response.ApiResponse;
+import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.NhanVienService;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;

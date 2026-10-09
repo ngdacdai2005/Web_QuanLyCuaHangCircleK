@@ -1,7 +1,7 @@
 package com.erp.cuahangtienloi.controller;
 
 import com.erp.cuahangtienloi.dto.CreateSanPhamRequest;
-import com.erp.cuahangtienloi.dto.Response.ApiResponse;
+import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.dto.SanPhamDTO;
 import com.erp.cuahangtienloi.dto.UpdateSanPhamRequest;
 import com.erp.cuahangtienloi.entity.NhanVien;

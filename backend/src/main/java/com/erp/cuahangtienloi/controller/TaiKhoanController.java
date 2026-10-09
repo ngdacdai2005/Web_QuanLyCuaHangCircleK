@@ -3,7 +3,7 @@ package com.erp.cuahangtienloi.controller;
 import com.erp.cuahangtienloi.dto.ChangePasswordRequest;
 import com.erp.cuahangtienloi.dto.CreateTaiKhoanRequest;
 import com.erp.cuahangtienloi.dto.NhanVienOption;
-import com.erp.cuahangtienloi.dto.Response.ApiResponse;
+import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.dto.TaiKhoanDTO;
 import com.erp.cuahangtienloi.dto.UpdateTaiKhoanRequest;
 import com.erp.cuahangtienloi.service.TaiKhoanService;

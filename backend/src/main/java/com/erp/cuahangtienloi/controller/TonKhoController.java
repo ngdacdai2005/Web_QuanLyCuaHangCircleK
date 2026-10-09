@@ -1,6 +1,6 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.Response.ApiResponse;
+import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.dto.TonKhoDTO;
 import com.erp.cuahangtienloi.entity.TonKho;
 import com.erp.cuahangtienloi.service.BranchAccessService;
