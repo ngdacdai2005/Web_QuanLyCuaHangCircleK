@@ -44,4 +44,23 @@ public class SoQuyMapper {
 
         return dto;
     }
+
+    public SoQuy toEntity(com.erp.cuahangtienloi.dto.request.SoQuyRequestDTO dto) {
+        if (dto == null) return null;
+        SoQuy sq = new SoQuy();
+        sq.setMaChungTu(dto.getMaChungTu());
+        sq.setMaChungTuLienQuan(dto.getMaChungTuLienQuan());
+        sq.setIdChiNhanh(dto.getIdChiNhanh());
+        sq.setIdNguoiTao(dto.getIdNguoiTao());
+        sq.setDirection(dto.getDirection());
+        sq.setHangMuc(dto.getHangMuc());
+        sq.setHinhThucTt(dto.getHinhThucTt());
+        sq.setEntryDate(dto.getEntryDate());
+        sq.setSoTien(dto.getSoTien());
+        sq.setDoiTuong(dto.getDoiTuong());
+        sq.setDienGiai(dto.getDienGiai());
+        sq.setRunningBalance(dto.getRunningBalance());
+        sq.setTrangThai(dto.getTrangThai());
+        return sq;
+    }
 }

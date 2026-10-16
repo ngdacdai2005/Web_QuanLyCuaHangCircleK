@@ -43,28 +43,8 @@ public class PhieuKiemKeService {
     private final PhieuKiemKeMapper phieuKiemKeMapper;
     private final ChiTietKiemKeMapper chiTietKiemKeMapper;
 
-    @Getter
-    @Setter
-    public static class CreateStocktakeRequest {
-        @NotNull(message = "Chi nhánh bắt buộc chọn")
-        private UUID idChiNhanh;
-        private LocalDate ngayKiemKe;
-        private String ghiChu;
-        @NotEmpty(message = "Phiếu kiểm kê phải có ít nhất một sản phẩm")
-        @Valid
-        private List<CreateStocktakeLineRequest> lines;
-    }
-
-    @Getter
-    @Setter
-    public static class CreateStocktakeLineRequest {
-        @NotNull(message = "Sản phẩm kiểm kê bắt buộc chọn")
-        private UUID idSanPham;
-        @NotNull(message = "Tồn thực tế bắt buộc nhập")
-        @Min(value = 0, message = "Tồn thực tế phải lớn hơn hoặc bằng 0")
-        private Integer tonThucTe;
-        private String lyDoLech;
-    }
+    public static class CreateStocktakeRequest extends com.erp.cuahangtienloi.dto.request.CreateStocktakeRequestDTO {}
+    public static class CreateStocktakeLineRequest extends com.erp.cuahangtienloi.dto.request.CreateStocktakeLineDTO {}
 
     @Transactional(readOnly = true)
     public List<PhieuKiemKeResponseDTO> getAll(NhanVien actor) {
@@ -122,7 +102,7 @@ public class PhieuKiemKeService {
     }
 
     @Transactional
-    public PhieuKiemKeResponseDTO createWithLines(CreateStocktakeRequest request, UUID idNguoiTao, NhanVien actor) {
+    public PhieuKiemKeResponseDTO createWithLines(com.erp.cuahangtienloi.dto.request.CreateStocktakeRequestDTO request, UUID idNguoiTao, NhanVien actor) {
         if (request.getIdChiNhanh() == null) {
             throw new IllegalArgumentException("Thiếu chi nhánh");
         }
@@ -133,7 +113,7 @@ public class PhieuKiemKeService {
             throw new IllegalArgumentException("Chi nhánh không tồn tại");
         }
         branchAccessService.requireReadableBranch(actor, request.getIdChiNhanh());
-        for (CreateStocktakeLineRequest line : request.getLines()) {
+        for (com.erp.cuahangtienloi.dto.request.CreateStocktakeLineDTO line : request.getLines()) {
             if (line.getIdSanPham() == null || !sanPhamRepository.existsById(line.getIdSanPham())) {
                 throw new IllegalArgumentException("Sản phẩm kiểm kê không tồn tại");
             }
@@ -152,7 +132,7 @@ public class PhieuKiemKeService {
         PhieuKiemKe savedHeader = phieuKiemKeRepository.saveAndFlush(pkk);
 
         List<ChiTietKiemKe> lines = new ArrayList<>();
-        for (CreateStocktakeLineRequest line : request.getLines()) {
+        for (com.erp.cuahangtienloi.dto.request.CreateStocktakeLineDTO line : request.getLines()) {
             var tonKho = tonKhoRepository.findByIdSanPhamAndIdChiNhanh(
                     line.getIdSanPham(), request.getIdChiNhanh()).orElse(null);
             int tonHeThong = tonKho != null && tonKho.getSoLuongTon() != null
@@ -208,6 +188,16 @@ public class PhieuKiemKeService {
                     phieuKiemKeRepository.save(pkk);
                     return phieuKiemKeMapper.toResponse(pkk);
                 });
+    }
+
+    @Transactional
+    public PhieuKiemKeResponseDTO create(com.erp.cuahangtienloi.dto.request.PhieuKiemKeRequestDTO request, UUID idNguoiTao, NhanVien actor) {
+        return create(phieuKiemKeMapper.toEntity(request), idNguoiTao, actor);
+    }
+
+    @Transactional
+    public Optional<PhieuKiemKeResponseDTO> update(UUID id, com.erp.cuahangtienloi.dto.request.PhieuKiemKeRequestDTO request, NhanVien actor) {
+        return update(id, phieuKiemKeMapper.toEntity(request), actor);
     }
 
     @Transactional

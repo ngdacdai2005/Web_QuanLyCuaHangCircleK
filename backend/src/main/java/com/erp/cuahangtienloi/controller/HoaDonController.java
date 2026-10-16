@@ -1,15 +1,17 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.response.HoaDonResponseDTO;
+import com.erp.cuahangtienloi.dto.request.CheckoutRequestDTO;
+import com.erp.cuahangtienloi.dto.request.CreateSaleRequestDTO;
+import com.erp.cuahangtienloi.dto.request.HoaDonRequestDTO;
+import com.erp.cuahangtienloi.dto.request.RefundRequestDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
+import com.erp.cuahangtienloi.dto.response.HoaDonResponseDTO;
 import com.erp.cuahangtienloi.entity.HoaDon;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.mapper.ChiTietHoaDonMapper;
 import com.erp.cuahangtienloi.mapper.HoaDonMapper;
 import com.erp.cuahangtienloi.repository.*;
 import com.erp.cuahangtienloi.service.HoaDonService;
-import com.erp.cuahangtienloi.service.HoaDonService.CheckoutRequest;
-import com.erp.cuahangtienloi.service.HoaDonService.CreateSaleRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -99,22 +101,28 @@ public class HoaDonController {
         return ResponseEntity.ok(hoaDonService.getByStatus(trangThai, requireAuthenticatedEmployee(request)));
     }
 
+    public record RefundRequest(String lyDoHoan) {}
+
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY', 'THU_NGAN')")
-    public ResponseEntity<?> create(@RequestBody HoaDon request) {
+    public ResponseEntity<?> create(@RequestBody HoaDonRequestDTO request) {
+        return ResponseEntity.ok(hoaDonService.create(request));
+    }
+
+    public ResponseEntity<?> create(HoaDon request) {
         return ResponseEntity.ok(hoaDonService.create(request));
     }
 
     @PostMapping("/with-lines")
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY', 'THU_NGAN')")
-    public ResponseEntity<?> createWithLines(@Valid @RequestBody CreateSaleRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> createWithLines(@Valid @RequestBody CreateSaleRequestDTO request, HttpServletRequest httpRequest) {
         UUID authenticatedCashierId = resolveAuthenticatedIdNhanVien(httpRequest);
         return ResponseEntity.ok(hoaDonService.createWithLines(request, authenticatedCashierId));
     }
 
     @PostMapping("/checkout")
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY', 'THU_NGAN')")
-    public ResponseEntity<?> checkout(@Valid @RequestBody CheckoutRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> checkout(@Valid @RequestBody CheckoutRequestDTO request, HttpServletRequest httpRequest) {
         UUID cashierId = resolveAuthenticatedIdNhanVien(httpRequest);
         if (cashierId == null) {
             return ResponseEntity.status(401).body(ApiResponse.err("Không xác định được nhân viên đăng nhập"));
@@ -124,13 +132,17 @@ public class HoaDonController {
         return ResponseEntity.status(201).body(created);
     }
 
-    public record RefundRequest(String lyDoHoan) {}
-
     @PostMapping("/{id}/refund")
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY', 'THU_NGAN')")
     public ResponseEntity<HoaDonResponseDTO> refund(@PathVariable UUID id,
-                                                    @RequestBody(required = false) RefundRequest body,
+                                                    @RequestBody(required = false) RefundRequestDTO body,
                                                     HttpServletRequest httpRequest) {
+        NhanVien actor = requireAuthenticatedEmployee(httpRequest);
+        String lyDo = (body != null) ? body.lyDoHoan() : null;
+        return ResponseEntity.ok(hoaDonService.refund(id, lyDo, actor));
+    }
+
+    public ResponseEntity<HoaDonResponseDTO> refund(UUID id, RefundRequest body, HttpServletRequest httpRequest) {
         NhanVien actor = requireAuthenticatedEmployee(httpRequest);
         String lyDo = (body != null) ? body.lyDoHoan() : null;
         return ResponseEntity.ok(hoaDonService.refund(id, lyDo, actor));
@@ -138,7 +150,7 @@ public class HoaDonController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY', 'THU_NGAN')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody HoaDon request) {
+    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody HoaDonRequestDTO request) {
         return hoaDonService.update(id, request)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

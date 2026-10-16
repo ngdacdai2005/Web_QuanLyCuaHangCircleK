@@ -1,12 +1,12 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.response.PhieuKiemKeResponseDTO;
+import com.erp.cuahangtienloi.dto.request.CreateStocktakeRequestDTO;
+import com.erp.cuahangtienloi.dto.request.PhieuKiemKeRequestDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
-import com.erp.cuahangtienloi.entity.PhieuKiemKe;
+import com.erp.cuahangtienloi.dto.response.PhieuKiemKeResponseDTO;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
 import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.PhieuKiemKeService;
-import com.erp.cuahangtienloi.service.PhieuKiemKeService.CreateStocktakeRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -68,7 +68,7 @@ public class PhieuKiemKeController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<?> create(@RequestBody PhieuKiemKe request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> create(@RequestBody PhieuKiemKeRequestDTO request, HttpServletRequest httpRequest) {
         var actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         UUID idNguoiTao = resolveAuthenticatedIdNhanVien(httpRequest);
         return ResponseEntity.ok(phieuKiemKeService.create(request, idNguoiTao, actor));
@@ -76,7 +76,7 @@ public class PhieuKiemKeController {
 
     @PostMapping("/with-lines")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<?> createWithLines(@Valid @RequestBody CreateStocktakeRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> createWithLines(@Valid @RequestBody CreateStocktakeRequestDTO request, HttpServletRequest httpRequest) {
         var actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         UUID idNguoiTao = resolveAuthenticatedIdNhanVien(httpRequest);
         return ResponseEntity.ok(phieuKiemKeService.createWithLines(request, idNguoiTao, actor));
@@ -84,7 +84,7 @@ public class PhieuKiemKeController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody PhieuKiemKe request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody PhieuKiemKeRequestDTO request, HttpServletRequest httpRequest) {
         var actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return phieuKiemKeService.update(id, request, actor)
                 .map(ResponseEntity::ok)

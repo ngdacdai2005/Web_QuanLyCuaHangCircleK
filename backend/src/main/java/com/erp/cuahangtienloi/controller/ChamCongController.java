@@ -1,7 +1,7 @@
 package com.erp.cuahangtienloi.controller;
 
 import com.erp.cuahangtienloi.dto.response.ChamCongResponseDTO;
-import com.erp.cuahangtienloi.entity.ChamCong;
+import com.erp.cuahangtienloi.dto.request.ChamCongRequestDTO;
 import com.erp.cuahangtienloi.service.ChamCongService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -63,13 +63,13 @@ public class ChamCongController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
-    public ResponseEntity<?> create(@RequestBody ChamCong request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> create(@RequestBody ChamCongRequestDTO request, HttpServletRequest httpRequest) {
         return chamCongService.create(request, httpRequest);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody ChamCong request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody ChamCongRequestDTO request, HttpServletRequest httpRequest) {
         return chamCongService.update(id, request, httpRequest);
     }
 

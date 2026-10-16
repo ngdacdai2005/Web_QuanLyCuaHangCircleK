@@ -3,7 +3,6 @@ package com.erp.cuahangtienloi.controller;
 import com.erp.cuahangtienloi.dto.request.ChiTietHoaDonRequestDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.dto.response.ChiTietHoaDonResponseDTO;
-import com.erp.cuahangtienloi.entity.ChiTietHoaDon;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
 import com.erp.cuahangtienloi.service.HoaDonService;

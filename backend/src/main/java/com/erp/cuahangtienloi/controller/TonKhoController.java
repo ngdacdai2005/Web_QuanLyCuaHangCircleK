@@ -2,7 +2,8 @@ package com.erp.cuahangtienloi.controller;
 
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.dto.response.TonKhoResponseDTO;
-import com.erp.cuahangtienloi.entity.TonKho;
+import com.erp.cuahangtienloi.dto.request.TonKhoAdjustmentRequestDTO;
+import com.erp.cuahangtienloi.dto.request.TonKhoRequestDTO;
 import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.TonKhoService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -60,13 +61,13 @@ public class TonKhoController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> create(@RequestBody TonKho request) {
+    public ResponseEntity<?> create(@RequestBody TonKhoRequestDTO request) {
         return ResponseEntity.ok(tonKhoService.create(request));
     }
 
     @PutMapping("/{idSanPham}/{idChiNhanh}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> update(@PathVariable UUID idSanPham, @PathVariable UUID idChiNhanh, @RequestBody TonKho request) {
+    public ResponseEntity<?> update(@PathVariable UUID idSanPham, @PathVariable UUID idChiNhanh, @RequestBody TonKhoRequestDTO request) {
         return tonKhoService.update(idSanPham, idChiNhanh, request)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -74,7 +75,7 @@ public class TonKhoController {
 
     @PostMapping("/adjust")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<?> adjust(@RequestBody TonKhoService.TonKhoAdjustmentRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> adjust(@RequestBody TonKhoAdjustmentRequestDTO request, HttpServletRequest httpRequest) {
         var employee = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return tonKhoService.adjust(request, employee)
                 .map(ResponseEntity::ok)

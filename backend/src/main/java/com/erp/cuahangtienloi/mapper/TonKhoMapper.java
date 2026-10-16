@@ -43,4 +43,15 @@ public class TonKhoMapper {
 
         return dto;
     }
+
+    public TonKho toEntity(com.erp.cuahangtienloi.dto.request.TonKhoRequestDTO dto) {
+        if (dto == null) return null;
+        TonKho tk = new TonKho();
+        tk.setIdSanPham(dto.getIdSanPham());
+        tk.setIdChiNhanh(dto.getIdChiNhanh());
+        tk.setTonToiThieu(dto.getTonToiThieu() != null ? dto.getTonToiThieu() : 0);
+        tk.setTonToiDa(dto.getTonToiDa() != null ? dto.getTonToiDa() : 0);
+        tk.setHanSuDungGanNhat(dto.getHanSuDungGanNhat());
+        return tk;
+    }
 }

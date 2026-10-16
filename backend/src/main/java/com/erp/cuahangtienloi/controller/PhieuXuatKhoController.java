@@ -3,7 +3,7 @@ package com.erp.cuahangtienloi.controller;
 import com.erp.cuahangtienloi.dto.response.PhieuXuatKhoResponseDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.entity.NhanVien;
-import com.erp.cuahangtienloi.entity.PhieuXuatKho;
+import com.erp.cuahangtienloi.dto.request.PhieuXuatKhoRequestDTO;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
 import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.PhieuXuatKhoService;
@@ -83,7 +83,7 @@ public class PhieuXuatKhoController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<?> create(@RequestBody PhieuXuatKho request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> create(@RequestBody PhieuXuatKhoRequestDTO request, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         String dedupKey = "TRANSFER_CREATE:" + actor.getId() + ":" + request.getIdChiNhanhXuat() + ":" + request.getIdChiNhanhNhan();
         if (!requestDeduplicationService.tryAcquire(dedupKey, 5)) {
@@ -105,7 +105,7 @@ public class PhieuXuatKhoController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody PhieuXuatKho request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody PhieuXuatKhoRequestDTO request, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return phieuXuatKhoService.update(id, request, actor)
                 .map(ResponseEntity::ok)

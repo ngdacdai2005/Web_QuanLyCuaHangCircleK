@@ -1,9 +1,9 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.response.BangLuongResponseDTO;
+import com.erp.cuahangtienloi.dto.request.BangLuongRequestDTO;
 import com.erp.cuahangtienloi.dto.request.BatchApproveRequestDTO;
 import com.erp.cuahangtienloi.dto.request.HourAdjustmentRequestDTO;
-import com.erp.cuahangtienloi.entity.BangLuong;
+import com.erp.cuahangtienloi.dto.response.BangLuongResponseDTO;
 import com.erp.cuahangtienloi.service.BangLuongService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -74,13 +74,13 @@ public class BangLuongController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
-    public ResponseEntity<?> create(@RequestBody BangLuong request) {
+    public ResponseEntity<?> create(@RequestBody BangLuongRequestDTO request) {
         return bangLuongService.create(request);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody BangLuong request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody BangLuongRequestDTO request, HttpServletRequest httpRequest) {
         return bangLuongService.update(id, request, httpRequest);
     }
 

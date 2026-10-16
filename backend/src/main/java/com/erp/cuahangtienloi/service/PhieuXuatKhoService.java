@@ -183,6 +183,16 @@ public class PhieuXuatKhoService {
     }
 
     @Transactional
+    public PhieuXuatKhoResponseDTO create(com.erp.cuahangtienloi.dto.request.PhieuXuatKhoRequestDTO request, UUID idNguoiTao, NhanVien actor) {
+        return create(phieuXuatKhoMapper.toEntity(request), idNguoiTao, actor);
+    }
+
+    @Transactional
+    public Optional<PhieuXuatKhoResponseDTO> update(UUID id, com.erp.cuahangtienloi.dto.request.PhieuXuatKhoRequestDTO request, NhanVien actor) {
+        return update(id, phieuXuatKhoMapper.toEntity(request), actor);
+    }
+
+    @Transactional
     public boolean delete(UUID id, NhanVien actor) {
         return phieuXuatKhoRepository.findById(id).map(pxk -> {
             requireTransferAccess(actor, pxk.getIdChiNhanhXuat(), pxk.getIdChiNhanhNhan());

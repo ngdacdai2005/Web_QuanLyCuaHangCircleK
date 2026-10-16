@@ -43,4 +43,24 @@ public class ChamCongMapper {
 
         return dto;
     }
+
+    public ChamCong toEntity(com.erp.cuahangtienloi.dto.request.ChamCongRequestDTO dto) {
+        if (dto == null) return null;
+        ChamCong cc = new ChamCong();
+        cc.setIdNhanVien(dto.getIdNhanVien());
+        cc.setWorkDate(dto.getWorkDate());
+        cc.setCaLamViec(dto.getCaLamViec());
+        cc.setCheckInAt(dto.getCheckInAt());
+        cc.setCheckOutAt(dto.getCheckOutAt());
+        cc.setClockInAt(dto.getClockInAt());
+        cc.setClockOutAt(dto.getClockOutAt());
+        cc.setDiTrePhut(dto.getDiTrePhut());
+        cc.setOvertimeHours(dto.getOvertimeHours());
+        cc.setBreakHours(dto.getBreakHours());
+        cc.setTongGioLam(dto.getTongGioLam());
+        cc.setTrangThai(dto.getTrangThai());
+        cc.setDaThanhToan(dto.getDaThanhToan());
+        cc.setGhiChu(dto.getGhiChu());
+        return cc;
+    }
 }

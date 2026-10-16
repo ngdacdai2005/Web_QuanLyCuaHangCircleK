@@ -1,13 +1,13 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.response.PhieuNhapResponseDTO;
+import com.erp.cuahangtienloi.dto.request.CreatePurchaseRequestDTO;
+import com.erp.cuahangtienloi.dto.request.PayRequestDTO;
+import com.erp.cuahangtienloi.dto.request.PhieuNhapRequestDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
+import com.erp.cuahangtienloi.dto.response.PhieuNhapResponseDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
-import com.erp.cuahangtienloi.entity.PhieuNhap;
 import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.PhieuNhapService;
-import com.erp.cuahangtienloi.service.PhieuNhapService.CreatePurchaseRequest;
-import com.erp.cuahangtienloi.service.PhieuNhapService.PayRequest;
 import com.erp.cuahangtienloi.service.RequestDeduplicationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -69,14 +69,14 @@ public class PhieuNhapController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
     @Deprecated
-    public ResponseEntity<?> create(@RequestBody PhieuNhap request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> create(@RequestBody(required = false) PhieuNhapRequestDTO request, HttpServletRequest httpRequest) {
         return ResponseEntity.status(HttpStatus.GONE).body(
                 ApiResponse.err("Endpoint cũ đã ngừng sử dụng. Hãy dùng POST /api/phieu-nhap/with-lines."));
     }
 
     @PostMapping("/with-lines")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
-    public ResponseEntity<?> createWithLines(@Valid @RequestBody CreatePurchaseRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> createWithLines(@Valid @RequestBody CreatePurchaseRequestDTO request, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
 
         String linesFingerprint = request.getLines() != null
@@ -107,7 +107,7 @@ public class PhieuNhapController {
     @PutMapping("/{id}/pay")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
     public ResponseEntity<?> pay(@PathVariable UUID id,
-                                 @RequestBody(required = false) PayRequest request,
+                                 @RequestBody(required = false) PayRequestDTO request,
                                  HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         try {
@@ -134,7 +134,7 @@ public class PhieuNhapController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody PhieuNhap request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody PhieuNhapRequestDTO request, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return phieuNhapService.update(id, request, actor)
                 .map(ResponseEntity::ok)

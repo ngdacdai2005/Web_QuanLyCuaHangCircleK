@@ -1,6 +1,10 @@
 package com.erp.cuahangtienloi.service;
 
+import com.erp.cuahangtienloi.dto.request.CheckoutLineDTO;
+import com.erp.cuahangtienloi.dto.request.CheckoutRequestDTO;
 import com.erp.cuahangtienloi.dto.request.ChiTietHoaDonRequestDTO;
+import com.erp.cuahangtienloi.dto.request.CreateSaleRequestDTO;
+import com.erp.cuahangtienloi.dto.request.SaleLineDTO;
 import com.erp.cuahangtienloi.dto.response.ChiTietHoaDonResponseDTO;
 import com.erp.cuahangtienloi.dto.response.HoaDonResponseDTO;
 import com.erp.cuahangtienloi.entity.*;
@@ -61,68 +65,10 @@ public class HoaDonService {
         });
     }
 
-    @Getter
-    @Setter
-    public static class CreateSaleRequest {
-        @NotNull(message = "Chi nhánh bắt buộc chọn")
-        private UUID idChiNhanh;
-        private UUID idThuNgan;
-        private String caLamViec;
-        private LocalDateTime ngayBan;
-        private String hinhThucTt;
-        private String sdtThanhVien;
-        private BigDecimal subTotal;
-        private BigDecimal giamGia;
-        private BigDecimal vatTotal;
-        private BigDecimal grandTotal;
-        private BigDecimal tienKhachDua;
-        private BigDecimal tienThoi;
-        @NotEmpty(message = "Giỏ hàng không được để trống")
-        @Valid
-        private List<SaleLine> lines;
-    }
-
-    @Getter
-    @Setter
-    public static class SaleLine {
-        @NotNull(message = "Sản phẩm bắt buộc chọn")
-        private UUID idSanPham;
-        @NotNull(message = "Số lượng bắt buộc nhập")
-        @Min(value = 1, message = "Số lượng bán phải lớn hơn 0")
-        private Integer soLuong;
-        @NotNull(message = "Đơn giá bắt buộc nhập")
-        @DecimalMin(value = "0", message = "Đơn giá phải lớn hơn hoặc bằng 0")
-        private BigDecimal donGia;
-        private BigDecimal giamGiaDong;
-        private Integer vatPhantram;
-        private BigDecimal thanhTien;
-        private BigDecimal donGiaVon;
-    }
-
-    @Getter
-    @Setter
-    public static class CheckoutRequest {
-        private String clientRequestId;
-        @NotNull(message = "Chi nhánh bắt buộc chọn")
-        private UUID idChiNhanh;
-        private String caLamViec;
-        private String hinhThucTt;
-        private String sdtThanhVien;
-        @DecimalMin(value = "0", message = "Giảm giá không được âm")
-        private BigDecimal giamGia;
-        private BigDecimal tienKhachDua;
-        @NotEmpty(message = "Giỏ hàng không được để trống")
-        @Valid
-        private List<CheckoutLine> lines;
-    }
-
-    @Getter
-    @Setter
-    public static class CheckoutLine {
-        @NotNull(message = "Sản phẩm bắt buộc chọn") private UUID idSanPham;
-        @NotNull(message = "Số lượng bắt buộc nhập") @Min(1) private Integer soLuong;
-        @DecimalMin(value = "0", message = "Giảm giá không được âm") private BigDecimal giamGiaDong;
-    }
+    public static class CreateSaleRequest extends com.erp.cuahangtienloi.dto.request.CreateSaleRequestDTO {}
+    public static class SaleLine extends com.erp.cuahangtienloi.dto.request.SaleLineDTO {}
+    public static class CheckoutRequest extends com.erp.cuahangtienloi.dto.request.CheckoutRequestDTO {}
+    public static class CheckoutLine extends com.erp.cuahangtienloi.dto.request.CheckoutLineDTO {}
 
     public record CheckoutLineCalculated(UUID productId, Integer quantity, BigDecimal unitPrice,
                                           BigDecimal lineDiscount, Integer vatPercent,
@@ -201,7 +147,12 @@ public class HoaDonService {
     }
 
     @Transactional
-    public HoaDonResponseDTO createWithLines(CreateSaleRequest request, UUID authenticatedCashierId) {
+    public HoaDonResponseDTO create(com.erp.cuahangtienloi.dto.request.HoaDonRequestDTO request) {
+        return create(hoaDonMapper.toEntity(request));
+    }
+
+    @Transactional
+    public HoaDonResponseDTO createWithLines(CreateSaleRequestDTO request, UUID authenticatedCashierId) {
         if (request.getIdChiNhanh() == null) {
             throw new IllegalArgumentException("Thiếu chi nhánh");
         }
@@ -214,7 +165,7 @@ public class HoaDonService {
             throw new IllegalArgumentException("Chỉ có thể bán hàng tại Cửa hàng bán lẻ đang hoạt động");
         }
         validatePayment(request.getHinhThucTt(), request.getGrandTotal(), request.getTienKhachDua());
-        for (SaleLine line : request.getLines()) {
+        for (SaleLineDTO line : request.getLines()) {
             var product = sanPhamRepository.findById(line.getIdSanPham()).orElse(null);
             if (product == null || !Boolean.TRUE.equals(product.getDangHoatDong())) {
                 throw new IllegalArgumentException("Sản phẩm không tồn tại hoặc đã ngừng bán");
@@ -252,7 +203,7 @@ public class HoaDonService {
 
         List<ChiTietHoaDon> lines = new ArrayList<>();
         int thuTu = 1;
-        for (SaleLine line : request.getLines()) {
+        for (SaleLineDTO line : request.getLines()) {
             ChiTietHoaDon ct = new ChiTietHoaDon();
             ct.setId(UUID.randomUUID());
             ct.setIdHoaDon(saved.getId());
@@ -275,7 +226,7 @@ public class HoaDonService {
     }
 
     @Transactional
-    public HoaDonResponseDTO checkout(CheckoutRequest request, UUID cashierId, NhanVien cashier) {
+    public HoaDonResponseDTO checkout(CheckoutRequestDTO request, UUID cashierId, NhanVien cashier) {
         String dedupKey = (request.getClientRequestId() != null && !request.getClientRequestId().isBlank())
                 ? "req:" + request.getClientRequestId().trim()
                 : "fallback:" + cashierId + ":" + request.getIdChiNhanh() + ":" + (System.currentTimeMillis() / 2000);
@@ -306,8 +257,8 @@ public class HoaDonService {
                     throw new IllegalArgumentException("Chỉ có thể bán hàng tại Cửa hàng bán lẻ đang hoạt động");
                 }
 
-                Map<UUID, CheckoutLine> requested = new LinkedHashMap<>();
-                for (CheckoutLine line : request.getLines()) {
+                Map<UUID, CheckoutLineDTO> requested = new LinkedHashMap<>();
+                for (CheckoutLineDTO line : request.getLines()) {
                     if (requested.putIfAbsent(line.getIdSanPham(), line) != null) {
                         throw new IllegalArgumentException("Một sản phẩm chỉ được xuất hiện một lần trong hóa đơn");
                     }
@@ -320,7 +271,7 @@ public class HoaDonService {
 
                 List<UUID> productIds = requested.keySet().stream().sorted(Comparator.naturalOrder()).toList();
                 for (UUID productId : productIds) {
-                    CheckoutLine line = requested.get(productId);
+                    CheckoutLineDTO line = requested.get(productId);
                     TonKho stock = tonKhoRepository.findByIdSanPhamAndIdChiNhanhForUpdate(productId, request.getIdChiNhanh())
                             .orElseThrow(() -> new IllegalArgumentException("Sản phẩm chưa có tồn kho tại chi nhánh"));
                     if (stock.getSoLuongTon() == null || stock.getSoLuongTon() < line.getSoLuong()) {
@@ -467,6 +418,11 @@ public class HoaDonService {
                     hoaDonRepository.save(hd);
                     return hoaDonMapper.toResponse(hd);
                 });
+    }
+
+    @Transactional
+    public Optional<HoaDonResponseDTO> update(UUID id, com.erp.cuahangtienloi.dto.request.HoaDonRequestDTO request) {
+        return update(id, hoaDonMapper.toEntity(request));
     }
 
     @Transactional

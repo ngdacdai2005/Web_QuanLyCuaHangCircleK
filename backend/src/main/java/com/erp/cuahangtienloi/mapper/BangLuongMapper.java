@@ -74,4 +74,26 @@ public class BangLuongMapper {
 
         return dto;
     }
+
+    public BangLuong toEntity(com.erp.cuahangtienloi.dto.request.BangLuongRequestDTO dto) {
+        if (dto == null) return null;
+        BangLuong bl = new BangLuong();
+        bl.setIdNhanVien(dto.getIdNhanVien());
+        bl.setIdChiNhanh(dto.getIdChiNhanh());
+        bl.setLoaiHopDong(dto.getLoaiHopDong());
+        bl.setThangNam(dto.getThangNam());
+        bl.setTongGioLam(dto.getTongGioLam());
+        bl.setOvertimeHours(dto.getOvertimeHours());
+        bl.setTongSoCa(dto.getTongSoCa());
+        bl.setLuongTheoGio(dto.getLuongTheoGio());
+        bl.setLuongCung(dto.getLuongCung());
+        bl.setLuongCungThucTe(dto.getLuongCungThucTe());
+        bl.setTienCongTheoGio(dto.getTienCongTheoGio());
+        bl.setTienOt(dto.getTienOt());
+        bl.setThuong(dto.getThuong());
+        bl.setKhauTru(dto.getKhauTru());
+        bl.setTongTienLuong(dto.getTongTienLuong());
+        bl.setTrangThai(dto.getTrangThai());
+        return bl;
+    }
 }

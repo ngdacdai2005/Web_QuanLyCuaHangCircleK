@@ -45,4 +45,14 @@ public class PhieuKiemKeMapper {
         return dto;
     }
 
+    public PhieuKiemKe toEntity(com.erp.cuahangtienloi.dto.request.PhieuKiemKeRequestDTO dto) {
+        if (dto == null) return null;
+        PhieuKiemKe pkk = new PhieuKiemKe();
+        pkk.setMaPhieu(dto.getMaPhieu());
+        pkk.setIdChiNhanh(dto.getIdChiNhanh());
+        pkk.setNgayKiemKe(dto.getNgayKiemKe());
+        pkk.setTrangThai(dto.getTrangThai());
+        pkk.setGhiChu(dto.getGhiChu());
+        return pkk;
+    }
 }

@@ -3,7 +3,6 @@ package com.erp.cuahangtienloi.controller;
 import com.erp.cuahangtienloi.dto.request.DanhMucRequestDTO;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.dto.response.DanhMucResponseDTO;
-import com.erp.cuahangtienloi.entity.DanhMuc;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.DanhMucService;

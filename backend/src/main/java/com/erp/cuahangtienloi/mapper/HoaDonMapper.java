@@ -49,4 +49,25 @@ public class HoaDonMapper {
 
         return dto;
     }
+
+    public HoaDon toEntity(com.erp.cuahangtienloi.dto.request.HoaDonRequestDTO dto) {
+        if (dto == null) return null;
+        HoaDon hd = new HoaDon();
+        hd.setMaHoaDon(dto.getMaHoaDon());
+        hd.setIdChiNhanh(dto.getIdChiNhanh());
+        hd.setIdThuNgan(dto.getIdThuNgan());
+        hd.setCaLamViec(dto.getCaLamViec());
+        hd.setNgayBan(dto.getNgayBan());
+        hd.setHinhThucTt(dto.getHinhThucTt());
+        hd.setSdtThanhVien(dto.getSdtThanhVien());
+        hd.setSubTotal(dto.getSubTotal());
+        hd.setGiamGia(dto.getGiamGia());
+        hd.setVatTotal(dto.getVatTotal());
+        hd.setGrandTotal(dto.getGrandTotal());
+        hd.setTienKhachDua(dto.getTienKhachDua());
+        hd.setTienThoi(dto.getTienThoi());
+        hd.setTrangThai(dto.getTrangThai());
+        hd.setGhiChu(dto.getGhiChu());
+        return hd;
+    }
 }

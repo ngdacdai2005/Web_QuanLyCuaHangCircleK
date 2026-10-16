@@ -2,7 +2,7 @@ package com.erp.cuahangtienloi.controller;
 
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.dto.response.TheKhoResponseDTO;
-import com.erp.cuahangtienloi.entity.TheKho;
+import com.erp.cuahangtienloi.dto.request.TheKhoRequestDTO;
 import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.TheKhoService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -75,7 +75,7 @@ public class TheKhoController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> create(@RequestBody TheKho request) {
+    public ResponseEntity<?> create(@RequestBody(required = false) TheKhoRequestDTO request) {
         return ResponseEntity.badRequest().body(ApiResponse.err(
                 "Không được tạo trực tiếp thẻ kho. Hãy thực hiện qua giao dịch nhập kho, bán hàng hoặc kiểm kê."));
     }

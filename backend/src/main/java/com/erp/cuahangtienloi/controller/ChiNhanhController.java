@@ -2,7 +2,6 @@ package com.erp.cuahangtienloi.controller;
 
 import com.erp.cuahangtienloi.dto.request.ChiNhanhRequestDTO;
 import com.erp.cuahangtienloi.dto.response.ChiNhanhResponseDTO;
-import com.erp.cuahangtienloi.entity.ChiNhanh;
 import com.erp.cuahangtienloi.service.ChiNhanhService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

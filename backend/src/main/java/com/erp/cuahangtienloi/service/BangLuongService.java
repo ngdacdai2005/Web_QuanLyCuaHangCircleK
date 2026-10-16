@@ -268,6 +268,16 @@ public class BangLuongService {
     }
 
     @Transactional
+    public ResponseEntity<?> create(com.erp.cuahangtienloi.dto.request.BangLuongRequestDTO request) {
+        return create(bangLuongMapper.toEntity(request));
+    }
+
+    @Transactional
+    public ResponseEntity<?> update(UUID id, com.erp.cuahangtienloi.dto.request.BangLuongRequestDTO request, HttpServletRequest httpRequest) {
+        return update(id, bangLuongMapper.toEntity(request), httpRequest);
+    }
+
+    @Transactional
     public ResponseEntity<?> adjustHours(UUID id, HourAdjustmentRequestDTO request, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         BangLuong payroll = bangLuongRepository.findById(id).orElse(null);

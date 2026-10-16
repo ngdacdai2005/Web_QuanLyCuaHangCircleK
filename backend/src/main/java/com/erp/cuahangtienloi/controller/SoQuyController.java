@@ -3,7 +3,6 @@ package com.erp.cuahangtienloi.controller;
 import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.dto.response.SoQuyResponseDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
-import com.erp.cuahangtienloi.entity.SoQuy;
 import com.erp.cuahangtienloi.mapper.SoQuyMapper;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
@@ -100,14 +99,19 @@ public class SoQuyController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
-    public ResponseEntity<?> create(@RequestBody SoQuy request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> create(@RequestBody com.erp.cuahangtienloi.dto.request.SoQuyRequestDTO request, HttpServletRequest httpRequest) {
+        UUID fallbackId = resolveAuthenticatedIdNhanVien(httpRequest);
+        return ResponseEntity.ok(soQuyService.create(request, fallbackId));
+    }
+
+    public ResponseEntity<?> create(com.erp.cuahangtienloi.entity.SoQuy request, HttpServletRequest httpRequest) {
         UUID fallbackId = resolveAuthenticatedIdNhanVien(httpRequest);
         return ResponseEntity.ok(soQuyService.create(request, fallbackId));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody SoQuy request) {
+    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody com.erp.cuahangtienloi.dto.request.SoQuyRequestDTO request) {
         return soQuyService.update(id, request)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

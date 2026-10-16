@@ -52,49 +52,9 @@ public class PhieuNhapService {
     @PersistenceContext
     private EntityManager entityManager;
 
-    @Getter
-    @Setter
-    public static class PayRequest {
-        private BigDecimal daThanhToan;
-        private String hinhThucTt;
-    }
-
-    @Getter
-    @Setter
-    public static class CreatePurchaseRequest {
-        private UUID idChiNhanh;
-        @NotNull(message = "Nhà cung cấp bắt buộc chọn")
-        private UUID idNcc;
-        private LocalDate ngayDatHang;
-        private LocalDate ngayDuKienGiao;
-        private LocalDate ngayNhanThucTe;
-        private BigDecimal giamGia;
-        private BigDecimal daThanhToan;
-        private String trangThai;
-        private String ghiChu;
-        @NotEmpty(message = "Phiếu nhập phải có ít nhất một dòng hàng")
-        @Valid
-        private List<PurchaseLine> lines;
-    }
-
-    @Getter
-    @Setter
-    public static class PurchaseLine {
-        @NotNull(message = "Sản phẩm bắt buộc chọn")
-        private UUID idSanPham;
-        @NotNull(message = "Số lượng bắt buộc nhập")
-        @Min(value = 1, message = "Số lượng phải lớn hơn 0")
-        private Integer soLuong;
-        @Min(value = 1, message = "Số lượng nhận phải lớn hơn 0")
-        private Integer soLuongNhan;
-        @NotNull(message = "Đơn giá nhập bắt buộc nhập")
-        @DecimalMin(value = "0.01", message = "Đơn giá nhập phải lớn hơn 0")
-        private BigDecimal donGiaNhap;
-        @Min(value = 0, message = "VAT phải từ 0 đến 100")
-        @Max(value = 100, message = "VAT phải từ 0 đến 100")
-        private Integer vatPhantram;
-        private LocalDate hanSuDung;
-    }
+    public static class PayRequest extends com.erp.cuahangtienloi.dto.request.PayRequestDTO {}
+    public static class PurchaseLine extends com.erp.cuahangtienloi.dto.request.PurchaseLineDTO {}
+    public static class CreatePurchaseRequest extends com.erp.cuahangtienloi.dto.request.CreatePurchaseRequestDTO {}
 
     @Transactional(readOnly = true)
     public List<PhieuNhapResponseDTO> getAll(NhanVien actor) {
@@ -136,7 +96,7 @@ public class PhieuNhapService {
     }
 
     @Transactional
-    public PhieuNhapResponseDTO createWithLines(CreatePurchaseRequest request, NhanVien actor) {
+    public PhieuNhapResponseDTO createWithLines(com.erp.cuahangtienloi.dto.request.CreatePurchaseRequestDTO request, NhanVien actor) {
         if (request.getIdNcc() == null) {
             throw new IllegalArgumentException("Thiếu nhà cung cấp");
         }
@@ -160,7 +120,7 @@ public class PhieuNhapService {
             throw new IllegalArgumentException("Kho Tổng đã ngừng hoạt động");
         }
         branchAccessService.requireReadableBranch(actor, idChiNhanh);
-        for (PurchaseLine line : request.getLines()) {
+        for (com.erp.cuahangtienloi.dto.request.PurchaseLineDTO line : request.getLines()) {
             if (!sanPhamRepository.existsById(line.getIdSanPham())) {
                 throw new IllegalArgumentException("Sản phẩm trong phiếu nhập không tồn tại");
             }
@@ -192,7 +152,7 @@ public class PhieuNhapService {
 
         List<ChiTietPhieuNhap> lines = new ArrayList<>();
         int thuTu = 1;
-        for (PurchaseLine line : request.getLines()) {
+        for (com.erp.cuahangtienloi.dto.request.PurchaseLineDTO line : request.getLines()) {
             if (line.getIdSanPham() == null || line.getSoLuong() == null || line.getSoLuong() <= 0) {
                 continue;
             }
@@ -269,7 +229,7 @@ public class PhieuNhapService {
      *   Lưu ý: Chưa cộng tồn kho và chưa tạo lô hàng tại bước này (hàng thực tế chưa về kho).
      */
     @Transactional
-    public Optional<PhieuNhapResponseDTO> pay(UUID id, PayRequest request, NhanVien actor) {
+    public Optional<PhieuNhapResponseDTO> pay(UUID id, com.erp.cuahangtienloi.dto.request.PayRequestDTO request, NhanVien actor) {
         Optional<PhieuNhap> found = phieuNhapRepository.findByIdForUpdate(id);
         if (found.isEmpty()) {
             return Optional.empty();
@@ -430,6 +390,11 @@ public class PhieuNhapService {
                     phieuNhapRepository.save(pn);
                     return phieuNhapMapper.toResponse(pn);
                 });
+    }
+
+    @Transactional
+    public Optional<PhieuNhapResponseDTO> update(UUID id, com.erp.cuahangtienloi.dto.request.PhieuNhapRequestDTO request, NhanVien actor) {
+        return update(id, phieuNhapMapper.toEntity(request), actor);
     }
 
     @Transactional

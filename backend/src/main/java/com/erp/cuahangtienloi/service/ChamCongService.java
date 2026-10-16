@@ -181,6 +181,16 @@ public class ChamCongService {
     }
 
     @Transactional
+    public ResponseEntity<?> create(com.erp.cuahangtienloi.dto.request.ChamCongRequestDTO request, HttpServletRequest httpRequest) {
+        return create(chamCongMapper.toEntity(request), httpRequest);
+    }
+
+    @Transactional
+    public ResponseEntity<?> update(UUID id, com.erp.cuahangtienloi.dto.request.ChamCongRequestDTO request, HttpServletRequest httpRequest) {
+        return update(id, chamCongMapper.toEntity(request), httpRequest);
+    }
+
+    @Transactional
     public ResponseEntity<?> delete(UUID id) {
         Optional<ChamCong> attendance = chamCongRepository.findById(id);
         if (attendance.isPresent()) {

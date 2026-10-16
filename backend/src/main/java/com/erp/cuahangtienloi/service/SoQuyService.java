@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.erp.cuahangtienloi.dto.request.SoQuyRequestDTO;
 import static com.erp.cuahangtienloi.validation.InputValidator.*;
 
 @Service
@@ -156,6 +157,16 @@ public class SoQuyService {
                     soQuyRepository.save(sq);
                     return soQuyMapper.toResponse(sq);
                 });
+    }
+
+    @Transactional
+    public SoQuyResponseDTO create(SoQuyRequestDTO request, UUID fallbackIdNguoiTao) {
+        return create(soQuyMapper.toEntity(request), fallbackIdNguoiTao);
+    }
+
+    @Transactional
+    public Optional<SoQuyResponseDTO> update(UUID id, SoQuyRequestDTO request) {
+        return update(id, soQuyMapper.toEntity(request));
     }
 
     @Transactional

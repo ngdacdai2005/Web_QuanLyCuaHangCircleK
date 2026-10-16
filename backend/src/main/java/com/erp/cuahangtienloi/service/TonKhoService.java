@@ -21,6 +21,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.erp.cuahangtienloi.dto.request.TonKhoAdjustmentRequestDTO;
+import com.erp.cuahangtienloi.dto.request.TonKhoRequestDTO;
 import static com.erp.cuahangtienloi.validation.InputValidator.nonNegative;
 
 @Service
@@ -128,6 +130,24 @@ public class TonKhoService {
                     tonKhoRepository.save(tk);
                     return tonKhoMapper.toResponse(tk);
                 });
+    }
+
+    @Transactional
+    public TonKhoResponseDTO create(TonKhoRequestDTO request) {
+        return create(tonKhoMapper.toEntity(request));
+    }
+
+    @Transactional
+    public Optional<TonKhoResponseDTO> update(UUID idSanPham, UUID idChiNhanh, TonKhoRequestDTO request) {
+        return update(idSanPham, idChiNhanh, tonKhoMapper.toEntity(request));
+    }
+
+    @Transactional
+    public Optional<TonKhoResponseDTO> adjust(TonKhoAdjustmentRequestDTO request, NhanVien employee) {
+        return adjust(new TonKhoAdjustmentRequest(
+                request.idSanPham(), request.idChiNhanh(), request.soLuong(), request.donGia(),
+                request.maChungTu(), request.nguoiThucHien(), request.hanSuDung(),
+                request.ghiChu(), request.ngayPhatSinh()), employee);
     }
 
     @Transactional

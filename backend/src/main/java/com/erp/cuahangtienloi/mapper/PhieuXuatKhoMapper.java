@@ -58,4 +58,16 @@ public class PhieuXuatKhoMapper {
 
         return dto;
     }
+
+    public PhieuXuatKho toEntity(com.erp.cuahangtienloi.dto.request.PhieuXuatKhoRequestDTO dto) {
+        if (dto == null) return null;
+        PhieuXuatKho pxk = new PhieuXuatKho();
+        pxk.setMaPhieu(dto.getMaPhieu());
+        pxk.setIdChiNhanhXuat(dto.getIdChiNhanhXuat());
+        pxk.setIdChiNhanhNhan(dto.getIdChiNhanhNhan());
+        pxk.setNgayYeuCau(dto.getNgayYeuCau());
+        pxk.setTrangThai(dto.getTrangThai());
+        pxk.setGhiChu(dto.getGhiChu());
+        return pxk;
+    }
 }

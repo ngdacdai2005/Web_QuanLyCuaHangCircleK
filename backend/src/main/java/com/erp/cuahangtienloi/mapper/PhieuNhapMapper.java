@@ -54,4 +54,23 @@ public class PhieuNhapMapper {
 
         return dto;
     }
+
+    public PhieuNhap toEntity(com.erp.cuahangtienloi.dto.request.PhieuNhapRequestDTO dto) {
+        if (dto == null) return null;
+        PhieuNhap pn = new PhieuNhap();
+        pn.setMaPhieu(dto.getMaPhieu());
+        pn.setIdChiNhanh(dto.getIdChiNhanh());
+        pn.setIdNcc(dto.getIdNcc());
+        pn.setNgayDatHang(dto.getNgayDatHang());
+        pn.setNgayDuKienGiao(dto.getNgayDuKienGiao());
+        pn.setSubTotal(dto.getSubTotal());
+        pn.setVatTotal(dto.getVatTotal());
+        pn.setGiamGia(dto.getGiamGia());
+        pn.setGrandTotal(dto.getGrandTotal());
+        pn.setDaThanhToan(dto.getDaThanhToan());
+        pn.setCongNo(dto.getCongNo());
+        pn.setTrangThai(dto.getTrangThai());
+        pn.setGhiChu(dto.getGhiChu());
+        return pn;
+    }
 }
