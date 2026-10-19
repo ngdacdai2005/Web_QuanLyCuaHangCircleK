@@ -144,6 +144,29 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                 ALTER TABLE thong_bao ADD COLUMN IF NOT EXISTS id_chi_nhanh UUID;
             """);
 
+            // 4.2 Tạo bảng san_pham_nha_cung_cap (Quan hệ nhiều - nhiều giữa Sản phẩm và Nhà cung cấp)
+            jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS san_pham_nha_cung_cap (
+                    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    id_san_pham         UUID NOT NULL,
+                    id_nha_cung_cap     UUID NOT NULL,
+                    ma_san_pham_ncc     VARCHAR(100),
+                    gia_nhap            NUMERIC(15, 2) NOT NULL DEFAULT 0,
+                    la_ncc_chinh        BOOLEAN DEFAULT FALSE,
+                    ghi_chu             TEXT,
+                    ngay_tao            TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    ngay_cap_nhat       TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT uq_san_pham_ncc UNIQUE (id_san_pham, id_nha_cung_cap)
+                );
+
+                -- Tự động migrate dữ liệu cũ từ bảng san_pham sang bảng trung gian
+                INSERT INTO san_pham_nha_cung_cap (id_san_pham, id_nha_cung_cap, gia_nhap, la_ncc_chinh)
+                SELECT id, id_nha_cung_cap, COALESCE(gia_von, 0), TRUE
+                FROM san_pham
+                WHERE id_nha_cung_cap IS NOT NULL
+                ON CONFLICT (id_san_pham, id_nha_cung_cap) DO NOTHING;
+            """);
+
             // 5. Thêm cột id_vai_tro vào nhan_vien nếu chưa có
             jdbcTemplate.execute("""
                 DO $$

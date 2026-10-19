@@ -20,6 +20,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchPurchaseOrders, type PurchaseDraftLine } from '@/store/slices/purchaseSlice';
 import { stockOf } from '@/store/slices/stockSlice';
 import { phieuNhapApi } from '@/api/phieuNhap';
+import { sanPhamApi, type SuppliedProductDTO } from '@/api/sanPham';
 import { fetchBranches  } from '@/store/slices/branchSlice';
 import { fetchProducts } from '@/store/slices/productSlice';
 import { fetchSuppliers } from '@/store/slices/supplierSlice';
@@ -107,20 +108,43 @@ export const PurchaseFormModal: FC<PurchaseFormModalProps> = ({ open, onClose })
   };
 
   const [supplierId, setSupplierId] = useState<string | null>(null);
+  const [suppliedProducts, setSuppliedProducts] = useState<SuppliedProductDTO[]>([]);
   const [branchId, setBranchId] = useState<string | null>(null);
   const [rows, setRows] = useState<DraftRow[]>([emptyRow()]);
 
+  // Tải danh sách sản phẩm được liên kết với nhà cung cấp đang chọn
+  useEffect(() => {
+    if (!supplierId) {
+      setSuppliedProducts([]);
+      return;
+    }
+    let cancelled = false;
+    sanPhamApi
+      .getSuppliedProducts(supplierId)
+      .then((res) => {
+        if (!cancelled) setSuppliedProducts(res);
+      })
+      .catch(() => {
+        if (!cancelled) setSuppliedProducts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [supplierId]);
+
+  const suppliedMap = useMemo(() => {
+    const map = new Map<string, SuppliedProductDTO>();
+    suppliedProducts.forEach((p) => map.set(p.id, p));
+    return map;
+  }, [suppliedProducts]);
+
   /**
    * Dọn form sau khi modal đóng hẳn.
-   *
-   * Đặt ở `afterClose` (một sự kiện) thay vì `useEffect` theo `open`: reset
-   * trong effect sẽ kích hoạt thêm một lượt render mỗi lần mở, và React cảnh
-   * báo đúng về việc đó. Chạy sau khi đóng cũng tránh người dùng thấy dữ liệu
-   * biến mất giữa lúc modal còn đang hiển thị.
    */
   const handleAfterClose = (): void => {
     form.resetFields();
     setSupplierId(null);
+    setSuppliedProducts([]);
     setBranchId(null);
     setRows([emptyRow()]);
   };
@@ -147,17 +171,16 @@ export const PurchaseFormModal: FC<PurchaseFormModalProps> = ({ open, onClose })
     }
   }, [open, branchId, khoTongBranches, isWarehouseKeeper, ownDistributionCenter?.id]);
 
-  /** Sản phẩm NCC đang chọn cung ứng: được gán trực tiếp. */
+  /** Sản phẩm NCC đang chọn cung ứng: ưu tiên bảng liên kết nhiều-nhiều, fallback về product.supplierId */
   const supplierProducts = useMemo(() => {
     if (supplierId === null) return [];
-    // const supplier = suppliers.find((item) => item.id === supplierId);
-    // const supplyCategories = new Set(supplier?.categoryIds ?? []);
+    if (suppliedProducts.length > 0) {
+      return sellableProducts.filter((p) => suppliedMap.has(p.id));
+    }
     return products.filter(
-        (product) =>
-            product.status === 'Active' &&
-            (product.supplierId === supplierId ),
+      (product) => product.status === 'Active' && product.supplierId === supplierId,
     );
-  }, [supplierId, suppliers, products]);
+  }, [supplierId, suppliedProducts, suppliedMap, sellableProducts, products]);
 
   /** Sản phẩm đã có trên form, để không cho chọn trùng. */
   const usedProductIds = useMemo(
@@ -273,19 +296,30 @@ export const PurchaseFormModal: FC<PurchaseFormModalProps> = ({ open, onClose })
           optionFilterProp="label"
           onChange={(productId: string) => {
             const product = sellableProducts.find((item) => item.id === productId);
-            // Điền sẵn giá nhập niêm yết để Thủ kho chỉ sửa khi giá thay đổi.
+            const supplied = suppliedMap.get(productId);
+            const unitCost = supplied && supplied.giaNhapNcc > 0
+              ? supplied.giaNhapNcc
+              : (product?.costPrice ?? 0);
+
+            // Điền sẵn giá nhập riêng theo NCC (hoặc giá vốn mặc định) để Thủ kho chỉ sửa khi có biến động
             updateRow(row.key, {
               productId,
-              unitCost: product?.costPrice ?? 0,
+              unitCost,
               vatPercent: product?.vatPercent ?? 8,
             });
           }}
-          options={supplierProducts.map((product) => ({
-            value: product.id,
-            label: `${product.name} (${product.sku})`,
-            // Đã có trên phiếu thì không cho chọn lại.
-            disabled: usedProductIds.has(product.id) && product.id !== value,
-          }))}
+          options={supplierProducts.map((product) => {
+            const supplied = suppliedMap.get(product.id);
+            const priceLabel = supplied && supplied.giaNhapNcc > 0
+              ? ` — Giá nhập: ${formatVND(supplied.giaNhapNcc)}`
+              : '';
+            return {
+              value: product.id,
+              label: `${product.name} (${product.sku})${priceLabel}`,
+              // Đã có trên phiếu thì không cho chọn lại.
+              disabled: usedProductIds.has(product.id) && product.id !== value,
+            };
+          })}
         />
       ),
     },

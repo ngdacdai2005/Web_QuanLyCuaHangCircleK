@@ -26,6 +26,40 @@ export interface SanPhamDTO {
   ngayCapNhat?: string;
 }
 
+export interface SanPhamNhaCungCapDTO {
+  id: string;
+  idSanPham: string;
+  idNhaCungCap: string;
+  maNcc?: string;
+  tenNcc?: string;
+  maSanPhamNcc?: string;
+  giaNhap: number;
+  laNccChinh: boolean;
+  ghiChu?: string;
+  ngayCapNhat?: string;
+}
+
+export interface SaveSanPhamNccRequest {
+  idNhaCungCap: string;
+  maSanPhamNcc?: string;
+  giaNhap?: number;
+  laNccChinh?: boolean;
+  ghiChu?: string;
+}
+
+export interface SuppliedProductDTO {
+  id: string;
+  sku: string;
+  maVach: string;
+  tenSanPham: string;
+  donVi: string;
+  vatPhantram: number;
+  imageUrl?: string;
+  giaNhapNcc: number;
+  maSanPhamNcc?: string;
+  laNccChinh: boolean;
+}
+
 const getHeaders = (): HeadersInit => {
   return getAuthHeaders();
 };
@@ -83,6 +117,50 @@ export const sanPhamApi = {
       headers: getHeaders(),
     });
     if (!response.ok) throw await parseApiError(response, 'Không thể khôi phục sản phẩm');
+    return response.json();
+  },
+
+  getSuppliers: async (productId: string): Promise<SanPhamNhaCungCapDTO[]> => {
+    const response = await fetch(`${API_BASE_URL}/api/v1/products/${productId}/suppliers`, {
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw await parseApiError(response, 'Không thể tải danh sách nhà cung cấp của sản phẩm');
+    return response.json();
+  },
+
+  saveSupplier: async (productId: string, data: SaveSanPhamNccRequest): Promise<SanPhamNhaCungCapDTO> => {
+    const response = await fetch(`${API_BASE_URL}/api/v1/products/${productId}/suppliers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getHeaders() },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw await parseApiError(response, 'Không thể lưu nhà cung cấp cho sản phẩm');
+    return response.json();
+  },
+
+  removeSupplier: async (productId: string, nccId: string): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/api/v1/products/${productId}/suppliers/${nccId}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw await parseApiError(response, 'Không thể xoá liên kết nhà cung cấp');
+    return response.json();
+  },
+
+  setPrimarySupplier: async (productId: string, nccId: string): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/api/v1/products/${productId}/suppliers/${nccId}/set-primary`, {
+      method: 'PUT',
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw await parseApiError(response, 'Không thể đặt nhà cung cấp làm mặc định');
+    return response.json();
+  },
+
+  getSuppliedProducts: async (nccId: string): Promise<SuppliedProductDTO[]> => {
+    const response = await fetch(`${API_BASE_URL}/api/v1/suppliers/${nccId}/supplied-products`, {
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw await parseApiError(response, 'Không thể tải danh sách sản phẩm của nhà cung cấp');
     return response.json();
   },
 };

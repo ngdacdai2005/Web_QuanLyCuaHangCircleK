@@ -18,6 +18,7 @@ import {
   DeleteOutlined,
   EditOutlined,
   PlusOutlined,
+  ShopOutlined,
   StopOutlined,
   UndoOutlined,
 } from '@ant-design/icons';
@@ -26,6 +27,7 @@ import { ProductThumb } from '@/components/ProductThumb';
 import { SummaryStrip, type SummaryItem } from '@/components/SummaryStrip';
 import { TableToolbar, type ToolbarFilter } from '@/components/TableToolbar';
 import { RecordStatusTag } from '@/components/StatusTag';
+import { ProductSuppliersModal } from './components/ProductSuppliersModal';
 import { BRAND } from '@/config/brand';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
@@ -81,6 +83,14 @@ export const ProductsPage: FC = () => {
   const { products, loading } = useAppSelector((state) => state.product);
   const user = useAppSelector((state) => state.auth.user);
   const isAdmin = user?.role === USER_ROLE.Admin;
+
+  const [suppliersModalOpen, setSuppliersModalOpen] = useState(false);
+  const [selectedProductForSuppliers, setSelectedProductForSuppliers] = useState<Product | null>(null);
+
+  const handleOpenSuppliers = (product: Product) => {
+    setSelectedProductForSuppliers(product);
+    setSuppliersModalOpen(true);
+  };
 
   useEffect(() => {
     dispatch(fetchProducts());
@@ -424,6 +434,14 @@ export const ProductsPage: FC = () => {
       fixed: 'right',
       render: (_, row) => (
         <Space size={0}>
+          <Tooltip title="Nhà cung cấp & Giá nhập">
+            <Button
+              type="text"
+              icon={<ShopOutlined style={{ color: '#1677ff' }} />}
+              onClick={() => handleOpenSuppliers(row)}
+            />
+          </Tooltip>
+
           {isAdmin && (
             <Tooltip title="Chỉnh sửa sản phẩm">
               <Button
@@ -604,6 +622,12 @@ export const ProductsPage: FC = () => {
       </Card>
 
       <ProductFormModal />
+      <ProductSuppliersModal
+        open={suppliersModalOpen}
+        product={selectedProductForSuppliers}
+        onClose={() => setSuppliersModalOpen(false)}
+        onUpdated={() => dispatch(fetchProducts())}
+      />
     </>
   );
 };
