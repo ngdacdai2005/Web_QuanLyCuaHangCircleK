@@ -1,12 +1,10 @@
 import { useEffect, useMemo, type FC } from 'react';
-import { Breadcrumb, Layout, Menu, Space, Tag, Typography } from 'antd';
+import { Layout, Menu, Typography } from 'antd';
 import type { MenuProps } from 'antd';
-import { HomeOutlined } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ModuleIcon } from '@/components/ModuleIcon';
-import { APP_FULL_NAME, APP_NAME, APP_VERSION } from '@/config/brand';
+import { APP_FULL_NAME, APP_VERSION } from '@/config/brand';
 import {
-  MODULE_BY_PATH,
   MODULE_GROUP_LABEL,
   MODULE_GROUP_ORDER,
   canAccessPath,
@@ -76,32 +74,6 @@ export const AdminLayout: FC = () => {
     return grouped.filter((group) => group !== null);
   }, [visibleModules]);
 
-  /** Module tương ứng URL hiện tại, dùng cho breadcrumb. */
-  const currentModule = MODULE_BY_PATH[location.pathname];
-
-  const breadcrumbItems = useMemo(() => {
-    const items = [
-      {
-        title: (
-          <>
-            <HomeOutlined /> <span>{APP_NAME}</span>
-          </>
-        ),
-      },
-    ];
-
-    if (currentModule) {
-      items.push({
-        title: <span>{MODULE_GROUP_LABEL[currentModule.group]}</span>,
-      });
-      items.push({
-        title: <span className="breadcrumb-current">{currentModule.shortLabel}</span>,
-      });
-    }
-
-    return items;
-  }, [currentModule]);
-
   return (
     <Layout className="app-layout">
       <Sider
@@ -143,17 +115,6 @@ export const AdminLayout: FC = () => {
 
       <Layout>
         <AdminTopbar />
-
-        <div className="app-breadcrumb">
-          <Space size={12} wrap>
-            <Breadcrumb items={breadcrumbItems} />
-            {currentModule !== undefined && !currentModule.implemented && (
-              <Tag color="gold" className="dev-status-tag">
-                Đang phát triển
-              </Tag>
-            )}
-          </Space>
-        </div>
 
         <Content className="app-content">
           <Outlet />

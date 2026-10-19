@@ -6,7 +6,6 @@ import { RolePermissionsTab } from './components/RolePermissionsTab';
 import { PermissionManagerTab } from './components/PermissionManagerTab';
 import { ModuleManagerTab } from './components/ModuleManagerTab';
 import { RoleModal } from './components/RoleModal';
-import { RoleDetailModal } from './components/RoleDetailModal';
 import { PermissionModal } from './components/PermissionModal';
 import { PermissionDetailModal } from './components/PermissionDetailModal';
 import { ModuleModal } from './components/ModuleModal';
@@ -69,10 +68,6 @@ export const RoleGroupsPage: FC = () => {
   const [editingRole, setEditingRole] = useState<RoleGroup | null>(null);
   const [submittingRole, setSubmittingRole] = useState(false);
 
-  // Detail Role Modal State
-  const [detailRoleModalOpen, setDetailRoleModalOpen] = useState(false);
-  const [viewingRole, setViewingRole] = useState<RoleGroup | null>(null);
-
   // Permission Modal State
   const [permModalOpen, setPermModalOpen] = useState(false);
   const [editingPerm, setEditingPerm] = useState<PermissionItem | null>(null);
@@ -134,11 +129,6 @@ export const RoleGroupsPage: FC = () => {
     } catch (e: any) {
       message.error(e?.message || 'Không thể xoá vai trò');
     }
-  };
-
-  const handleViewRoleDetail = (role: RoleGroup) => {
-    setViewingRole(role);
-    setDetailRoleModalOpen(true);
   };
 
   // Permission actions
@@ -327,7 +317,6 @@ export const RoleGroupsPage: FC = () => {
             onAddNew={handleOpenAddRole}
             onEdit={handleOpenEditRole}
             onDelete={handleDeleteRole}
-            onViewDetail={handleViewRoleDetail}
             searchValue={roleSearch}
             onSearchChange={setRoleSearch}
             loading={loadingRoles}
@@ -382,12 +371,6 @@ export const RoleGroupsPage: FC = () => {
         open={detailModuleModalOpen}
         moduleItem={viewingModule}
         onClose={() => setDetailModuleModalOpen(false)}
-      />
-
-      <RoleDetailModal
-        open={detailRoleModalOpen}
-        role={viewingRole}
-        onClose={() => setDetailRoleModalOpen(false)}
       />
     </div>
   );

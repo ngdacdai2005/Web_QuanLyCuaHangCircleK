@@ -1,6 +1,6 @@
 import type { FC } from 'react';
 import { Button, Empty, Input, List, Popconfirm, Space, Spin, Tag, Tooltip } from 'antd';
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import type { RoleGroup } from '../types/roleGroup';
 
 interface RoleListSidebarProps {
@@ -10,7 +10,6 @@ interface RoleListSidebarProps {
   onAddNew: () => void;
   onEdit: (role: RoleGroup) => void;
   onDelete: (id: string) => void;
-  onViewDetail: (role: RoleGroup) => void;
   searchValue: string;
   onSearchChange: (val: string) => void;
   loading: boolean;
@@ -23,7 +22,6 @@ export const RoleListSidebar: FC<RoleListSidebarProps> = ({
   onAddNew,
   onEdit,
   onDelete,
-  onViewDetail,
   searchValue,
   onSearchChange,
   loading,
@@ -74,20 +72,10 @@ export const RoleListSidebar: FC<RoleListSidebarProps> = ({
                   </div>
 
                   <div className="rg-role-item-right" onClick={(e) => e.stopPropagation()}>
-                    <Space size={4}>
+                    <Space size={6}>
                       <Tag icon={<UserOutlined />} className="rg-user-badge">
                         {role.userCount}
                       </Tag>
-                      <Tooltip title="Xem chi tiết">
-                        <Button
-                          type="text"
-                          size="small"
-                          style={{ color: '#52c41a' }}
-                          icon={<EyeOutlined />}
-                          className="rg-action-icon"
-                          onClick={() => onViewDetail(role)}
-                        />
-                      </Tooltip>
                       <Tooltip title="Chỉnh sửa">
                         <Button
                           type="text"
