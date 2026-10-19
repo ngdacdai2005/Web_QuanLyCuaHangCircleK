@@ -3,6 +3,7 @@ import {
   AppstoreOutlined,
   BankOutlined,
   BarChartOutlined,
+  BellOutlined,
   ClockCircleOutlined,
   DashboardOutlined,
   DeploymentUnitOutlined,
@@ -45,6 +46,7 @@ const ICON_MAP: Record<ModuleIconKey, FC> = {
   contract: FileProtectOutlined,
   'account-manage': UserOutlined,
   'role-group': SafetyCertificateOutlined,
+  notification: BellOutlined,
 };
 
 interface ModuleIconProps {

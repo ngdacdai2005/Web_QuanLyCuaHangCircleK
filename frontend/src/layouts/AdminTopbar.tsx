@@ -1,4 +1,4 @@
-import { useMemo, type FC } from 'react';
+import { useEffect, useMemo, useState, type FC } from 'react';
 import {
   Avatar,
   Badge,
@@ -11,6 +11,7 @@ import {
 } from 'antd';
 import type { MenuProps } from 'antd';
 import { canAccessPath } from '@/config/modules';
+import { notificationApi } from '@/features/notifications/api/notificationApi';
 import {
   BellOutlined,
   IdcardOutlined,
@@ -87,6 +88,15 @@ export const AdminTopbar: FC = () => {
       : options;
   }, [isSystemWide, user?.allowedBranchIds, branches]);
 
+  const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
+
+  useEffect(() => {
+    notificationApi
+      .getUnreadCount()
+      .then((c) => setUnreadNotifCount(c))
+      .catch(() => {});
+  }, []);
+
   /** Số mặt hàng dưới ngưỡng tồn tối thiểu — dùng làm badge thông báo. */
   const balances = useAppSelector((state) => state.stock.balances);
   const alertCount = useMemo(
@@ -97,9 +107,19 @@ export const AdminTopbar: FC = () => {
   const sapHetHan = useAppSelector((state) => state.hopDong.sapHetHanItems);
   const canViewContracts = hasPermission(user, PERMISSIONS.CONTRACTS_VIEW);
   const expiringCount = canViewContracts ? sapHetHan.length : 0;
-  const totalAlerts = alertCount + expiringCount;
+  const totalAlerts = alertCount + expiringCount + unreadNotifCount;
 
   const bellItems: MenuProps['items'] = [
+    {
+      key: 'all-notifications',
+      icon: <BellOutlined />,
+      label: (
+        <span>
+          <strong>Thông báo cửa hàng</strong> {unreadNotifCount > 0 ? `(${unreadNotifCount} chưa đọc)` : ''}
+        </span>
+      ),
+    },
+    { type: 'divider' as const },
     ...(alertCount > 0
         ? [{ key: 'inventory', label: `Kho hàng: ${alertCount} sản phẩm dưới ngưỡng` }]
         : []),
@@ -119,7 +139,8 @@ export const AdminTopbar: FC = () => {
   ];
 
   const handleBellClick: MenuProps['onClick'] = ({ key }) => {
-    if (key === 'inventory') navigate('/inventory');
+    if (key === 'all-notifications') navigate('/notifications');
+    else if (key === 'inventory') navigate('/inventory');
     else if (key === 'contracts' || key.startsWith('hd-')) navigate('/hop-dong');
   };
 
@@ -227,13 +248,12 @@ export const AdminTopbar: FC = () => {
           </Button>
         )}
 
-        <Tooltip title={`${alertCount} mặt hàng dưới ngưỡng tồn • ${expiringCount} hợp đồng sắp hết hạn`}>
+        <Tooltip title={totalAlerts > 0 ? `${totalAlerts} thông báo mới` : 'Thông báo cửa hàng'}>
           <Badge count={totalAlerts} overflowCount={99}>
             <Dropdown
                 menu={{ items: bellItems, onClick: handleBellClick }}
                 trigger={['click']}
                 placement="bottomRight"
-                disabled={totalAlerts === 0}
             >
               <Button
                   type="text"

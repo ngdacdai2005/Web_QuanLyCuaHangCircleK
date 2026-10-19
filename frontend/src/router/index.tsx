@@ -24,6 +24,7 @@ import { ReportsPage } from '@/features/reports/ReportsPage';
 import { AccountPage } from '@/features/profile/AccountPage';
 import { AccountManagementPage } from '@/features/userManagement/AccountManagementPage';
 import { RoleGroupsPage } from '@/features/roleGroups/RoleGroupsPage';
+import { NotificationsPage } from '@/features/notifications/NotificationsPage';
 import { NotFoundPage } from '@/features/shared/NotFoundPage';
 import { getFirstAccessibleModulePath } from '@/config/modules';
 import { USER_ROLE } from '@/types';
@@ -89,6 +90,7 @@ export const AppRouter: FC = () => (
         {/* Chỉ ADMIN mới được vào trang quản lý tài khoản và phân quyền */}
         <Route path="/admin/accounts" element={<AccountManagementPage />} />
         <Route path="/role-groups" element={<RoleGroupsPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
 
         <Route path="*" element={<NotFoundPage />} />
       </Route>

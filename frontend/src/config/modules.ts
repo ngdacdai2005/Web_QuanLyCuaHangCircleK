@@ -26,7 +26,8 @@ export type ModuleIconKey =
   | 'report'
   | 'contract'
   | 'account-manage'
-  | 'role-group';
+  | 'role-group'
+  | 'notification';
 
 export interface ModuleDefinition {
   /** Số thứ tự module theo đặc tả (1..13, module 0 là Login nằm ngoài layout). */
@@ -371,6 +372,19 @@ export const MODULES: readonly ModuleDefinition[] = [
     implemented: true,
     description:
       'Quản lý nhóm quyền (vai trò), danh sách quyền hạn chi tiết và đồng bộ quyền hệ thống.',
+  },
+  {
+    order: 19,
+    key: 'notifications',
+    path: '/notifications',
+    label: 'Thông báo',
+    shortLabel: 'Thông báo',
+    icon: 'notification',
+    allowedRoles: EVERYONE,
+    group: MODULE_GROUP.Operation,
+    implemented: true,
+    description:
+      'Theo dõi các thông báo hoạt động, ca làm, kiểm kê và cảnh báo tồn kho cửa hàng.',
   },
 ];
 

@@ -125,6 +125,23 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                 ALTER TABLE role_permissions ADD COLUMN IF NOT EXISTS created_by VARCHAR(50) DEFAULT 'SYSTEM';
             """);
 
+            // 4.1 Tạo bảng thong_bao cho Module Thông báo
+            jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS thong_bao (
+                    id                  BIGSERIAL PRIMARY KEY,
+                    tieu_de             VARCHAR(255) NOT NULL,
+                    noi_dung            TEXT,
+                    loai_thong_bao      VARCHAR(50) NOT NULL,
+                    action_url          VARCHAR(255),
+                    muc_do              VARCHAR(20) DEFAULT 'INFO',
+                    nguoi_gui_ten       VARCHAR(100),
+                    id_nhan_vien_nhan   UUID,
+                    da_doc              BOOLEAN DEFAULT FALSE,
+                    ngay_tao            TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    ngay_doc            TIMESTAMP WITHOUT TIME ZONE
+                );
+            """);
+
             // 5. Thêm cột id_vai_tro vào nhan_vien nếu chưa có
             jdbcTemplate.execute("""
                 DO $$
@@ -197,7 +214,8 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                     ('payroll', 'Bảng lương', 'Payroll', 'Tính lương và duyệt chi bảng lương', 'B', '#0ea5e9', 14, '1', 0, 0),
                     ('cashbook', 'Sổ quỹ', 'Cashbook', 'Sổ quỹ thu chi và dòng tiền cửa hàng', 'S', '#a855f7', 15, '1', 0, 0),
                     ('report', 'Báo cáo', 'Report', 'Báo cáo doanh thu, lợi nhuận và tồn kho', 'B', '#d946ef', 16, '1', 0, 0),
-                    ('role', 'Nhóm quyền', 'Role Groups', 'Quản lý phân quyền và nhóm quyền người dùng', 'Q', '#64748b', 17, '1', 0, 0)
+                    ('role', 'Nhóm quyền', 'Role Groups', 'Quản lý phân quyền và nhóm quyền người dùng', 'Q', '#64748b', 17, '1', 0, 0),
+                    ('notification', 'Thông báo', 'Notifications', 'Quản lý thông báo và nhắc nhở hoạt động cửa hàng', 'T', '#f59e0b', 18, '1', 0, 0)
                 ON CONFLICT (name) DO UPDATE SET
                     display_name_vi = EXCLUDED.display_name_vi,
                     display_name_en = EXCLUDED.display_name_en,
@@ -292,7 +310,12 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                     ('role:read', 'Xem nhóm quyền & quyền hạn', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'role', 'Xem nhóm quyền', 'Read role'),
                     ('role:update', 'Cập nhật nhóm quyền', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'role', 'Cập nhật nhóm quyền', 'Update role'),
                     ('role:delete', 'Xoá nhóm quyền', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'role', 'Xoá nhóm quyền', 'Delete role'),
-                    ('role:assign', 'Phân quyền cho nhóm', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'role', 'Gán quyền', 'Assign role')
+                    ('role:assign', 'Phân quyền cho nhóm', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'role', 'Gán quyền', 'Assign role'),
+
+                    ('notification:read', 'Xem thông báo', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'notification', 'Xem thông báo', 'Read notifications'),
+                    ('notification:create', 'Tạo thông báo', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'notification', 'Tạo thông báo', 'Create notification'),
+                    ('notification:update', 'Cập nhật trạng thái thông báo', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'notification', 'Cập nhật thông báo', 'Update notification'),
+                    ('notification:delete', 'Xoá thông báo', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'notification', 'Xoá thông báo', 'Delete notification')
                 ON CONFLICT (name) DO UPDATE SET
                     module = EXCLUDED.module,
                     description = EXCLUDED.description,
@@ -398,6 +421,32 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                   )
                 ON CONFLICT DO NOTHING;
             """);
+
+            // 10.6 Cấp quyền thông báo cho tất cả các vai trò
+            jdbcTemplate.execute("""
+                INSERT INTO role_permissions (role_id, permission_id, created_by)
+                SELECT v.id, p.id, 'SYSTEM'
+                FROM vai_tro v
+                CROSS JOIN permissions p
+                WHERE v.ma_vai_tro IN ('NQ01', 'NQ02', 'NQ03', 'NQ04', 'NQ05')
+                  AND p.name IN ('notification:read', 'notification:update')
+                ON CONFLICT DO NOTHING;
+            """);
+
+            // 11. Seed thông báo mẫu thực tế cho cửa hàng Circle K nếu bảng đang trống
+            Integer countTb = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM thong_bao", Integer.class);
+            if (countTb == null || countTb == 0) {
+                jdbcTemplate.execute("""
+                    INSERT INTO thong_bao (tieu_de, noi_dung, loai_thong_bao, action_url, muc_do, nguoi_gui_ten, da_doc, ngay_tao)
+                    VALUES
+                        ('Tạo lịch ca làm việc', 'Nguyễn Đắc Đại đã tạo lịch ca làm việc cho chi nhánh Tân Bình vào 2026-10-20.', 'LICH_LAM', '/attendance', 'INFO', 'Nguyễn Đắc Đại', false, CURRENT_TIMESTAMP - INTERVAL '15 MINUTE'),
+                        ('Cảnh báo tồn kho dưới mức tối thiểu', 'Sản phẩm Coca Cola 330ml tại chi nhánh Quận 1 chỉ còn 6 lon (dưới ngưỡng an toàn 24 lon).', 'KHO_HANG', '/inventory', 'WARNING', 'Hệ thống kho', false, CURRENT_TIMESTAMP - INTERVAL '2 HOUR'),
+                        ('Tiếp nhận yêu cầu nhập hàng', 'Nguyễn Minh Tuấn đã tiếp nhận phiếu nhập hàng số PN-2026-088 từ Nhà cung cấp Vinamilk.', 'KHO_HANG', '/purchase', 'INFO', 'Nguyễn Minh Tuấn', false, CURRENT_TIMESTAMP - INTERVAL '5 HOUR'),
+                        ('Hoàn tất kiểm kê kho hàng', 'Phiếu kiểm kê số KK-2026-015 tại Chi nhánh Quận 3 đã kiểm đếm xong và đang chờ quản lý duyệt.', 'KIEM_KE', '/stocktakes', 'INFO', 'Trần Văn Bảo', false, CURRENT_TIMESTAMP - INTERVAL '1 DAY'),
+                        ('Hợp đồng NCC sắp hết hạn', 'Hợp đồng số HD-2025-012 với NCC Masan Consumer sẽ hết hạn vào ngày 30/10/2026.', 'HOP_DONG', '/hop-dong', 'WARNING', 'Phòng Thu mua', false, CURRENT_TIMESTAMP - INTERVAL '2 DAY'),
+                        ('Cập nhật bảng giá khuyến mãi', 'Quản lý cửa hàng đã cập nhật bảng giá khuyến mãi tháng 10 cho nhóm Nước giải khát.', 'KHO_HANG', '/products', 'INFO', 'Lê Thị Thu', true, CURRENT_TIMESTAMP - INTERVAL '3 DAY');
+                """);
+            }
 
             log.info("Tự động khởi tạo schema và dữ liệu cho Nhóm quyền thành công!");
         } catch (Exception e) {
