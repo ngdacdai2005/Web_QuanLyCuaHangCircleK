@@ -47,13 +47,13 @@ public class DanhMucController {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('category:read')")
     public ResponseEntity<List<DanhMucResponseDTO>> getAll(HttpServletRequest request) {
         return ResponseEntity.ok(danhMucService.getAll(resolveBranchId(request), isAdmin()));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY', 'THU_KHO', 'THU_NGAN', 'KE_TOAN')")
+    @PreAuthorize("hasAuthority('category:read')")
     public ResponseEntity<?> getById(@PathVariable UUID id, HttpServletRequest request) {
         return danhMucService.getById(id, resolveBranchId(request), isAdmin())
                 .map(ResponseEntity::ok)
@@ -61,25 +61,25 @@ public class DanhMucController {
     }
 
     @GetMapping("/active")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('category:read')")
     public ResponseEntity<List<DanhMucResponseDTO>> getActive(HttpServletRequest request) {
         return ResponseEntity.ok(danhMucService.getActive(resolveBranchId(request), isAdmin()));
     }
 
     @GetMapping("/parent/{parentId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('category:read')")
     public ResponseEntity<List<DanhMucResponseDTO>> getByParent(@PathVariable UUID parentId) {
         return ResponseEntity.ok(danhMucService.getByParent(parentId));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('category:create')")
     public ResponseEntity<?> create(@RequestBody DanhMucRequestDTO request) {
         return ResponseEntity.ok(danhMucService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('category:update')")
     public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody DanhMucRequestDTO  request) {
         return danhMucService.update(id, request)
                 .map(ResponseEntity::ok)
@@ -87,7 +87,7 @@ public class DanhMucController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('category:delete')")
     public ResponseEntity<?> delete(@PathVariable UUID id, HttpServletRequest request) {
         String message = danhMucService.delete(id, resolveBranchId(request), isAdmin());
         if (message == null) {
@@ -97,7 +97,7 @@ public class DanhMucController {
     }
 
     @PatchMapping("/{id}/restore")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('category:update')")
     public ResponseEntity<?> restore(@PathVariable UUID id, HttpServletRequest request) {
         String message = danhMucService.restore(id, resolveBranchId(request), isAdmin());
         if (message == null) {
@@ -107,7 +107,7 @@ public class DanhMucController {
     }
 
     @PatchMapping("/{id}/move-up")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('category:update')")
     public ResponseEntity<?> moveUp(@PathVariable UUID id) {
         return danhMucService.moveUp(id)
                 .map(moved -> ResponseEntity.ok(ApiResponse.ok(moved ? "Di chuyển lên thành công" : "Danh mục đã ở vị trí đầu")))
@@ -115,7 +115,7 @@ public class DanhMucController {
     }
 
     @PatchMapping("/{id}/move-down")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('category:update')")
     public ResponseEntity<?> moveDown(@PathVariable UUID id) {
         return danhMucService.moveDown(id)
                 .map(moved -> ResponseEntity.ok(ApiResponse.ok(moved ? "Di chuyển xuống thành công" : "Danh mục đã ở vị trí cuối")))

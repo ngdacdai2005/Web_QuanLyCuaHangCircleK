@@ -30,14 +30,14 @@ public class PhieuNhapController {
     private final RequestDeduplicationService requestDeduplicationService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO')")
+    @PreAuthorize("hasAuthority('purchase:read')")
     public ResponseEntity<List<PhieuNhapResponseDTO>> getAll(HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuNhapService.getAll(actor));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO')")
+    @PreAuthorize("hasAuthority('purchase:read')")
     public ResponseEntity<?> getById(@PathVariable UUID id, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return phieuNhapService.getById(id, actor)
@@ -46,28 +46,28 @@ public class PhieuNhapController {
     }
 
     @GetMapping("/by-branch/{idChiNhanh}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO')")
+    @PreAuthorize("hasAuthority('purchase:read')")
     public ResponseEntity<List<PhieuNhapResponseDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuNhapService.getByChiNhanh(idChiNhanh, actor));
     }
 
     @GetMapping("/by-ncc/{idNcc}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO')")
+    @PreAuthorize("hasAuthority('purchase:read')")
     public ResponseEntity<List<PhieuNhapResponseDTO>> getByNcc(@PathVariable UUID idNcc, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuNhapService.getByNcc(idNcc, actor));
     }
 
     @GetMapping("/by-status/{trangThai}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO')")
+    @PreAuthorize("hasAuthority('purchase:read')")
     public ResponseEntity<List<PhieuNhapResponseDTO>> getByStatus(@PathVariable String trangThai, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuNhapService.getByStatus(trangThai, actor));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
+    @PreAuthorize("hasAuthority('purchase:create')")
     @Deprecated
     public ResponseEntity<?> create(@RequestBody(required = false) PhieuNhapRequestDTO request, HttpServletRequest httpRequest) {
         return ResponseEntity.status(HttpStatus.GONE).body(
@@ -75,7 +75,7 @@ public class PhieuNhapController {
     }
 
     @PostMapping("/with-lines")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
+    @PreAuthorize("hasAuthority('purchase:create')")
     public ResponseEntity<?> createWithLines(@Valid @RequestBody CreatePurchaseRequestDTO request, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
 
@@ -105,7 +105,7 @@ public class PhieuNhapController {
     }
 
     @PutMapping("/{id}/pay")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
+    @PreAuthorize("hasAuthority('purchase:approve')")
     public ResponseEntity<?> pay(@PathVariable UUID id,
                                  @RequestBody(required = false) PayRequestDTO request,
                                  HttpServletRequest httpRequest) {
@@ -120,7 +120,7 @@ public class PhieuNhapController {
     }
 
     @PutMapping("/{id}/receive")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
+    @PreAuthorize("hasAuthority('purchase:update')")
     public ResponseEntity<?> receive(@PathVariable UUID id, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         try {
@@ -133,7 +133,7 @@ public class PhieuNhapController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
+    @PreAuthorize("hasAuthority('purchase:update')")
     public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody PhieuNhapRequestDTO request, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return phieuNhapService.update(id, request, actor)
@@ -142,7 +142,7 @@ public class PhieuNhapController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
+    @PreAuthorize("hasAuthority('purchase:delete')")
     public ResponseEntity<?> delete(@PathVariable UUID id, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         if (phieuNhapService.delete(id, actor)) {

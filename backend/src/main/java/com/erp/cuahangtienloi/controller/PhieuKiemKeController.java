@@ -20,7 +20,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/phieu-kiem-ke")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY', 'KE_TOAN')")
 public class PhieuKiemKeController {
 
     private final PhieuKiemKeService phieuKiemKeService;
@@ -41,12 +40,14 @@ public class PhieuKiemKeController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('stocktake:read')")
     public ResponseEntity<List<PhieuKiemKeResponseDTO>> getAll(HttpServletRequest request) {
         var actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuKiemKeService.getAll(actor));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('stocktake:read')")
     public ResponseEntity<?> getById(@PathVariable UUID id, HttpServletRequest request) {
         var actor = branchAccessService.requireAuthenticatedEmployee(request);
         return phieuKiemKeService.getById(id, actor)
@@ -55,19 +56,21 @@ public class PhieuKiemKeController {
     }
 
     @GetMapping("/by-chi-nhanh/{idChiNhanh}")
+    @PreAuthorize("hasAuthority('stocktake:read')")
     public ResponseEntity<List<PhieuKiemKeResponseDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
         var actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuKiemKeService.getByChiNhanh(idChiNhanh, actor));
     }
 
     @GetMapping("/by-status/{trangThai}")
+    @PreAuthorize("hasAuthority('stocktake:read')")
     public ResponseEntity<List<PhieuKiemKeResponseDTO>> getByStatus(@PathVariable String trangThai, HttpServletRequest request) {
         var actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuKiemKeService.getByStatus(trangThai, actor));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('stocktake:create')")
     public ResponseEntity<?> create(@RequestBody PhieuKiemKeRequestDTO request, HttpServletRequest httpRequest) {
         var actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         UUID idNguoiTao = resolveAuthenticatedIdNhanVien(httpRequest);
@@ -75,7 +78,7 @@ public class PhieuKiemKeController {
     }
 
     @PostMapping("/with-lines")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('stocktake:create')")
     public ResponseEntity<?> createWithLines(@Valid @RequestBody CreateStocktakeRequestDTO request, HttpServletRequest httpRequest) {
         var actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         UUID idNguoiTao = resolveAuthenticatedIdNhanVien(httpRequest);
@@ -83,7 +86,7 @@ public class PhieuKiemKeController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('stocktake:update')")
     public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody PhieuKiemKeRequestDTO request, HttpServletRequest httpRequest) {
         var actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return phieuKiemKeService.update(id, request, actor)
@@ -92,28 +95,28 @@ public class PhieuKiemKeController {
     }
 
     @PostMapping("/{id}/submit")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('stocktake:update')")
     public ResponseEntity<?> submit(@PathVariable UUID id, HttpServletRequest httpRequest) {
         var actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return ResponseEntity.ok(phieuKiemKeService.submit(id, actor));
     }
 
     @PostMapping("/{id}/balance")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
+    @PreAuthorize("hasAuthority('stocktake:approve')")
     public ResponseEntity<?> balance(@PathVariable UUID id, HttpServletRequest httpRequest) {
         var actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return ResponseEntity.ok(phieuKiemKeService.balance(id, actor));
     }
 
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('stocktake:update')")
     public ResponseEntity<?> cancel(@PathVariable UUID id, HttpServletRequest httpRequest) {
         var actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return ResponseEntity.ok(phieuKiemKeService.cancel(id, actor));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('stocktake:delete')")
     public ResponseEntity<?> delete(@PathVariable UUID id, HttpServletRequest httpRequest) {
         var actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         if (phieuKiemKeService.delete(id, actor)) {

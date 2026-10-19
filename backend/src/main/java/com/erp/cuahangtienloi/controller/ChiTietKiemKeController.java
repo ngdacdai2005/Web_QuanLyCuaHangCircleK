@@ -17,40 +17,41 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/chi-tiet-kiem-ke")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY', 'KE_TOAN')")
 public class ChiTietKiemKeController {
 
     private final PhieuKiemKeService phieuKiemKeService;
     private final BranchAccessService branchAccessService;
 
     @GetMapping("/by-phieu/{idPhieuKiemKe}")
+    @PreAuthorize("hasAuthority('stocktake:read')")
     public ResponseEntity<List<ChiTietKiemKeResponseDTO>> getByPhieuKiemKe(@PathVariable UUID idPhieuKiemKe, HttpServletRequest request) {
         var actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuKiemKeService.getLinesByPhieu(idPhieuKiemKe, actor));
     }
 
     @GetMapping("/by-san-pham/{idSanPham}")
+    @PreAuthorize("hasAuthority('stocktake:read')")
     public ResponseEntity<List<ChiTietKiemKeResponseDTO>> getBySanPham(@PathVariable UUID idSanPham, HttpServletRequest request) {
         var actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuKiemKeService.getLinesBySanPham(idSanPham, actor));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('stocktake:create')")
     public ResponseEntity<?> create(@RequestBody ChiTietKiemKeRequestDTO request, HttpServletRequest httpRequest) {
         var actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return ResponseEntity.ok(phieuKiemKeService.createLine(request, actor));
     }
 
     @PostMapping("/batch")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('stocktake:create')")
     public ResponseEntity<?> createBatch(@RequestBody List<ChiTietKiemKeRequestDTO> requests, HttpServletRequest httpRequest) {
         var actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return ResponseEntity.ok(phieuKiemKeService.createBatchLines(requests, actor));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('stocktake:delete')")
     public ResponseEntity<?> delete(@PathVariable UUID id, HttpServletRequest request) {
         var actor = branchAccessService.requireAuthenticatedEmployee(request);
         if (phieuKiemKeService.deleteLine(id, actor)) {
@@ -60,7 +61,7 @@ public class ChiTietKiemKeController {
     }
 
     @DeleteMapping("/by-phieu/{idPhieuKiemKe}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('stocktake:delete')")
     public ResponseEntity<?> deleteByPhieuKiemKe(@PathVariable UUID idPhieuKiemKe, HttpServletRequest request) {
         var actor = branchAccessService.requireAuthenticatedEmployee(request);
         phieuKiemKeService.deleteLinesByPhieu(idPhieuKiemKe, actor);

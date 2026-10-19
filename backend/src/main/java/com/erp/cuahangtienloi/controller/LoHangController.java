@@ -24,7 +24,7 @@ public class LoHangController {
     private final BranchAccessService branchAccessService;
 
     @GetMapping("/by-product/{idSanPham}/{idChiNhanh}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY', 'KE_TOAN')")
+    @PreAuthorize("hasAuthority('product:read')")
     public ResponseEntity<List<LoHangResponseDTO>> getLotsByProduct(
             @PathVariable("idSanPham") UUID idSanPham,
             @PathVariable("idChiNhanh") UUID idChiNhanh,
@@ -35,7 +35,7 @@ public class LoHangController {
     }
 
     @PostMapping("/{id}/dispose")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('product:update')")
     public ResponseEntity<?> disposeLot(
             @PathVariable("id") UUID id,
             @RequestBody(required = false) Map<String, String> body,

@@ -21,31 +21,31 @@ public class ChamCongController {
     private final ChamCongService chamCongService;
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('attendance:read') or hasAuthority('attendance:checkin')")
     public ResponseEntity<List<ChamCongResponseDTO>> getAll(HttpServletRequest request) {
         return ResponseEntity.ok(chamCongService.getAll(request));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('attendance:read') or hasAuthority('attendance:checkin')")
     public ResponseEntity<?> getById(@PathVariable UUID id, HttpServletRequest request) {
         return chamCongService.getById(id, request);
     }
 
     @GetMapping("/by-employee/{idNhanVien}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('attendance:read') or hasAuthority('attendance:checkin')")
     public ResponseEntity<List<ChamCongResponseDTO>> getByNhanVien(@PathVariable UUID idNhanVien, HttpServletRequest request) {
         return ResponseEntity.ok(chamCongService.getByNhanVien(idNhanVien, request));
     }
 
     @GetMapping("/by-date/{workDate}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('attendance:read') or hasAuthority('attendance:checkin')")
     public ResponseEntity<List<ChamCongResponseDTO>> getByDate(@PathVariable LocalDate workDate, HttpServletRequest request) {
         return ResponseEntity.ok(chamCongService.getByDate(workDate, request));
     }
 
     @GetMapping("/by-employee/{idNhanVien}/from/{from}/to/{to}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('attendance:read') or hasAuthority('attendance:checkin')")
     public ResponseEntity<List<ChamCongResponseDTO>> getByNhanVienAndDateRange(
             @PathVariable UUID idNhanVien,
             @PathVariable LocalDate from,
@@ -54,7 +54,7 @@ public class ChamCongController {
     }
 
     @GetMapping("/by-date-range")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('attendance:read') or hasAuthority('attendance:checkin')")
     public ResponseEntity<List<ChamCongResponseDTO>> getByDateRange(
             @RequestParam("from") LocalDate start,
             @RequestParam("to") LocalDate end, HttpServletRequest request) {
@@ -62,25 +62,25 @@ public class ChamCongController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('attendance:update') or hasAuthority('attendance:approve')")
     public ResponseEntity<?> create(@RequestBody ChamCongRequestDTO request, HttpServletRequest httpRequest) {
         return chamCongService.create(request, httpRequest);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('attendance:update') or hasAuthority('attendance:approve')")
     public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody ChamCongRequestDTO request, HttpServletRequest httpRequest) {
         return chamCongService.update(id, request, httpRequest);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('attendance:update') or hasAuthority('attendance:approve')")
     public ResponseEntity<?> delete(@PathVariable UUID id) {
         return chamCongService.delete(id);
     }
 
     @PostMapping("/schedule/{idNhanVien}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('attendance:update') or hasAuthority('attendance:approve')")
     public ResponseEntity<?> scheduleForEmployee(
             @PathVariable UUID idNhanVien,
             @RequestParam(required = false) String workDate, HttpServletRequest httpRequest) {
@@ -88,19 +88,19 @@ public class ChamCongController {
     }
 
     @PostMapping("/{id}/clock-in")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('attendance:checkin')")
     public ResponseEntity<?> clockIn(@PathVariable UUID id, HttpServletRequest httpRequest) {
         return chamCongService.clockIn(id, httpRequest);
     }
 
     @PostMapping("/{id}/clock-out")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('attendance:checkin')")
     public ResponseEntity<?> clockOut(@PathVariable UUID id, HttpServletRequest httpRequest) {
         return chamCongService.clockOut(id, httpRequest);
     }
 
     @PostMapping("/schedule-range/{idNhanVien}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('attendance:update') or hasAuthority('attendance:approve')")
     public ResponseEntity<?> scheduleRange(
             @PathVariable UUID idNhanVien,
             @RequestParam("from") String fromDate,

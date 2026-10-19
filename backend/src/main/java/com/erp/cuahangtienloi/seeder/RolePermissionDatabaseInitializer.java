@@ -6,14 +6,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
-
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.stream.Collectors;
 
 @Component
 @Order(1) // Chạy trước tiên để bảo đảm bảng DB tồn tại
@@ -46,7 +40,6 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                 )
             """);
 
-            // Đảm bảo các cột mới tồn tại kể cả khi bảng modules đã được tạo từ trước
             jdbcTemplate.execute("""
                 ALTER TABLE modules ADD COLUMN IF NOT EXISTS icon VARCHAR(50);
                 ALTER TABLE modules ADD COLUMN IF NOT EXISTS color VARCHAR(50);
@@ -78,7 +71,6 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                 )
             """);
 
-            // Đảm bảo các cột của permissions tồn tại đầy đủ
             jdbcTemplate.execute("""
                 ALTER TABLE permissions ADD COLUMN IF NOT EXISTS module VARCHAR(100);
                 ALTER TABLE permissions ADD COLUMN IF NOT EXISTS display_name_vi VARCHAR(255);
@@ -146,7 +138,34 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                 END $$;
             """);
 
-            // 6. Seed vai trò mẫu nếu chưa có
+            // 6. Dọn dẹp dữ liệu rác mẫu cũ (Tuyển dụng, Phòng ban, Chức vụ) và các module tiếng Việt trùng lặp
+            jdbcTemplate.execute("""
+                DELETE FROM role_permissions 
+                WHERE permission_id IN (
+                    SELECT id FROM permissions 
+                    WHERE module IN ('Tuyển dụng', 'Phòng ban', 'Chức vụ', 'candidate_cv', 'department', 'position') 
+                       OR name LIKE 'candidate_cv:%' 
+                       OR name LIKE 'department:%' 
+                       OR name LIKE 'position:%'
+                );
+                DELETE FROM permissions 
+                WHERE module IN ('Tuyển dụng', 'Phòng ban', 'Chức vụ', 'candidate_cv', 'department', 'position') 
+                   OR name LIKE 'candidate_cv:%' 
+                   OR name LIKE 'department:%' 
+                   OR name LIKE 'position:%';
+
+                -- Dọn dẹp các module trùng lặp với tên tiếng Việt có dấu cũ
+                DELETE FROM modules 
+                WHERE name IN (
+                    'Tài khoản', 'Người dùng', 'Nhân viên', 'Chi nhánh', 'Hàng hoá', 
+                    'Danh mục', 'Nhà cung cấp', 'Hợp đồng', 'Kho hàng', 'Nhập hàng', 
+                    'Chuyển kho', 'Kiểm kê', 'Đơn hàng', 'Chấm công', 'Bảng lương', 
+                    'Sổ quỹ', 'Báo cáo', 'Nhóm quyền', 'Phân quyền',
+                    'Tuyển dụng', 'Phòng ban', 'Chức vụ', 'candidate_cv', 'department', 'position'
+                );
+            """);
+
+            // 7. Seed vai trò mẫu nếu chưa có
             jdbcTemplate.execute("""
                 INSERT INTO vai_tro (ma_vai_tro, ten_vai_tro, mo_ta, created_by, status, deleted)
                 VALUES 
@@ -158,64 +177,225 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                 ON CONFLICT (ma_vai_tro) DO NOTHING;
             """);
 
-            // 7. Seed modules mẫu
+            // 8. Seed 17 modules chuẩn với mã 'name' là code slug (user, branch, ...)
             jdbcTemplate.execute("""
-                INSERT INTO modules (name, display_name_vi, display_name_en, description, created_by, status, deleted)
+                INSERT INTO modules (name, display_name_vi, display_name_en, description, icon, color, thu_tu, created_by, status, deleted)
                 VALUES
-                    ('Người dùng', 'Người dùng', 'User', 'Quản lý người dùng, nhân viên và tài khoản', '1', 0, 0),
-                    ('Phòng ban', 'Phòng ban', 'Department', 'Quản lý cơ cấu phòng ban và chi nhánh', '1', 0, 0),
-                    ('Chức vụ', 'Chức vụ', 'Position', 'Quản lý chức vụ và vị trí công việc', '1', 0, 0),
-                    ('Hàng hoá', 'Hàng hoá', 'Product', 'Quản lý danh mục sản phẩm và giá bán', '1', 0, 0),
-                    ('Kho hàng', 'Kho hàng', 'Warehouse', 'Quản lý tồn kho, nhập hàng và chuyển kho', '1', 0, 0),
-                    ('Đơn hàng', 'Đơn hàng', 'Sales Order', 'Quản lý hoá đơn bán hàng và POS', '1', 0, 0),
-                    ('Chấm công', 'Chấm công', 'Attendance', 'Quản lý phân ca và chấm công', '1', 0, 0),
-                    ('Bảng lương', 'Bảng lương', 'Payroll', 'Quản lý tính lương và duyệt chi lương', '1', 0, 0),
-                    ('Sổ quỹ', 'Sổ quỹ', 'Cashbook', 'Quản lý thu chi và dòng tiền', '1', 0, 0),
-                    ('Báo cáo', 'Báo cáo', 'Report', 'Báo cáo doanh thu, lợi nhuận và tồn kho', '1', 0, 0),
-                    ('Tuyển dụng', 'Tuyển dụng', 'Recruitment', 'Quản lý hồ sơ ứng viên và tuyển dụng', '1', 0, 0)
-                ON CONFLICT (name) DO NOTHING;
+                    ('user', 'Tài khoản', 'User Account', 'Quản lý tài khoản đăng nhập và mật khẩu', 'T', '#06b6d4', 1, '1', 0, 0),
+                    ('employee', 'Nhân viên', 'Employee', 'Quản lý hồ sơ nhân viên và ca làm việc', 'N', '#8b5cf6', 2, '1', 0, 0),
+                    ('branch', 'Chi nhánh', 'Branch', 'Quản lý cửa hàng bán lẻ và Kho Tổng', 'C', '#ec4899', 3, '1', 0, 0),
+                    ('product', 'Hàng hoá', 'Product', 'Quản lý SKU, mã vạch và giá bán sản phẩm', 'H', '#3b82f6', 4, '1', 0, 0),
+                    ('category', 'Danh mục', 'Category', 'Phân loại nhóm ngành hàng và icon hiển thị', 'D', '#10b981', 5, '1', 0, 0),
+                    ('supplier', 'Nhà cung cấp', 'Supplier', 'Quản lý thông tin đối tác cung ứng hàng hoá', 'N', '#f59e0b', 6, '1', 0, 0),
+                    ('contract', 'Hợp đồng', 'Contract', 'Quản lý hợp đồng mua bán với nhà cung cấp', 'H', '#6366f1', 7, '1', 0, 0),
+                    ('warehouse', 'Kho hàng', 'Warehouse', 'Quản lý tồn kho và biến động thẻ kho', 'K', '#ec4899', 8, '1', 0, 0),
+                    ('purchase', 'Nhập hàng', 'Purchase', 'Quản lý phiếu nhập hàng từ nhà cung cấp', 'N', '#14b8a6', 9, '1', 0, 0),
+                    ('transfer', 'Chuyển kho', 'Transfer', 'Luân chuyển xuất nhập hàng hoá nội bộ', 'C', '#f97316', 10, '1', 0, 0),
+                    ('stocktake', 'Kiểm kê', 'Stocktake', 'Phiếu kiểm kê và cân bằng tồn kho thực tế', 'K', '#ef4444', 11, '1', 0, 0),
+                    ('order', 'Đơn hàng', 'Sales Order', 'Quản lý hoá đơn bán hàng và POS', 'Đ', '#ef4444', 12, '1', 0, 0),
+                    ('attendance', 'Chấm công', 'Attendance', 'Chấm công check-in/out ca làm việc', 'C', '#84cc16', 13, '1', 0, 0),
+                    ('payroll', 'Bảng lương', 'Payroll', 'Tính lương và duyệt chi bảng lương', 'B', '#0ea5e9', 14, '1', 0, 0),
+                    ('cashbook', 'Sổ quỹ', 'Cashbook', 'Sổ quỹ thu chi và dòng tiền cửa hàng', 'S', '#a855f7', 15, '1', 0, 0),
+                    ('report', 'Báo cáo', 'Report', 'Báo cáo doanh thu, lợi nhuận và tồn kho', 'B', '#d946ef', 16, '1', 0, 0),
+                    ('role', 'Nhóm quyền', 'Role Groups', 'Quản lý phân quyền và nhóm quyền người dùng', 'Q', '#64748b', 17, '1', 0, 0)
+                ON CONFLICT (name) DO UPDATE SET
+                    display_name_vi = EXCLUDED.display_name_vi,
+                    display_name_en = EXCLUDED.display_name_en,
+                    description = EXCLUDED.description,
+                    icon = EXCLUDED.icon,
+                    color = EXCLUDED.color,
+                    thu_tu = EXCLUDED.thu_tu;
             """);
 
-            // 8. Seed permissions mẫu
+            // 9. Seed permissions mẫu đúng theo hệ thống Circle K với module code chuẩn
             jdbcTemplate.execute("""
                 INSERT INTO permissions (name, description, created_by, created_at, updated_at, status, deleted, module, display_name_vi, display_name_en)
                 VALUES
-                    ('user:create', 'Create user', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Người dùng', 'Tạo người dùng', 'Create user'),
-                    ('user:read', 'Read user', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Người dùng', 'Xem người dùng', 'Read user'),
-                    ('user:update', 'Update user', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Người dùng', 'Cập nhật người dùng', 'Update user'),
-                    ('user:delete', 'Delete user', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Người dùng', 'Xoá người dùng', 'Delete user'),
-                    ('user:import', 'Import users', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Người dùng', 'Import người dùng', 'Import users'),
+                    ('user:create', 'Tạo tài khoản', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'user', 'Tạo tài khoản', 'Create user'),
+                    ('user:read', 'Xem tài khoản', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'user', 'Xem tài khoản', 'Read user'),
+                    ('user:update', 'Cập nhật tài khoản', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'user', 'Cập nhật tài khoản', 'Update user'),
+                    ('user:delete', 'Xoá tài khoản', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'user', 'Xoá tài khoản', 'Delete user'),
 
-                    ('department:create', 'Create department', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Phòng ban', 'Tạo phòng ban', 'Create department'),
-                    ('department:read', 'Read department', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Phòng ban', 'Xem phòng ban', 'Read department'),
-                    ('department:update', 'Update department', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Phòng ban', 'Cập nhật phòng ban', 'Update department'),
-                    ('department:delete', 'Delete department', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Phòng ban', 'Xoá phòng ban', 'Delete department'),
+                    ('employee:create', 'Thêm nhân viên', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'employee', 'Thêm nhân viên', 'Create employee'),
+                    ('employee:read', 'Xem nhân viên', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'employee', 'Xem nhân viên', 'Read employee'),
+                    ('employee:update', 'Cập nhật nhân viên', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'employee', 'Cập nhật nhân viên', 'Update employee'),
+                    ('employee:delete', 'Xoá nhân viên', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'employee', 'Xoá nhân viên', 'Delete employee'),
 
-                    ('product:create', 'Create product', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Hàng hoá', 'Tạo hàng hoá', 'Create product'),
-                    ('product:read', 'Read product', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Hàng hoá', 'Xem hàng hoá', 'Read product'),
-                    ('product:update', 'Update product', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Hàng hoá', 'Cập nhật hàng hoá', 'Update product'),
-                    ('product:delete', 'Delete product', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Hàng hoá', 'Xoá hàng hoá', 'Delete product'),
+                    ('branch:create', 'Tạo chi nhánh', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'branch', 'Tạo chi nhánh', 'Create branch'),
+                    ('branch:read', 'Xem chi nhánh', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'branch', 'Xem chi nhánh', 'Read branch'),
+                    ('branch:update', 'Cập nhật chi nhánh', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'branch', 'Cập nhật chi nhánh', 'Update branch'),
+                    ('branch:delete', 'Xoá chi nhánh', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'branch', 'Xoá chi nhánh', 'Delete branch'),
 
-                    ('warehouse:create', 'Create warehouse', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Kho hàng', 'Tạo phiếu kho', 'Create warehouse receipt'),
-                    ('warehouse:read', 'Read warehouse', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Kho hàng', 'Xem kho hàng', 'Read warehouse'),
-                    ('warehouse:update', 'Update warehouse', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Kho hàng', 'Cập nhật kho hàng', 'Update warehouse'),
-                    ('warehouse:approve', 'Approve warehouse', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Kho hàng', 'Duyệt phiếu kho', 'Approve warehouse receipt'),
+                    ('product:create', 'Tạo hàng hoá', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'product', 'Tạo hàng hoá', 'Create product'),
+                    ('product:read', 'Xem hàng hoá', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'product', 'Xem hàng hoá', 'Read product'),
+                    ('product:update', 'Cập nhật hàng hoá', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'product', 'Cập nhật hàng hoá', 'Update product'),
+                    ('product:delete', 'Xoá hàng hoá', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'product', 'Xoá hàng hoá', 'Delete product'),
 
-                    ('order:create', 'Create order', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Đơn hàng', 'Tạo đơn hàng POS', 'Create sales order'),
-                    ('order:read', 'Read order', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Đơn hàng', 'Xem đơn hàng', 'Read sales order'),
+                    ('category:create', 'Tạo danh mục', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'category', 'Tạo danh mục', 'Create category'),
+                    ('category:read', 'Xem danh mục', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'category', 'Xem danh mục', 'Read category'),
+                    ('category:update', 'Cập nhật danh mục', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'category', 'Cập nhật danh mục', 'Update category'),
+                    ('category:delete', 'Xoá danh mục', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'category', 'Xoá danh mục', 'Delete category'),
 
-                    ('candidate_cv:download', 'Download candidate CV', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Tuyển dụng', 'Tải CV ứng viên', 'Download candidate CV'),
-                    ('candidate_cv:upload', 'Upload candidate CV', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'Tuyển dụng', 'Tải lên CV ứng viên', 'Upload candidate CV')
-                ON CONFLICT (name) DO NOTHING;
+                    ('supplier:create', 'Tạo nhà cung cấp', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'supplier', 'Tạo nhà cung cấp', 'Create supplier'),
+                    ('supplier:read', 'Xem nhà cung cấp', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'supplier', 'Xem nhà cung cấp', 'Read supplier'),
+                    ('supplier:update', 'Cập nhật nhà cung cấp', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'supplier', 'Cập nhật nhà cung cấp', 'Update supplier'),
+                    ('supplier:delete', 'Xoá nhà cung cấp', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'supplier', 'Xoá nhà cung cấp', 'Delete supplier'),
+
+                    ('warehouse:read', 'Xem tồn kho & thẻ kho', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'warehouse', 'Xem kho hàng', 'Read warehouse'),
+                    ('warehouse:adjust', 'Điều chỉnh tồn kho', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'warehouse', 'Điều chỉnh kho', 'Adjust warehouse'),
+
+                    ('purchase:create', 'Tạo phiếu nhập hàng', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'purchase', 'Tạo phiếu nhập', 'Create purchase'),
+                    ('purchase:read', 'Xem phiếu nhập hàng', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'purchase', 'Xem phiếu nhập', 'Read purchase'),
+                    ('purchase:update', 'Cập nhật phiếu nhập', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'purchase', 'Cập nhật phiếu nhập', 'Update purchase'),
+                    ('purchase:approve', 'Duyệt thanh toán phiếu nhập', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'purchase', 'Duyệt phiếu nhập', 'Approve purchase'),
+                    ('purchase:delete', 'Xoá phiếu nhập', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'purchase', 'Xoá phiếu nhập', 'Delete purchase'),
+
+                    ('transfer:create', 'Tạo phiếu chuyển kho', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'transfer', 'Tạo phiếu chuyển kho', 'Create transfer'),
+                    ('transfer:read', 'Xem phiếu chuyển kho', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'transfer', 'Xem phiếu chuyển kho', 'Read transfer'),
+                    ('transfer:update', 'Cập nhật phiếu chuyển kho', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'transfer', 'Cập nhật phiếu chuyển kho', 'Update transfer'),
+                    ('transfer:approve', 'Duyệt xuất/nhận chuyển kho', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'transfer', 'Duyệt chuyển kho', 'Approve transfer'),
+                    ('transfer:delete', 'Xoá phiếu chuyển kho', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'transfer', 'Xoá phiếu chuyển kho', 'Delete transfer'),
+
+                    ('stocktake:create', 'Tạo phiếu kiểm kê', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'stocktake', 'Tạo phiếu kiểm kê', 'Create stocktake'),
+                    ('stocktake:read', 'Xem phiếu kiểm kê', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'stocktake', 'Xem phiếu kiểm kê', 'Read stocktake'),
+                    ('stocktake:update', 'Cập nhật phiếu kiểm kê', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'stocktake', 'Cập nhật phiếu kiểm kê', 'Update stocktake'),
+                    ('stocktake:approve', 'Cân bằng kho kiểm kê', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'stocktake', 'Duyệt kiểm kê', 'Approve stocktake'),
+                    ('stocktake:delete', 'Xoá phiếu kiểm kê', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'stocktake', 'Xoá phiếu kiểm kê', 'Delete stocktake'),
+
+                    ('order:create', 'Tạo hoá đơn bán hàng POS', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'order', 'Tạo đơn hàng POS', 'Create sales order'),
+                    ('order:read', 'Xem hoá đơn bán hàng', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'order', 'Xem đơn hàng', 'Read sales order'),
+                    ('order:cancel', 'Huỷ / Hoàn tiền đơn hàng', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'order', 'Huỷ đơn hàng', 'Cancel sales order'),
+                    ('order:update', 'Cập nhật hoá đơn', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'order', 'Cập nhật đơn hàng', 'Update sales order'),
+                    ('order:delete', 'Xoá hoá đơn', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'order', 'Xoá đơn hàng', 'Delete sales order'),
+
+                    ('contract:create', 'Tạo hợp đồng NCC', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'contract', 'Tạo hợp đồng', 'Create contract'),
+                    ('contract:read', 'Xem hợp đồng NCC', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'contract', 'Xem hợp đồng', 'Read contract'),
+                    ('contract:update', 'Cập nhật hợp đồng NCC', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'contract', 'Cập nhật hợp đồng', 'Update contract'),
+                    ('contract:approve', 'Duyệt hợp đồng NCC', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'contract', 'Duyệt hợp đồng', 'Approve contract'),
+                    ('contract:delete', 'Xoá hợp đồng NCC', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'contract', 'Xoá hợp đồng', 'Delete contract'),
+
+                    ('attendance:read', 'Xem chấm công', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'attendance', 'Xem chấm công', 'Read attendance'),
+                    ('attendance:checkin', 'Check-in/out chấm công', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'attendance', 'Điểm danh ca làm', 'Checkin attendance'),
+                    ('attendance:update', 'Sửa dữ liệu chấm công', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'attendance', 'Cập nhật chấm công', 'Update attendance'),
+                    ('attendance:approve', 'Chốt ca / duyệt công', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'attendance', 'Duyệt công', 'Approve attendance'),
+
+                    ('payroll:read', 'Xem bảng lương', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'payroll', 'Xem bảng lương', 'Read payroll'),
+                    ('payroll:calculate', 'Tính toán bảng lương', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'payroll', 'Tính bảng lương', 'Calculate payroll'),
+                    ('payroll:approve', 'Duyệt chi bảng lương', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'payroll', 'Duyệt bảng lương', 'Approve payroll'),
+
+                    ('cashbook:read', 'Xem sổ quỹ thu chi', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'cashbook', 'Xem sổ quỹ', 'Read cashbook'),
+                    ('cashbook:create', 'Lập phiếu thu / chi', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'cashbook', 'Lập phiếu thu chi', 'Create cashbook entry'),
+
+                    ('report:read', 'Xem báo cáo doanh thu & kho', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'report', 'Xem báo cáo', 'Read report'),
+
+                    ('role:create', 'Tạo nhóm quyền', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'role', 'Tạo nhóm quyền', 'Create role'),
+                    ('role:read', 'Xem nhóm quyền & quyền hạn', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'role', 'Xem nhóm quyền', 'Read role'),
+                    ('role:update', 'Cập nhật nhóm quyền', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'role', 'Cập nhật nhóm quyền', 'Update role'),
+                    ('role:delete', 'Xoá nhóm quyền', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'role', 'Xoá nhóm quyền', 'Delete role'),
+                    ('role:assign', 'Phân quyền cho nhóm', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'role', 'Gán quyền', 'Assign role')
+                ON CONFLICT (name) DO UPDATE SET
+                    module = EXCLUDED.module,
+                    description = EXCLUDED.description,
+                    display_name_vi = EXCLUDED.display_name_vi,
+                    display_name_en = EXCLUDED.display_name_en;
+
+                -- Đồng bộ chuẩn hoá: cột module luôn khớp với phần tiền tố trước dấu ':' của name
+                UPDATE permissions SET module = SPLIT_PART(name, ':', 1) WHERE name LIKE '%:%';
             """);
 
-            // 9. Gán tất cả quyền cho ADMIN (NQ01)
+            // 10. Gán quyền mặc định cho từng vai trò (ADMIN, QUAN_LY, THU_KHO, THU_NGAN, KE_TOAN)
+
+            // 10.1 ADMIN: Có tất cả các quyền
             jdbcTemplate.execute("""
                 INSERT INTO role_permissions (role_id, permission_id, created_by)
                 SELECT v.id, p.id, 'SYSTEM'
                 FROM vai_tro v
                 CROSS JOIN permissions p
                 WHERE v.ma_vai_tro = 'NQ01'
+                ON CONFLICT DO NOTHING;
+            """);
+
+            // 10.2 QUAN_LY: Quản lý vận hành chi nhánh, nhân viên, POS, kiểm kê, chấm công
+            jdbcTemplate.execute("""
+                INSERT INTO role_permissions (role_id, permission_id, created_by)
+                SELECT v.id, p.id, 'SYSTEM'
+                FROM vai_tro v
+                CROSS JOIN permissions p
+                WHERE v.ma_vai_tro = 'NQ02'
+                  AND p.name IN (
+                    'order:read', 'order:create', 'order:cancel', 'order:update',
+                    'product:read', 'product:update',
+                    'category:read',
+                    'branch:read',
+                    'employee:read', 'employee:create', 'employee:update',
+                    'warehouse:read',
+                    'purchase:read',
+                    'transfer:read', 'transfer:create', 'transfer:approve',
+                    'stocktake:read', 'stocktake:create', 'stocktake:update', 'stocktake:approve',
+                    'attendance:read', 'attendance:checkin', 'attendance:update', 'attendance:approve',
+                    'payroll:read',
+                    'cashbook:read',
+                    'contract:read',
+                    'supplier:read',
+                    'report:read'
+                  )
+                ON CONFLICT DO NOTHING;
+            """);
+
+            // 10.3 THU_KHO: Quản lý kho, nhập hàng NCC, chuyển kho, kiểm kê
+            jdbcTemplate.execute("""
+                INSERT INTO role_permissions (role_id, permission_id, created_by)
+                SELECT v.id, p.id, 'SYSTEM'
+                FROM vai_tro v
+                CROSS JOIN permissions p
+                WHERE v.ma_vai_tro = 'NQ03'
+                  AND p.name IN (
+                    'warehouse:read', 'warehouse:adjust',
+                    'purchase:read', 'purchase:create', 'purchase:update',
+                    'transfer:read', 'transfer:create', 'transfer:approve',
+                    'stocktake:read', 'stocktake:create', 'stocktake:update',
+                    'product:read',
+                    'category:read',
+                    'supplier:read',
+                    'attendance:checkin'
+                  )
+                ON CONFLICT DO NOTHING;
+            """);
+
+            // 10.4 THU_NGAN: Bán hàng POS, xem đơn hàng, checkin ca làm
+            jdbcTemplate.execute("""
+                INSERT INTO role_permissions (role_id, permission_id, created_by)
+                SELECT v.id, p.id, 'SYSTEM'
+                FROM vai_tro v
+                CROSS JOIN permissions p
+                WHERE v.ma_vai_tro = 'NQ04'
+                  AND p.name IN (
+                    'order:read', 'order:create',
+                    'product:read',
+                    'category:read',
+                    'attendance:checkin'
+                  )
+                ON CONFLICT DO NOTHING;
+            """);
+
+            // 10.5 KE_TOAN: Sổ quỹ thu chi, duyệt thanh toán nhập hàng, bảng lương, báo cáo
+            jdbcTemplate.execute("""
+                INSERT INTO role_permissions (role_id, permission_id, created_by)
+                SELECT v.id, p.id, 'SYSTEM'
+                FROM vai_tro v
+                CROSS JOIN permissions p
+                WHERE v.ma_vai_tro = 'NQ05'
+                  AND p.name IN (
+                    'cashbook:read', 'cashbook:create', 'cashbook:export',
+                    'purchase:read', 'purchase:approve',
+                    'payroll:read', 'payroll:calculate', 'payroll:approve', 'payroll:export',
+                    'report:read', 'report:export',
+                    'order:read',
+                    'contract:read', 'contract:create', 'contract:update',
+                    'attendance:read', 'attendance:checkin',
+                    'supplier:read',
+                    'product:read'
+                  )
                 ON CONFLICT DO NOTHING;
             """);
 

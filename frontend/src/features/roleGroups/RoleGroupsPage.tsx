@@ -6,8 +6,11 @@ import { RolePermissionsTab } from './components/RolePermissionsTab';
 import { PermissionManagerTab } from './components/PermissionManagerTab';
 import { ModuleManagerTab } from './components/ModuleManagerTab';
 import { RoleModal } from './components/RoleModal';
+import { RoleDetailModal } from './components/RoleDetailModal';
 import { PermissionModal } from './components/PermissionModal';
+import { PermissionDetailModal } from './components/PermissionDetailModal';
 import { ModuleModal } from './components/ModuleModal';
+import { ModuleDetailModal } from './components/ModuleDetailModal';
 import { useRoleGroupsData } from './hooks/useRoleGroupsData';
 import { modulesApi, permissionsApi, rolesApi } from './api/roleGroupApi';
 import type {
@@ -66,15 +69,28 @@ export const RoleGroupsPage: FC = () => {
   const [editingRole, setEditingRole] = useState<RoleGroup | null>(null);
   const [submittingRole, setSubmittingRole] = useState(false);
 
+  // Detail Role Modal State
+  const [detailRoleModalOpen, setDetailRoleModalOpen] = useState(false);
+  const [viewingRole, setViewingRole] = useState<RoleGroup | null>(null);
+
   // Permission Modal State
   const [permModalOpen, setPermModalOpen] = useState(false);
   const [editingPerm, setEditingPerm] = useState<PermissionItem | null>(null);
   const [submittingPerm, setSubmittingPerm] = useState(false);
 
+  // Detail Permission Modal State
+  const [detailPermModalOpen, setDetailPermModalOpen] = useState(false);
+  const [viewingPerm, setViewingPerm] = useState<PermissionItem | null>(null);
+  const [deletingBulkPerms, setDeletingBulkPerms] = useState(false);
+
   // Module Modal State
   const [moduleModalOpen, setModuleModalOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<ModuleItem | null>(null);
   const [submittingModule, setSubmittingModule] = useState(false);
+
+  // Detail Module Modal State
+  const [detailModuleModalOpen, setDetailModuleModalOpen] = useState(false);
+  const [viewingModule, setViewingModule] = useState<ModuleItem | null>(null);
 
   // Role actions
   const handleOpenAddRole = () => {
@@ -120,6 +136,11 @@ export const RoleGroupsPage: FC = () => {
     }
   };
 
+  const handleViewRoleDetail = (role: RoleGroup) => {
+    setViewingRole(role);
+    setDetailRoleModalOpen(true);
+  };
+
   // Permission actions
   const handleOpenAddPerm = () => {
     setEditingPerm(null);
@@ -159,6 +180,25 @@ export const RoleGroupsPage: FC = () => {
       await Promise.all([loadPermissions(), loadModules()]);
     } catch (e: any) {
       message.error(e?.message || 'Không thể xoá quyền');
+    }
+  };
+
+  const handleViewPermDetail = (perm: PermissionItem) => {
+    setViewingPerm(perm);
+    setDetailPermModalOpen(true);
+  };
+
+  const handleDeleteBulkPerms = async (ids: string[]) => {
+    try {
+      setDeletingBulkPerms(true);
+      await permissionsApi.deleteBulk(ids);
+      message.success(`Đã xoá thành công ${ids.length} quyền`);
+      await Promise.all([loadPermissions(), loadModules()]);
+    } catch (e: any) {
+      message.error(e?.message || 'Không thể xoá các quyền đã chọn');
+      throw e;
+    } finally {
+      setDeletingBulkPerms(false);
     }
   };
 
@@ -204,6 +244,11 @@ export const RoleGroupsPage: FC = () => {
     }
   };
 
+  const handleViewModuleDetail = (mod: ModuleItem) => {
+    setViewingModule(mod);
+    setDetailModuleModalOpen(true);
+  };
+
   const tabItems = [
     {
       key: 'role-perms',
@@ -235,6 +280,9 @@ export const RoleGroupsPage: FC = () => {
           onAddNew={handleOpenAddPerm}
           onEdit={handleOpenEditPerm}
           onDelete={handleDeletePerm}
+          onViewDetail={handleViewPermDetail}
+          onDeleteBulk={handleDeleteBulkPerms}
+          deletingBulk={deletingBulkPerms}
           syncing={syncing}
           loading={loadingPerms}
         />
@@ -251,6 +299,7 @@ export const RoleGroupsPage: FC = () => {
           onAddNew={handleOpenAddModule}
           onEdit={handleOpenEditModule}
           onDelete={handleDeleteModule}
+          onViewDetail={handleViewModuleDetail}
           loading={loadingModules}
         />
       ),
@@ -278,6 +327,7 @@ export const RoleGroupsPage: FC = () => {
             onAddNew={handleOpenAddRole}
             onEdit={handleOpenEditRole}
             onDelete={handleDeleteRole}
+            onViewDetail={handleViewRoleDetail}
             searchValue={roleSearch}
             onSearchChange={setRoleSearch}
             loading={loadingRoles}
@@ -319,6 +369,25 @@ export const RoleGroupsPage: FC = () => {
         onCancel={() => setModuleModalOpen(false)}
         onSubmit={handleSubmitModule}
         submitting={submittingModule}
+      />
+
+      <PermissionDetailModal
+        open={detailPermModalOpen}
+        permission={viewingPerm}
+        modules={modules}
+        onClose={() => setDetailPermModalOpen(false)}
+      />
+
+      <ModuleDetailModal
+        open={detailModuleModalOpen}
+        moduleItem={viewingModule}
+        onClose={() => setDetailModuleModalOpen(false)}
+      />
+
+      <RoleDetailModal
+        open={detailRoleModalOpen}
+        role={viewingRole}
+        onClose={() => setDetailRoleModalOpen(false)}
       />
     </div>
   );

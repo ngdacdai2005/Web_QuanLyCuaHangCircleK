@@ -19,13 +19,13 @@ public class ChiNhanhController {
     private final ChiNhanhService chiNhanhService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY', 'THU_KHO', 'THU_NGAN', 'KE_TOAN')")
+    @PreAuthorize("hasAuthority('branch:read')")
     public ResponseEntity<List<ChiNhanhResponseDTO>> getAll() {
         return ResponseEntity.ok(chiNhanhService.getAll());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('branch:read')")
     public ResponseEntity<?> getById(@PathVariable UUID id) {
         return chiNhanhService.getById(id)
                 .map(ResponseEntity::ok)
@@ -33,38 +33,38 @@ public class ChiNhanhController {
     }
 
     @GetMapping("/active")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('branch:read')")
     public ResponseEntity<List<ChiNhanhResponseDTO>> getActive() {
         return ResponseEntity.ok(chiNhanhService.getActive());
     }
 
     @GetMapping("/by-loai/{loai}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('branch:read')")
     public ResponseEntity<List<ChiNhanhResponseDTO>> getByLoai(@PathVariable String loai) {
         return ResponseEntity.ok(chiNhanhService.getByLoai(loai));
     }
 
     @GetMapping("/kho-tong")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('branch:read')")
     public ResponseEntity<List<ChiNhanhResponseDTO>> getKhoTong() {
         return ResponseEntity.ok(chiNhanhService.getKhoTong());
     }
 
     @GetMapping("/cua-hang")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('branch:read')")
     public ResponseEntity<List<ChiNhanhResponseDTO>> getCuaHang() {
         return ResponseEntity.ok(chiNhanhService.getCuaHang());
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('branch:create')")
     public ResponseEntity<?> create(@RequestBody ChiNhanhRequestDTO request) {
         ChiNhanhResponseDTO created = chiNhanhService.create(request);
         return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('branch:update')")
     public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody ChiNhanhRequestDTO request) {
         return chiNhanhService.update(id, request)
                 .map(ResponseEntity::ok)
@@ -72,7 +72,7 @@ public class ChiNhanhController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('branch:delete')")
     public ResponseEntity<?> delete(@PathVariable UUID id) {
         return chiNhanhService.delete(id)
                 .map(ResponseEntity::ok)
@@ -80,7 +80,7 @@ public class ChiNhanhController {
     }
 
     @PutMapping("/{id}/quan-ly/{idQuanLy}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('branch:update')")
     public ResponseEntity<?> assignQuanLy(@PathVariable UUID id, @PathVariable UUID idQuanLy) {
         return chiNhanhService.assignQuanLy(id, idQuanLy)
                 .map(ResponseEntity::ok)
@@ -88,7 +88,7 @@ public class ChiNhanhController {
     }
 
     @DeleteMapping("/{id}/quan-ly")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('branch:delete')")
     public ResponseEntity<?> clearQuanLy(@PathVariable UUID id) {
         return chiNhanhService.clearQuanLy(id)
                 .map(ResponseEntity::ok)

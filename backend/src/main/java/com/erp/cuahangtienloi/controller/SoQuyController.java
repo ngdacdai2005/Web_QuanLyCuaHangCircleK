@@ -53,14 +53,14 @@ public class SoQuyController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('cashbook:read')")
     public ResponseEntity<List<SoQuyResponseDTO>> getAll(HttpServletRequest request) {
         NhanVien employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(soQuyService.getAll(employee));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('cashbook:read')")
     public ResponseEntity<?> getById(@PathVariable UUID id, HttpServletRequest request) {
         NhanVien employee = branchAccessService.requireAuthenticatedEmployee(request);
         return soQuyService.getById(id, employee)
@@ -69,28 +69,28 @@ public class SoQuyController {
     }
 
     @GetMapping("/by-branch/{idChiNhanh}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('cashbook:read')")
     public ResponseEntity<List<SoQuyResponseDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
         NhanVien employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(soQuyService.getByChiNhanh(idChiNhanh, employee));
     }
 
     @GetMapping("/by-direction/{direction}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('cashbook:read')")
     public ResponseEntity<List<SoQuyResponseDTO>> getByDirection(@PathVariable String direction, HttpServletRequest request) {
         NhanVien employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(soQuyService.getByDirection(direction, employee));
     }
 
     @GetMapping("/by-hang-muc/{hangMuc}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('cashbook:read')")
     public ResponseEntity<List<SoQuyResponseDTO>> getByHangMuc(@PathVariable String hangMuc, HttpServletRequest request) {
         NhanVien employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(soQuyService.getByHangMuc(hangMuc, employee));
     }
 
     @GetMapping("/by-date-range")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('cashbook:read')")
     public ResponseEntity<List<SoQuyResponseDTO>> getByDateRange(
             @RequestParam LocalDate from, @RequestParam LocalDate to, HttpServletRequest request) {
         NhanVien employee = branchAccessService.requireAuthenticatedEmployee(request);
@@ -98,7 +98,7 @@ public class SoQuyController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
+    @PreAuthorize("hasAuthority('cashbook:create')")
     public ResponseEntity<?> create(@RequestBody com.erp.cuahangtienloi.dto.request.SoQuyRequestDTO request, HttpServletRequest httpRequest) {
         UUID fallbackId = resolveAuthenticatedIdNhanVien(httpRequest);
         return ResponseEntity.ok(soQuyService.create(request, fallbackId));
@@ -110,7 +110,7 @@ public class SoQuyController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
+    @PreAuthorize("hasAuthority('cashbook:create')")
     public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody com.erp.cuahangtienloi.dto.request.SoQuyRequestDTO request) {
         return soQuyService.update(id, request)
                 .map(ResponseEntity::ok)
@@ -118,7 +118,7 @@ public class SoQuyController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('cashbook:create')")
     public ResponseEntity<?> delete(@PathVariable UUID id) {
         if (soQuyService.delete(id)) {
             return ResponseEntity.ok(ApiResponse.ok("Xóa sổ quỹ thành công"));

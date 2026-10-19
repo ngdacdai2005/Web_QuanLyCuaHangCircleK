@@ -37,7 +37,7 @@ public class ChiTietHoaDonController {
     }
 
     @GetMapping("/by-hoa-don/{idHoaDon}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY', 'THU_NGAN')")
+    @PreAuthorize("hasAuthority('order:read')")
     public ResponseEntity<List<ChiTietHoaDonResponseDTO>> getByHoaDon(@PathVariable UUID idHoaDon, HttpServletRequest request) {
         return hoaDonService.getLinesByHoaDon(idHoaDon, requireAuthenticatedEmployee(request))
                 .map(ResponseEntity::ok)
@@ -45,26 +45,26 @@ public class ChiTietHoaDonController {
     }
 
     @GetMapping("/by-san-pham/{idSanPham}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
+    @PreAuthorize("hasAuthority('order:read')")
     public ResponseEntity<List<ChiTietHoaDonResponseDTO>> getBySanPham(@PathVariable UUID idSanPham) {
         return ResponseEntity.ok(hoaDonService.getLinesBySanPham(idSanPham));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('order:create')")
     public ResponseEntity<?> create(@RequestBody ChiTietHoaDonRequestDTO request) {
         return ResponseEntity.ok(hoaDonService.createLine(request));
     }
 
     @PostMapping("/batch")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('order:create')")
     public ResponseEntity<?> createBatch(@RequestBody List<ChiTietHoaDonRequestDTO> requests) {
         hoaDonService.createBatchLines(requests);   
         return ResponseEntity.ok(ApiResponse.ok("Tạo chi tiết thành công"));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('order:delete')")
     public ResponseEntity<?> delete(@PathVariable UUID id) {
         if (hoaDonService.deleteLine(id)) {
             return ResponseEntity.ok(ApiResponse.ok("Xóa chi tiết thành công"));
@@ -73,7 +73,7 @@ public class ChiTietHoaDonController {
     }
 
     @DeleteMapping("/by-hoa-don/{idHoaDon}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('order:delete')")
     public ResponseEntity<?> deleteByHoaDon(@PathVariable UUID idHoaDon) {
         hoaDonService.deleteLinesByHoaDon(idHoaDon);
         return ResponseEntity.ok(ApiResponse.ok("Xóa tất cả chi tiết của hóa đơn"));

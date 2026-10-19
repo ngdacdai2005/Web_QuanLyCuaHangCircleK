@@ -39,14 +39,14 @@ public class NhanVienController {
                 branchAccessService, new NhanVienMapper()), branchAccessService);    }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('employee:read')")
     public ResponseEntity<List<NhanVienResponseDTO>> getAll(HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(nhanVienService.getAll(actor));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('employee:read')")
     public ResponseEntity<?> getById(@PathVariable UUID id, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return nhanVienService.getById(id, actor)
@@ -55,21 +55,21 @@ public class NhanVienController {
     }
 
     @GetMapping("/by-chi-nhanh/{idChiNhanh}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('employee:read')")
     public ResponseEntity<List<NhanVienResponseDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(nhanVienService.getByChiNhanh(idChiNhanh, actor));
     }
 
     @GetMapping("/active")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('employee:read')")
     public ResponseEntity<List<NhanVienResponseDTO>> getActive(HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(nhanVienService.getActive(actor));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('employee:create')")
     public ResponseEntity<?> create(@RequestBody NhanVienRequestDTO request, HttpServletRequest httpRequest) {
         try {
             NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
@@ -81,7 +81,7 @@ public class NhanVienController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('employee:update')")
     public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody NhanVienRequestDTO request, HttpServletRequest httpRequest) {
         try {
             NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
@@ -105,7 +105,7 @@ public class NhanVienController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('employee:delete')")
     public ResponseEntity<?> delete(@PathVariable UUID id, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         nhanVienService.delete(id, actor);

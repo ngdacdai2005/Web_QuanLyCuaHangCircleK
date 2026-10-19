@@ -132,6 +132,16 @@ export const permissionsApi = {
     });
     if (!res.ok) throw await parseApiError(res, 'Không thể xoá quyền');
   },
+
+  deleteBulk: async (ids: string[]): Promise<void> => {
+    const numericIds = ids.map((id) => Number(id));
+    const res = await fetch(`${API_BASE_URL}/api/v1/permissions/bulk-delete`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(numericIds),
+    });
+    if (!res.ok) throw await parseApiError(res, 'Không thể xoá hàng loạt quyền');
+  },
 };
 
 export const modulesApi = {

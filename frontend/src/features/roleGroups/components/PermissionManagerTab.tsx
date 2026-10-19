@@ -10,11 +10,13 @@ import {
   Space,
   Spin,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import {
   DeleteOutlined,
   EditOutlined,
+  EyeOutlined,
   PlusOutlined,
   ReloadOutlined,
   SearchOutlined,
@@ -32,6 +34,9 @@ interface PermissionManagerTabProps {
   onAddNew: () => void;
   onEdit: (perm: PermissionItem) => void;
   onDelete: (id: string) => void;
+  onViewDetail: (perm: PermissionItem) => void;
+  onDeleteBulk: (ids: string[]) => Promise<void>;
+  deletingBulk?: boolean;
   syncing: boolean;
   loading: boolean;
 }
@@ -45,10 +50,22 @@ export const PermissionManagerTab: FC<PermissionManagerTabProps> = ({
   onAddNew,
   onEdit,
   onDelete,
+  onViewDetail,
+  onDeleteBulk,
+  deletingBulk = false,
   syncing,
   loading,
 }) => {
   const [selectedPermIds, setSelectedPermIds] = useState<string[]>([]);
+
+  const handleConfirmBulkDelete = async () => {
+    try {
+      await onDeleteBulk(selectedPermIds);
+      setSelectedPermIds([]);
+    } catch {
+      // error handled in parent
+    }
+  };
 
   const getModuleMeta = (key: string) => {
     return modules.find((m) => m.name.toLowerCase() === key.toLowerCase());
@@ -90,6 +107,27 @@ export const PermissionManagerTab: FC<PermissionManagerTabProps> = ({
         />
 
         <Space size={10}>
+          {selectedPermIds.length > 0 && (
+            <Popconfirm
+              title={`Xác nhận xoá ${selectedPermIds.length} quyền đã chọn?`}
+              description="Các quyền này sẽ bị xoá khỏi hệ thống và gỡ khỏi tất cả vai trò."
+              okText="Xóa tất cả"
+              cancelText="Hủy"
+              okButtonProps={{ danger: true }}
+              onConfirm={handleConfirmBulkDelete}
+            >
+              <Button
+                danger
+                type="primary"
+                icon={<DeleteOutlined />}
+                loading={deletingBulk}
+                className="rg-btn-delete-bulk"
+              >
+                Xóa nhiều ({selectedPermIds.length})
+              </Button>
+            </Popconfirm>
+          )}
+
           <Button
             icon={<ReloadOutlined spin={syncing} />}
             onClick={onSync}
@@ -163,25 +201,39 @@ export const PermissionManagerTab: FC<PermissionManagerTabProps> = ({
                             </Tag>
 
                             <div className="rg-perm-actions">
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<EditOutlined />}
-                                onClick={() => onEdit(p)}
-                              />
+                              <Tooltip title="Xem chi tiết">
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  style={{ color: '#52c41a' }}
+                                  icon={<EyeOutlined />}
+                                  onClick={() => onViewDetail(p)}
+                                />
+                              </Tooltip>
+                              <Tooltip title="Chỉnh sửa">
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  icon={<EditOutlined />}
+                                  onClick={() => onEdit(p)}
+                                />
+                              </Tooltip>
                               <Popconfirm
                                 title="Xác nhận xoá quyền?"
                                 description="Quyền này sẽ bị gỡ khỏi toàn bộ vai trò."
                                 okText="Xoá"
                                 cancelText="Huỷ"
+                                okButtonProps={{ danger: true }}
                                 onConfirm={() => onDelete(p.id)}
                               >
-                                <Button
-                                  type="text"
-                                  size="small"
-                                  danger
-                                  icon={<DeleteOutlined />}
-                                />
+                                <Tooltip title="Xoá quyền">
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                  />
+                                </Tooltip>
                               </Popconfirm>
                             </div>
                           </div>

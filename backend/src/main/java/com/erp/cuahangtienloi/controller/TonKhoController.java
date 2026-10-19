@@ -24,34 +24,34 @@ public class TonKhoController {
     private final BranchAccessService branchAccessService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('warehouse:read')")
     public ResponseEntity<List<TonKhoResponseDTO>> getAll(HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(tonKhoService.getAll(employee));
     }
 
     @GetMapping("/by-branch/{idChiNhanh}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY', 'THU_NGAN')")
+    @PreAuthorize("hasAuthority('warehouse:read')")
     public ResponseEntity<List<TonKhoResponseDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(tonKhoService.getByChiNhanh(idChiNhanh, employee));
     }
 
     @GetMapping("/by-product/{idSanPham}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('warehouse:read')")
     public ResponseEntity<List<TonKhoResponseDTO>> getBySanPham(@PathVariable UUID idSanPham, HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(tonKhoService.getBySanPham(idSanPham, employee));
     }
 
     @GetMapping("/available-for-transfer")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('warehouse:read')")
     public ResponseEntity<List<TonKhoResponseDTO>> getAvailableForTransfer() {
         return ResponseEntity.ok(tonKhoService.getAvailableForTransfer());
     }
 
     @GetMapping("/detail/{idSanPham}/{idChiNhanh}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('warehouse:read')")
     public ResponseEntity<?> getDetail(@PathVariable UUID idSanPham, @PathVariable UUID idChiNhanh, HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
         return tonKhoService.getDetail(idSanPham, idChiNhanh, employee)
@@ -60,13 +60,13 @@ public class TonKhoController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('warehouse:adjust')")
     public ResponseEntity<?> create(@RequestBody TonKhoRequestDTO request) {
         return ResponseEntity.ok(tonKhoService.create(request));
     }
 
     @PutMapping("/{idSanPham}/{idChiNhanh}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('warehouse:adjust')")
     public ResponseEntity<?> update(@PathVariable UUID idSanPham, @PathVariable UUID idChiNhanh, @RequestBody TonKhoRequestDTO request) {
         return tonKhoService.update(idSanPham, idChiNhanh, request)
                 .map(ResponseEntity::ok)
@@ -74,7 +74,7 @@ public class TonKhoController {
     }
 
     @PostMapping("/adjust")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('warehouse:adjust')")
     public ResponseEntity<?> adjust(@RequestBody TonKhoAdjustmentRequestDTO request, HttpServletRequest httpRequest) {
         var employee = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return tonKhoService.adjust(request, employee)
@@ -83,7 +83,7 @@ public class TonKhoController {
     }
 
     @DeleteMapping("/{idSanPham}/{idChiNhanh}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('warehouse:adjust')")
     public ResponseEntity<?> delete(@PathVariable UUID idSanPham, @PathVariable UUID idChiNhanh) {
         tonKhoService.delete(idSanPham, idChiNhanh);
         return ResponseEntity.ok(ApiResponse.ok("Xóa tồn kho thành công"));

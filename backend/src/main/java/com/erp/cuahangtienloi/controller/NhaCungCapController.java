@@ -21,13 +21,13 @@ public class NhaCungCapController {
     private final NhaCungCapService nhaCungCapService;
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('supplier:read')")
     public ResponseEntity<List<NhaCungCapResponseDTO>> getAll() {
         return ResponseEntity.ok(nhaCungCapService.getAll());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('supplier:read')")
     public ResponseEntity<?> getById(@PathVariable UUID id) {
         return nhaCungCapService.getById(id)
                 .map(ResponseEntity::ok)
@@ -35,19 +35,19 @@ public class NhaCungCapController {
     }
 
     @GetMapping("/active")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('supplier:read')")
     public ResponseEntity<List<NhaCungCapResponseDTO>> getActive() {
         return ResponseEntity.ok(nhaCungCapService.getActive());
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('supplier:create')")
     public ResponseEntity<?> create(@Valid @RequestBody NhaCungCapRequestDTO request) {
         return ResponseEntity.ok(nhaCungCapService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('supplier:update')")
     public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestBody NhaCungCapRequestDTO request) {
         return nhaCungCapService.update(id, request)
                 .map(ResponseEntity::ok)
@@ -55,7 +55,7 @@ public class NhaCungCapController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('supplier:delete')")
     public ResponseEntity<?> delete(@PathVariable UUID id) {
         if (nhaCungCapService.delete(id)) {
             return ResponseEntity.ok(ApiResponse.ok("Xóa NCC thành công"));

@@ -24,14 +24,14 @@ public class TheKhoController {
     private final BranchAccessService branchAccessService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('warehouse:read')")
     public ResponseEntity<List<TheKhoResponseDTO>> getAll(HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(theKhoService.getAll(employee));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('warehouse:read')")
     public ResponseEntity<?> getById(@PathVariable UUID id, HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
         return theKhoService.getById(id, employee)
@@ -40,7 +40,7 @@ public class TheKhoController {
     }
 
     @GetMapping("/by-product/{idSanPham}/branch/{idChiNhanh}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('warehouse:read')")
     public ResponseEntity<List<TheKhoResponseDTO>> getByProductAndBranch(
             @PathVariable UUID idSanPham, @PathVariable UUID idChiNhanh, HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
@@ -48,14 +48,14 @@ public class TheKhoController {
     }
 
     @GetMapping("/by-branch/{idChiNhanh}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('warehouse:read')")
     public ResponseEntity<List<TheKhoResponseDTO>> getByBranch(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(theKhoService.getByBranch(idChiNhanh, employee));
     }
 
     @GetMapping("/by-type/{loaiGiaoDich}/branch/{idChiNhanh}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('warehouse:read')")
     public ResponseEntity<List<TheKhoResponseDTO>> getByTypeAndBranch(
             @PathVariable String loaiGiaoDich, @PathVariable UUID idChiNhanh, HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
@@ -63,7 +63,7 @@ public class TheKhoController {
     }
 
     @GetMapping("/by-branch/{idChiNhanh}/from/{from}/to/{to}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('warehouse:read')")
     public ResponseEntity<List<TheKhoResponseDTO>> getByBranchAndDateRange(
             @PathVariable UUID idChiNhanh,
             @PathVariable LocalDateTime from,
@@ -74,7 +74,7 @@ public class TheKhoController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('warehouse:adjust')")
     public ResponseEntity<?> create(@RequestBody(required = false) TheKhoRequestDTO request) {
         return ResponseEntity.badRequest().body(ApiResponse.err(
                 "Không được tạo trực tiếp thẻ kho. Hãy thực hiện qua giao dịch nhập kho, bán hàng hoặc kiểm kê."));

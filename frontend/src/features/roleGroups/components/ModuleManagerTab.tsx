@@ -9,11 +9,13 @@ import {
   Space,
   Spin,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import {
   DeleteOutlined,
   EditOutlined,
+  EyeOutlined,
   PlusOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
@@ -28,6 +30,7 @@ interface ModuleManagerTabProps {
   onAddNew: () => void;
   onEdit: (mod: ModuleItem) => void;
   onDelete: (id: string) => void;
+  onViewDetail: (mod: ModuleItem) => void;
   loading: boolean;
 }
 
@@ -38,6 +41,7 @@ export const ModuleManagerTab: FC<ModuleManagerTabProps> = ({
   onAddNew,
   onEdit,
   onDelete,
+  onViewDetail,
   loading,
 }) => {
   return (
@@ -113,25 +117,39 @@ export const ModuleManagerTab: FC<ModuleManagerTabProps> = ({
                       </Tag>
 
                       <Space size={2} className="rg-module-actions">
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<EditOutlined />}
-                          onClick={() => onEdit(mod)}
-                        />
+                        <Tooltip title="Xem chi tiết">
+                          <Button
+                            type="text"
+                            size="small"
+                            style={{ color: '#52c41a' }}
+                            icon={<EyeOutlined />}
+                            onClick={() => onViewDetail(mod)}
+                          />
+                        </Tooltip>
+                        <Tooltip title="Chỉnh sửa">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={() => onEdit(mod)}
+                          />
+                        </Tooltip>
                         <Popconfirm
                           title="Xác nhận xoá module?"
                           description="Chỉ xoá được khi không còn quyền nào thuộc module này."
                           okText="Xoá"
                           cancelText="Huỷ"
+                          okButtonProps={{ danger: true }}
                           onConfirm={() => onDelete(mod.id)}
                         >
-                          <Button
-                            type="text"
-                            size="small"
-                            danger
-                            icon={<DeleteOutlined />}
-                          />
+                          <Tooltip title="Xoá module">
+                            <Button
+                              type="text"
+                              size="small"
+                              danger
+                              icon={<DeleteOutlined />}
+                            />
+                          </Tooltip>
                         </Popconfirm>
                       </Space>
                     </div>

@@ -24,13 +24,13 @@ public class TaiKhoanController {
     private final TaiKhoanService taiKhoanService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('user:read')")
     public ResponseEntity<List<TaiKhoanResponseDTO>> getAllTaiKhoan() {
         return ResponseEntity.ok(taiKhoanService.getAll());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('user:read')")
     public ResponseEntity<?> getTaiKhoanById(@PathVariable UUID id) {
         return taiKhoanService.getById(id)
                 .map(ResponseEntity::ok)
@@ -38,14 +38,14 @@ public class TaiKhoanController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('user:create')")
     public ResponseEntity<?> createTaiKhoan(@Valid @RequestBody CreateTaiKhoanRequestDTO request) {
         taiKhoanService.create(request);
         return ResponseEntity.ok(ApiResponse.ok("Tạo tài khoản thành công"));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('user:update')")
     public ResponseEntity<?> updateTaiKhoan(@PathVariable UUID id, @Valid @RequestBody UpdateTaiKhoanRequestDTO request) {
         return taiKhoanService.update(id, request)
                 .map(tk -> ResponseEntity.ok(ApiResponse.ok("Cập nhật thành công")))
@@ -53,7 +53,7 @@ public class TaiKhoanController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('user:delete')")
     public ResponseEntity<?> deleteTaiKhoan(@PathVariable UUID id) {
         if (taiKhoanService.delete(id)) {
             return ResponseEntity.ok(ApiResponse.ok("Xóa tài khoản thành công"));
@@ -62,13 +62,13 @@ public class TaiKhoanController {
     }
 
     @GetMapping("/nhan-vien")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('user:read')")
     public ResponseEntity<List<NhanVienOption>> getNhanVienChuaCoTaiKhoan() {
         return ResponseEntity.ok(taiKhoanService.getNhanVienChuaCoTaiKhoan());
     }
 
     @PutMapping("/{id}/change-password")
-    @PreAuthorize("hasRole('ADMIN') or authentication.name == #id.toString()")
+    @PreAuthorize("hasAuthority('user:update') or authentication.name == #id.toString()")
     public ResponseEntity<?> changePassword(
             @PathVariable UUID id,
             @Valid @RequestBody ChangePasswordRequestDTO request) {

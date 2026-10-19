@@ -27,9 +27,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class HopDongController {
 
-    private static final String VIEW = "hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')";
-    private static final String WRITE = "hasAnyRole('ADMIN', 'KE_TOAN')";
-    private static final String APPROVE = "hasRole('ADMIN')";
+    private static final String VIEW = "hasAuthority('contract:read')";
+    private static final String WRITE = "hasAuthority('contract:create') or hasAuthority('contract:update')";
+    private static final String APPROVE = "hasAuthority('contract:approve')";
 
     private final HopDongService hopDongService;
     private final BranchAccessService branchAccessService;
@@ -135,7 +135,7 @@ public class HopDongController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('contract:delete')")
     public ResponseEntity<?> delete(@PathVariable UUID id) {
         if (hopDongService.delete(id)) return ResponseEntity.ok().build();
         return ResponseEntity.notFound().build();

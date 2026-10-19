@@ -75,13 +75,13 @@ public class SanPhamController {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('product:read')")
     public ResponseEntity<List<SanPhamResponseDTO>> getAll(HttpServletRequest request) {
         return ResponseEntity.ok(sanPhamService.getAll(resolveBranchId(request), isAdmin()));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('product:read')")
     public ResponseEntity<?> getById(@PathVariable UUID id) {
         return sanPhamService.getById(id)
                 .map(ResponseEntity::ok)
@@ -89,13 +89,13 @@ public class SanPhamController {
     }
 
     @GetMapping("/by-danh-muc/{idDanhMuc}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('product:read')")
     public ResponseEntity<List<SanPhamResponseDTO>> getByDanhMuc(@PathVariable UUID idDanhMuc) {
         return ResponseEntity.ok(sanPhamService.getByDanhMuc(idDanhMuc));
     }
 
     @GetMapping("/by-ma-vach/{maVach}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('product:read')")
     public ResponseEntity<?> getByMaVach(@PathVariable String maVach) {
         return sanPhamService.getByMaVach(maVach)
                 .map(ResponseEntity::ok)
@@ -103,19 +103,19 @@ public class SanPhamController {
     }
 
     @GetMapping("/active")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('product:read')")
     public ResponseEntity<List<SanPhamResponseDTO>> getActive(HttpServletRequest request) {
         return ResponseEntity.ok(sanPhamService.getActive(resolveBranchId(request), isAdmin()));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('product:create')")
     public ResponseEntity<?> create(@Valid @RequestBody CreateSanPhamRequestDTO request) {
         return ResponseEntity.ok(sanPhamService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('product:update')")
     public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestBody UpdateSanPhamRequestDTO request) {
         return sanPhamService.update(id, request)
                 .map(ResponseEntity::ok)
@@ -123,7 +123,7 @@ public class SanPhamController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('product:delete')")
     public ResponseEntity<?> delete(@PathVariable UUID id,
                                     @RequestParam(value = "permanent", defaultValue = "false") boolean permanent,
                                     HttpServletRequest request) {
@@ -135,7 +135,7 @@ public class SanPhamController {
     }
 
     @PatchMapping("/{id}/restore")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('product:update')")
     public ResponseEntity<?> restore(@PathVariable UUID id, HttpServletRequest request) {
         String message = sanPhamService.restore(id, resolveBranchId(request), isAdmin());
         if (message == null) {

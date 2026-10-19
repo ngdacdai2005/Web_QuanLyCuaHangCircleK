@@ -45,14 +45,14 @@ public class PhieuXuatKhoController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('transfer:read')")
     public ResponseEntity<List<PhieuXuatKhoResponseDTO>> getAll(HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuXuatKhoService.getAll(actor));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('transfer:read')")
     public ResponseEntity<?> getById(@PathVariable UUID id, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return phieuXuatKhoService.getById(id, actor)
@@ -61,28 +61,28 @@ public class PhieuXuatKhoController {
     }
 
     @GetMapping("/by-branch-xuat/{idChiNhanhXuat}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('transfer:read')")
     public ResponseEntity<List<PhieuXuatKhoResponseDTO>> getByBranchXuat(@PathVariable UUID idChiNhanhXuat, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuXuatKhoService.getByBranchXuat(idChiNhanhXuat, actor));
     }
 
     @GetMapping("/by-branch-nhan/{idChiNhanhNhan}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('transfer:read')")
     public ResponseEntity<List<PhieuXuatKhoResponseDTO>> getByBranchNhan(@PathVariable UUID idChiNhanhNhan, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuXuatKhoService.getByBranchNhan(idChiNhanhNhan, actor));
     }
 
     @GetMapping("/by-status/{trangThai}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('transfer:read')")
     public ResponseEntity<List<PhieuXuatKhoResponseDTO>> getByStatus(@PathVariable String trangThai, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuXuatKhoService.getByStatus(trangThai, actor));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('transfer:create')")
     public ResponseEntity<?> create(@RequestBody PhieuXuatKhoRequestDTO request, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         String dedupKey = "TRANSFER_CREATE:" + actor.getId() + ":" + request.getIdChiNhanhXuat() + ":" + request.getIdChiNhanhNhan();
@@ -104,7 +104,7 @@ public class PhieuXuatKhoController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
+    @PreAuthorize("hasAuthority('transfer:update')")
     public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody PhieuXuatKhoRequestDTO request, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return phieuXuatKhoService.update(id, request, actor)
@@ -113,7 +113,7 @@ public class PhieuXuatKhoController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
+    @PreAuthorize("hasAuthority('transfer:delete')")
     public ResponseEntity<?> delete(@PathVariable UUID id, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         if (phieuXuatKhoService.delete(id, actor)) {
@@ -123,7 +123,7 @@ public class PhieuXuatKhoController {
     }
 
     @PutMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
+    @PreAuthorize("hasAuthority('transfer:approve')")
     public ResponseEntity<?> approve(@PathVariable UUID id, @RequestBody(required = false) ApproveRequest body, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return phieuXuatKhoService.approve(id, body, actor)
@@ -132,7 +132,7 @@ public class PhieuXuatKhoController {
     }
 
     @PutMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
+    @PreAuthorize("hasAuthority('transfer:approve')")
     public ResponseEntity<?> reject(@PathVariable UUID id, @RequestBody(required = false) RejectRequest body, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return phieuXuatKhoService.reject(id, body, actor)
@@ -141,7 +141,7 @@ public class PhieuXuatKhoController {
     }
 
     @PutMapping("/{id}/ship")
-    @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
+    @PreAuthorize("hasAuthority('transfer:approve')")
     public ResponseEntity<?> ship(@PathVariable UUID id, @RequestBody(required = false) MoveRequest body, HttpServletRequest httpRequest) {
         String dedupKey = "TRANSFER_SHIP:" + id;
         if (!requestDeduplicationService.tryAcquire(dedupKey, 5)) {
@@ -165,7 +165,7 @@ public class PhieuXuatKhoController {
     }
 
     @PutMapping("/{id}/receive")
-    @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
+    @PreAuthorize("hasAuthority('transfer:approve')")
     public ResponseEntity<?> receive(@PathVariable UUID id, @RequestBody(required = false) MoveRequest body, HttpServletRequest httpRequest) {
         String dedupKey = "TRANSFER_RECEIVE:" + id;
         if (!requestDeduplicationService.tryAcquire(dedupKey, 5)) {

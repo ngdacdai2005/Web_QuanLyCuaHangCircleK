@@ -53,45 +53,42 @@ public class PermissionSyncServiceImpl implements PermissionSyncService {
     private static final Map<String, ModuleMeta> KNOWN_MODULES = new LinkedHashMap<>();
 
     static {
-        KNOWN_MODULES.put("user", new ModuleMeta("Người dùng", "User", "N", "#06b6d4", 1));
-        KNOWN_MODULES.put("branch", new ModuleMeta("Chi nhánh", "Branch", "C", "#8b5cf6", 2));
-        KNOWN_MODULES.put("product", new ModuleMeta("Hàng hoá", "Product", "H", "#3b82f6", 3));
-        KNOWN_MODULES.put("category", new ModuleMeta("Danh mục", "Category", "D", "#10b981", 4));
-        KNOWN_MODULES.put("supplier", new ModuleMeta("Nhà cung cấp", "Supplier", "N", "#f59e0b", 5));
-        KNOWN_MODULES.put("warehouse", new ModuleMeta("Kho hàng", "Warehouse", "K", "#ec4899", 6));
-        KNOWN_MODULES.put("purchase", new ModuleMeta("Nhập hàng", "Purchase", "N", "#6366f1", 7));
-        KNOWN_MODULES.put("transfer", new ModuleMeta("Chuyển kho", "Transfer", "C", "#14b8a6", 8));
-        KNOWN_MODULES.put("stocktake", new ModuleMeta("Kiểm kê", "Stocktake", "K", "#f97316", 9));
-        KNOWN_MODULES.put("order", new ModuleMeta("Đơn hàng", "Sales Order", "Đ", "#ef4444", 10));
-        KNOWN_MODULES.put("attendance", new ModuleMeta("Chấm công", "Attendance", "C", "#84cc16", 11));
-        KNOWN_MODULES.put("payroll", new ModuleMeta("Bảng lương", "Payroll", "B", "#0ea5e9", 12));
-        KNOWN_MODULES.put("cashbook", new ModuleMeta("Sổ quỹ", "Cashbook", "S", "#a855f7", 13));
-        KNOWN_MODULES.put("report", new ModuleMeta("Báo cáo", "Report", "B", "#d946ef", 14));
-        KNOWN_MODULES.put("role", new ModuleMeta("Nhóm quyền", "Role Groups", "Q", "#64748b", 15));
-        KNOWN_MODULES.put("candidate_cv", new ModuleMeta("Tuyển dụng", "Recruitment", "T", "#ec4899", 16));
-        KNOWN_MODULES.put("department", new ModuleMeta("Phòng ban", "Department", "P", "#8b5cf6", 17));
-        KNOWN_MODULES.put("position", new ModuleMeta("Chức vụ", "Position", "C", "#3b82f6", 18));
+        KNOWN_MODULES.put("user", new ModuleMeta("Tài khoản", "User Account", "T", "#06b6d4", 1));
+        KNOWN_MODULES.put("employee", new ModuleMeta("Nhân viên", "Employee", "N", "#8b5cf6", 2));
+        KNOWN_MODULES.put("branch", new ModuleMeta("Chi nhánh", "Branch", "C", "#ec4899", 3));
+        KNOWN_MODULES.put("product", new ModuleMeta("Hàng hoá", "Product", "H", "#3b82f6", 4));
+        KNOWN_MODULES.put("category", new ModuleMeta("Danh mục", "Category", "D", "#10b981", 5));
+        KNOWN_MODULES.put("supplier", new ModuleMeta("Nhà cung cấp", "Supplier", "N", "#f59e0b", 6));
+        KNOWN_MODULES.put("contract", new ModuleMeta("Hợp đồng", "Contract", "H", "#6366f1", 7));
+        KNOWN_MODULES.put("warehouse", new ModuleMeta("Kho hàng", "Warehouse", "K", "#ec4899", 8));
+        KNOWN_MODULES.put("purchase", new ModuleMeta("Nhập hàng", "Purchase", "N", "#14b8a6", 9));
+        KNOWN_MODULES.put("transfer", new ModuleMeta("Chuyển kho", "Transfer", "C", "#f97316", 10));
+        KNOWN_MODULES.put("stocktake", new ModuleMeta("Kiểm kê", "Stocktake", "K", "#ef4444", 11));
+        KNOWN_MODULES.put("order", new ModuleMeta("Đơn hàng", "Sales Order", "Đ", "#ef4444", 12));
+        KNOWN_MODULES.put("attendance", new ModuleMeta("Chấm công", "Attendance", "C", "#84cc16", 13));
+        KNOWN_MODULES.put("payroll", new ModuleMeta("Bảng lương", "Payroll", "B", "#0ea5e9", 14));
+        KNOWN_MODULES.put("cashbook", new ModuleMeta("Sổ quỹ", "Cashbook", "S", "#a855f7", 15));
+        KNOWN_MODULES.put("report", new ModuleMeta("Báo cáo", "Report", "B", "#d946ef", 16));
+        KNOWN_MODULES.put("role", new ModuleMeta("Nhóm quyền", "Role Groups", "Q", "#64748b", 17));
     }
 
     private static final List<String> DEFAULT_PERMISSIONS = List.of(
-            "user:create", "user:read", "user:update", "user:delete", "user:import",
+            "user:create", "user:read", "user:update", "user:delete",
+            "employee:create", "employee:read", "employee:update", "employee:delete",
             "branch:create", "branch:read", "branch:update", "branch:delete",
-            "product:create", "product:read", "product:update", "product:delete", "product:import",
+            "product:create", "product:read", "product:update", "product:delete",
             "category:create", "category:read", "category:update", "category:delete",
             "supplier:create", "supplier:read", "supplier:update", "supplier:delete",
-            "warehouse:create", "warehouse:read", "warehouse:update", "warehouse:delete",
+            "contract:create", "contract:read", "contract:update", "contract:approve", "contract:delete",
+            "warehouse:read", "warehouse:adjust",
             "purchase:create", "purchase:read", "purchase:update", "purchase:delete", "purchase:approve",
             "transfer:create", "transfer:read", "transfer:update", "transfer:delete", "transfer:approve",
-            "stocktake:create", "stocktake:read", "stocktake:update", "stocktake:delete", "stocktake:approve",
-            "order:create", "order:read", "order:update", "order:delete", "order:export",
-            "attendance:create", "attendance:read", "attendance:update", "attendance:delete", "attendance:approve",
-            "payroll:create", "payroll:read", "payroll:update", "payroll:delete", "payroll:approve",
-            "cashbook:create", "cashbook:read", "cashbook:update", "cashbook:export",
-            "report:read", "report:export",
-            "role:create", "role:read", "role:update", "role:delete", "role:assign",
-            "candidate_cv:download", "candidate_cv:upload",
-            "department:create", "department:read", "department:update", "department:delete",
-            "position:create", "position:read", "position:update", "position:delete"
+            "stocktake:create", "stocktake:read", "stocktake:update", "stocktake:approve", "stocktake:delete",
+            "order:create", "order:read", "order:cancel", "order:update", "order:delete",
+            "attendance:read", "attendance:checkin", "attendance:update", "attendance:approve",
+            "payroll:read", "payroll:calculate", "payroll:approve",
+            "cashbook:read", "cashbook:create",
+            "role:create", "role:read", "role:update", "role:delete", "role:assign"
     );
 
     @Override
@@ -218,8 +215,6 @@ public class PermissionSyncServiceImpl implements PermissionSyncService {
                     RolePermissionId rpId = new RolePermissionId(adminRole.getId(), saved.getId());
                     if (!rolePermissionRepository.existsById(rpId)) {
                         RolePermission rp = new RolePermission(rpId);
-                        rp.setVaiTro(adminRole);
-                        rp.setPermission(saved);
                         rp.setNguoiGan("SYSTEM_SYNC");
                         rolePermissionRepository.save(rp);
                     }

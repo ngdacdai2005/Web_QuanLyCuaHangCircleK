@@ -1,6 +1,6 @@
 import type { FC } from 'react';
-import { Button, Empty, Input, List, Popconfirm, Space, Spin, Tag } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
+import { Button, Empty, Input, List, Popconfirm, Space, Spin, Tag, Tooltip } from 'antd';
+import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import type { RoleGroup } from '../types/roleGroup';
 
 interface RoleListSidebarProps {
@@ -10,6 +10,7 @@ interface RoleListSidebarProps {
   onAddNew: () => void;
   onEdit: (role: RoleGroup) => void;
   onDelete: (id: string) => void;
+  onViewDetail: (role: RoleGroup) => void;
   searchValue: string;
   onSearchChange: (val: string) => void;
   loading: boolean;
@@ -22,6 +23,7 @@ export const RoleListSidebar: FC<RoleListSidebarProps> = ({
   onAddNew,
   onEdit,
   onDelete,
+  onViewDetail,
   searchValue,
   onSearchChange,
   loading,
@@ -72,32 +74,47 @@ export const RoleListSidebar: FC<RoleListSidebarProps> = ({
                   </div>
 
                   <div className="rg-role-item-right" onClick={(e) => e.stopPropagation()}>
-                    <Space size={6}>
+                    <Space size={4}>
                       <Tag icon={<UserOutlined />} className="rg-user-badge">
                         {role.userCount}
                       </Tag>
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<EditOutlined />}
-                        className="rg-action-icon"
-                        onClick={() => onEdit(role)}
-                      />
+                      <Tooltip title="Xem chi tiết">
+                        <Button
+                          type="text"
+                          size="small"
+                          style={{ color: '#52c41a' }}
+                          icon={<EyeOutlined />}
+                          className="rg-action-icon"
+                          onClick={() => onViewDetail(role)}
+                        />
+                      </Tooltip>
+                      <Tooltip title="Chỉnh sửa">
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<EditOutlined />}
+                          className="rg-action-icon"
+                          onClick={() => onEdit(role)}
+                        />
+                      </Tooltip>
                       {role.maVaiTro !== 'NQ01' && role.tenVaiTro !== 'ADMIN' && (
                         <Popconfirm
                           title="Xác nhận xoá vai trò?"
                           description="Chỉ xoá được khi không có nhân viên nào sử dụng."
                           okText="Xoá"
                           cancelText="Huỷ"
+                          okButtonProps={{ danger: true }}
                           onConfirm={() => onDelete(role.id)}
                         >
-                          <Button
-                            type="text"
-                            size="small"
-                            danger
-                            icon={<DeleteOutlined />}
-                            className="rg-action-icon"
-                          />
+                          <Tooltip title="Xoá nhóm quyền">
+                            <Button
+                              type="text"
+                              size="small"
+                              danger
+                              icon={<DeleteOutlined />}
+                              className="rg-action-icon"
+                            />
+                          </Tooltip>
                         </Popconfirm>
                       )}
                     </Space>
