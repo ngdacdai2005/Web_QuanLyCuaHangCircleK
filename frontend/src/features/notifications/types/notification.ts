@@ -17,6 +17,7 @@ export interface NotificationItem {
   mucDo: NotificationLevel;
   nguoiGuiTen?: string;
   idNhanVienNhan?: string;
+  idChiNhanh?: string | null;
   daDoc: boolean;
   ngayTao: string;
   ngayDoc?: string;

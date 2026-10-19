@@ -39,6 +39,9 @@ public class ThongBao {
     @Column(name = "id_nhan_vien_nhan")
     private UUID idNhanVienNhan;
 
+    @Column(name = "id_chi_nhanh")
+    private UUID idChiNhanh;
+
     @Builder.Default
     @Column(name = "da_doc", nullable = false)
     private Boolean daDoc = false;

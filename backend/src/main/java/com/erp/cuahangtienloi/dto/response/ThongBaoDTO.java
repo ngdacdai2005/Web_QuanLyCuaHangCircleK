@@ -18,6 +18,7 @@ public class ThongBaoDTO {
     private String mucDo;
     private String nguoiGuiTen;
     private UUID idNhanVienNhan;
+    private UUID idChiNhanh;
     private Boolean daDoc;
     private LocalDateTime ngayTao;
     private LocalDateTime ngayDoc;

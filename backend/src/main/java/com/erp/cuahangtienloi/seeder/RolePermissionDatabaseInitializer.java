@@ -136,10 +136,12 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                     muc_do              VARCHAR(20) DEFAULT 'INFO',
                     nguoi_gui_ten       VARCHAR(100),
                     id_nhan_vien_nhan   UUID,
+                    id_chi_nhanh        UUID,
                     da_doc              BOOLEAN DEFAULT FALSE,
                     ngay_tao            TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     ngay_doc            TIMESTAMP WITHOUT TIME ZONE
                 );
+                ALTER TABLE thong_bao ADD COLUMN IF NOT EXISTS id_chi_nhanh UUID;
             """);
 
             // 5. Thêm cột id_vai_tro vào nhan_vien nếu chưa có
@@ -315,7 +317,14 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                     ('notification:read', 'Xem thông báo', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'notification', 'Xem thông báo', 'Read notifications'),
                     ('notification:create', 'Tạo thông báo', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'notification', 'Tạo thông báo', 'Create notification'),
                     ('notification:update', 'Cập nhật trạng thái thông báo', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'notification', 'Cập nhật thông báo', 'Update notification'),
-                    ('notification:delete', 'Xoá thông báo', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'notification', 'Xoá thông báo', 'Delete notification')
+                    ('notification:delete', 'Xoá thông báo', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'notification', 'Xoá thông báo', 'Delete notification'),
+
+                    ('notification:read_inventory', 'Xem thông báo Kho & Tồn kho', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'notification', 'Xem thông báo Kho', 'Read inventory notifications'),
+                    ('notification:read_stocktake', 'Xem thông báo Kiểm kê kho', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'notification', 'Xem thông báo Kiểm kê', 'Read stocktake notifications'),
+                    ('notification:read_shift', 'Xem thông báo Lịch & Ca làm', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'notification', 'Xem thông báo Ca làm', 'Read shift notifications'),
+                    ('notification:read_order', 'Xem thông báo Hoá đơn & Bán hàng', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'notification', 'Xem thông báo Hoá đơn', 'Read order notifications'),
+                    ('notification:read_contract', 'Xem thông báo Hợp đồng NCC', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'notification', 'Xem thông báo Hợp đồng', 'Read contract notifications'),
+                    ('notification:read_system', 'Xem thông báo Hệ thống chung', '1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0, 'notification', 'Xem thông báo Hệ thống', 'Read system notifications')
                 ON CONFLICT (name) DO UPDATE SET
                     module = EXCLUDED.module,
                     description = EXCLUDED.description,
@@ -422,14 +431,38 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                 ON CONFLICT DO NOTHING;
             """);
 
-            // 10.6 Cấp quyền thông báo cho tất cả các vai trò
+            // 10.6 Cấp quyền thông báo theo vai trò và nghiệp vụ
             jdbcTemplate.execute("""
                 INSERT INTO role_permissions (role_id, permission_id, created_by)
                 SELECT v.id, p.id, 'SYSTEM'
                 FROM vai_tro v
                 CROSS JOIN permissions p
-                WHERE v.ma_vai_tro IN ('NQ01', 'NQ02', 'NQ03', 'NQ04', 'NQ05')
-                  AND p.name IN ('notification:read', 'notification:update')
+                WHERE (
+                    -- QUAN_LY: Tất cả các nghiệp vụ thông báo + tạo/cập nhật/xoá
+                    (v.ma_vai_tro = 'NQ02' AND p.name IN (
+                        'notification:read', 'notification:create', 'notification:update', 'notification:delete',
+                        'notification:read_inventory', 'notification:read_stocktake', 'notification:read_shift',
+                        'notification:read_order', 'notification:read_contract', 'notification:read_system'
+                    ))
+                    OR
+                    -- THU_KHO: Kho hàng, Kiểm kê, Hệ thống
+                    (v.ma_vai_tro = 'NQ03' AND p.name IN (
+                        'notification:read', 'notification:update',
+                        'notification:read_inventory', 'notification:read_stocktake', 'notification:read_system'
+                    ))
+                    OR
+                    -- THU_NGAN: Ca làm, Hoá đơn POS, Hệ thống
+                    (v.ma_vai_tro = 'NQ04' AND p.name IN (
+                        'notification:read', 'notification:update',
+                        'notification:read_shift', 'notification:read_order', 'notification:read_system'
+                    ))
+                    OR
+                    -- KE_TOAN: Kho hàng, Hoá đơn, Hợp đồng NCC, Hệ thống
+                    (v.ma_vai_tro = 'NQ05' AND p.name IN (
+                        'notification:read', 'notification:update',
+                        'notification:read_inventory', 'notification:read_order', 'notification:read_contract', 'notification:read_system'
+                    ))
+                )
                 ON CONFLICT DO NOTHING;
             """);
 

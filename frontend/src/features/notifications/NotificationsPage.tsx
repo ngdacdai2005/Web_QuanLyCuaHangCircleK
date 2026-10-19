@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FC, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FC, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   App as AntdApp,
@@ -8,6 +8,7 @@ import {
   Select,
   Space,
   Spin,
+  Tag,
   Typography,
 } from 'antd';
 import {
@@ -20,15 +21,39 @@ import {
   FileTextOutlined,
   InboxOutlined,
 } from '@ant-design/icons';
+import { useAppSelector } from '@/store/hooks';
 import { notificationApi } from './api/notificationApi';
 import type { NotificationItem, NotificationType } from './types/notification';
 import './NotificationsPage.css';
 
 const { Title } = Typography;
 
+const ALL_LOAI_OPTIONS: Array<{ value: string; label: string; roles: string[] }> = [
+  { value: 'ALL', label: 'Tất cả nghiệp vụ', roles: ['ADMIN', 'QUAN_LY', 'THU_KHO', 'THU_NGAN', 'KE_TOAN'] },
+  { value: 'LICH_LAM', label: 'Lịch & Ca làm', roles: ['ADMIN', 'QUAN_LY', 'THU_NGAN'] },
+  { value: 'KHO_HANG', label: 'Kho & Hàng hoá', roles: ['ADMIN', 'QUAN_LY', 'THU_KHO', 'KE_TOAN'] },
+  { value: 'KIEM_KE', label: 'Kiểm kê kho', roles: ['ADMIN', 'QUAN_LY', 'THU_KHO'] },
+  { value: 'HOA_DON', label: 'Hoá đơn & POS', roles: ['ADMIN', 'QUAN_LY', 'KE_TOAN', 'THU_NGAN'] },
+  { value: 'HOP_DONG', label: 'Hợp đồng NCC', roles: ['ADMIN', 'QUAN_LY', 'KE_TOAN'] },
+];
+
 export const NotificationsPage: FC = () => {
   const navigate = useNavigate();
   const { message } = AntdApp.useApp();
+  const user = useAppSelector((state) => state.auth.user);
+  const branches = useAppSelector((state) => state.branch.branches);
+  const userRole = user?.role || 'THU_NGAN';
+  const canDelete = userRole === 'ADMIN' || userRole === 'QUAN_LY';
+
+  const branchMap = useMemo(() => {
+    const map = new Map<string, string>();
+    branches.forEach((b) => map.set(b.id, b.name));
+    return map;
+  }, [branches]);
+
+  const availableOptions = useMemo(() => {
+    return ALL_LOAI_OPTIONS.filter((opt) => opt.roles.includes(userRole));
+  }, [userRole]);
 
   const [activeTab, setActiveTab] = useState<'ALL' | 'UNREAD'>('ALL');
   const [selectedLoai, setSelectedLoai] = useState<string>('ALL');
@@ -36,6 +61,13 @@ export const NotificationsPage: FC = () => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
+
+  // Đảm bảo loại nghiệp vụ đã chọn luôn thuộc danh sách được phép
+  useEffect(() => {
+    if (selectedLoai !== 'ALL' && !availableOptions.some((o) => o.value === selectedLoai)) {
+      setSelectedLoai('ALL');
+    }
+  }, [availableOptions, selectedLoai]);
 
   const loadData = useCallback(async () => {
     try {
@@ -180,15 +212,8 @@ export const NotificationsPage: FC = () => {
           <Select
             value={selectedLoai}
             onChange={setSelectedLoai}
-            style={{ width: 170 }}
-            options={[
-              { value: 'ALL', label: 'Tất cả loại nghiệp vụ' },
-              { value: 'LICH_LAM', label: 'Lịch & Ca làm' },
-              { value: 'KHO_HANG', label: 'Kho & Hàng hoá' },
-              { value: 'KIEM_KE', label: 'Kiểm kê' },
-              { value: 'HOA_DON', label: 'Hoá đơn & POS' },
-              { value: 'HOP_DONG', label: 'Hợp đồng NCC' },
-            ]}
+            style={{ width: 180 }}
+            options={availableOptions.map((o) => ({ value: o.value, label: o.label }))}
           />
         </Space>
       </div>
@@ -225,7 +250,14 @@ export const NotificationsPage: FC = () => {
 
                   {/* Title & Description */}
                   <div className="notif-text-content">
-                    <div className="notif-card-title">{item.tieuDe}</div>
+                    <div className="notif-card-title">
+                      <span>{item.tieuDe}</span>
+                      {item.idChiNhanh && (
+                        <Tag color="cyan" style={{ marginLeft: 8, fontSize: 11, borderRadius: 10, lineHeight: '18px' }}>
+                          {branchMap.get(item.idChiNhanh) || 'Chi nhánh'}
+                        </Tag>
+                      )}
+                    </div>
                     <div className="notif-card-desc">{item.noiDung}</div>
                   </div>
                 </div>
@@ -233,22 +265,24 @@ export const NotificationsPage: FC = () => {
                 {/* Date & Actions */}
                 <div className="notif-card-right">
                   <span className="notif-date-text">{formatDate(item.ngayTao)}</span>
-                  <div className="notif-delete-btn" onClick={(e) => e.stopPropagation()}>
-                    <Popconfirm
-                      title="Xoá thông báo này?"
-                      okText="Xoá"
-                      cancelText="Huỷ"
-                      okButtonProps={{ danger: true }}
-                      onConfirm={(e) => handleDelete(e as any, item.id)}
-                    >
-                      <Button
-                        type="text"
-                        size="small"
-                        danger
-                        icon={<DeleteOutlined />}
-                      />
-                    </Popconfirm>
-                  </div>
+                  {canDelete && (
+                    <div className="notif-delete-btn" onClick={(e) => e.stopPropagation()}>
+                      <Popconfirm
+                        title="Xoá thông báo này?"
+                        okText="Xoá"
+                        cancelText="Huỷ"
+                        okButtonProps={{ danger: true }}
+                        onConfirm={(e) => handleDelete(e as any, item.id)}
+                      >
+                        <Button
+                          type="text"
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined />}
+                        />
+                      </Popconfirm>
+                    </div>
+                  )}
                 </div>
               </div>
             );
