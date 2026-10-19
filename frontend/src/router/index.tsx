@@ -23,6 +23,7 @@ import { CashbookPage } from '@/features/cashbook/CashbookPage';
 import { ReportsPage } from '@/features/reports/ReportsPage';
 import { AccountPage } from '@/features/profile/AccountPage';
 import { AccountManagementPage } from '@/features/userManagement/AccountManagementPage';
+import { RoleGroupsPage } from '@/features/roleGroups/RoleGroupsPage';
 import { NotFoundPage } from '@/features/shared/NotFoundPage';
 import { getFirstAccessibleModulePath } from '@/config/modules';
 import { USER_ROLE } from '@/types';
@@ -85,8 +86,9 @@ export const AppRouter: FC = () => (
             vào được — kể cả thu ngân, để tự đổi được mật khẩu. */}
         <Route path="/account" element={<AccountPage />} />
 
-        {/* Chỉ ADMIN mới được vào trang quản lý tài khoản */}
+        {/* Chỉ ADMIN mới được vào trang quản lý tài khoản và phân quyền */}
         <Route path="/admin/accounts" element={<AccountManagementPage />} />
+        <Route path="/role-groups" element={<RoleGroupsPage />} />
 
         <Route path="*" element={<NotFoundPage />} />
       </Route>

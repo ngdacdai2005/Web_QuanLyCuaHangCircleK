@@ -11,12 +11,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,6 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final TaiKhoanRepository taiKhoanRepository;
     private final NhanVienRepository nhanVienRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     protected void doFilterInternal(
@@ -98,10 +102,40 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     }
                 }
 
+                List<GrantedAuthority> authorities = new ArrayList<>();
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+
+                // Nạp quyền động từ database cho vai trò
+                try {
+                    List<String> perms;
+                    if ("ADMIN".equalsIgnoreCase(role)) {
+                        perms = jdbcTemplate.queryForList(
+                                "SELECT name FROM permissions WHERE deleted = 0 AND status = 0",
+                                String.class
+                        );
+                    } else {
+                        perms = jdbcTemplate.queryForList("""
+                                SELECT p.name 
+                                FROM permissions p
+                                JOIN role_permissions rp ON p.id = rp.permission_id
+                                JOIN vai_tro v ON v.id = rp.role_id
+                                WHERE v.ten_vai_tro = ? AND p.deleted = 0 AND p.status = 0
+                                """,
+                                String.class,
+                                role
+                        );
+                    }
+                    for (String perm : perms) {
+                        authorities.add(new SimpleGrantedAuthority(perm));
+                    }
+                } catch (Exception ignored) {
+                    // Fallback an toàn nếu bảng permissions đang khởi tạo
+                }
+
                 var auth = new UsernamePasswordAuthenticationToken(
                         taiKhoanId.toString(),
                         null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                        authorities
                 );
 
                 SecurityContextHolder.getContext().setAuthentication(auth);

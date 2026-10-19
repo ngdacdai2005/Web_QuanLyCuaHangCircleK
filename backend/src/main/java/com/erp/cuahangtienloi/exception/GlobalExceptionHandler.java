@@ -57,6 +57,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(404).body(ApiResponse.err("Không tìm thấy dữ liệu yêu cầu."));
     }
 
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiResponse> handleConflict(ConflictException ex) {
+        return ResponseEntity.status(409).body(ApiResponse.err(ex.getMessage()));
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<?> handleAccessDenied(AccessDeniedException ex) {
         return ResponseEntity.status(403).body(Map.of("message", "Bạn không có quyền thực hiện thao tác này."));

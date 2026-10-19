@@ -16,6 +16,7 @@ import {
   TeamOutlined,
   TruckOutlined,
   UserOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import type { ModuleIconKey } from '@/config/modules';
 
@@ -43,6 +44,7 @@ const ICON_MAP: Record<ModuleIconKey, FC> = {
   report: BarChartOutlined,
   contract: FileProtectOutlined,
   'account-manage': UserOutlined,
+  'role-group': SafetyCertificateOutlined,
 };
 
 interface ModuleIconProps {

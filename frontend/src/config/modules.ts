@@ -25,7 +25,8 @@ export type ModuleIconKey =
   | 'cashbook'
   | 'report'
   | 'contract'
-  | 'account-manage';
+  | 'account-manage'
+  | 'role-group';
 
 export interface ModuleDefinition {
   /** Số thứ tự module theo đặc tả (1..13, module 0 là Login nằm ngoài layout). */
@@ -357,6 +358,19 @@ export const MODULES: readonly ModuleDefinition[] = [
     group: MODULE_GROUP.MasterData,
     implemented: true,
     description: 'Hợp đồng với nhà cung cấp: lập nháp, trình duyệt, gia hạn và theo dõi hết hạn.',
+  },
+  {
+    order: 18,
+    key: 'role-groups',
+    path: '/role-groups',
+    label: 'Nhóm quyền',
+    shortLabel: 'Nhóm quyền',
+    icon: 'role-group',
+    allowedRoles: ADMIN_ONLY,
+    group: MODULE_GROUP.MasterData,
+    implemented: true,
+    description:
+      'Quản lý nhóm quyền (vai trò), danh sách quyền hạn chi tiết và đồng bộ quyền hệ thống.',
   },
 ];
 

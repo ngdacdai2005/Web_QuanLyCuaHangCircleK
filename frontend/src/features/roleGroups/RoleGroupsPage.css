@@ -1,0 +1,469 @@
+/* Layout chung của màn hình Nhóm quyền */
+.rg-page-container {
+  padding: 16px 20px;
+  background-color: #f8fafc;
+  min-height: calc(100vh - 64px);
+}
+
+.rg-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.rg-page-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rg-title-icon {
+  font-size: 20px;
+  color: #3b82f6;
+  background: #eff6ff;
+  padding: 6px;
+  border-radius: 8px;
+}
+
+.rg-page-title {
+  margin: 0 !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: #1e293b;
+}
+
+.rg-total-badge {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Master - Detail Container */
+.rg-master-detail-row {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.rg-left-col {
+  width: 320px;
+  flex-shrink: 0;
+}
+
+.rg-right-col {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Sidebar Cột trái */
+.rg-sidebar-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.rg-sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rg-search-input {
+  border-radius: 8px;
+}
+
+.rg-btn-add {
+  border-radius: 8px;
+  font-weight: 600;
+  background-color: #2563eb;
+  height: 38px;
+}
+
+.rg-sidebar-body {
+  padding: 8px 12px;
+  max-height: calc(100vh - 250px);
+  overflow-y: auto;
+}
+
+.rg-role-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #ffffff;
+}
+
+.rg-role-item:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.rg-role-item-active {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+
+.rg-role-item-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.rg-role-code {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1d4ed8;
+  letter-spacing: 0.5px;
+}
+
+.rg-role-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rg-user-badge {
+  background: #f1f5f9;
+  color: #475569;
+  border-radius: 12px;
+  border: none;
+  font-size: 12px;
+  padding: 2px 8px;
+  font-weight: 600;
+}
+
+.rg-action-icon {
+  color: #94a3b8;
+}
+
+.rg-action-icon:hover {
+  color: #2563eb;
+}
+
+/* Detail Card Cột phải */
+.rg-detail-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  padding: 12px 20px 24px 20px;
+  min-height: calc(100vh - 180px);
+}
+
+.rg-detail-tabs .ant-tabs-nav {
+  margin-bottom: 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.rg-detail-tabs .ant-tabs-tab {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 16px;
+}
+
+.rg-detail-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #2563eb !important;
+  font-weight: 600;
+}
+
+.rg-detail-tabs .ant-tabs-ink-bar {
+  background: #2563eb !important;
+}
+
+/* Tab Nội dung chung */
+.rg-tab-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rg-tab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rg-tab-title {
+  margin: 0 !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #1e293b;
+}
+
+.rg-highlight {
+  color: #2563eb;
+}
+
+.rg-btn-primary {
+  background: #2563eb;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.rg-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.rg-search-input-main {
+  max-width: 380px;
+  border-radius: 8px;
+}
+
+.rg-btn-sync {
+  border-radius: 8px;
+  font-weight: 500;
+  border-color: #cbd5e1;
+}
+
+/* Nhóm quyền & Lưới quyền (Tab 1 & Tab 2) */
+.rg-permissions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.rg-perm-group {
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+
+.rg-perm-group-header {
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.rg-group-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-right: 8px;
+}
+
+.rg-group-sub {
+  font-size: 13px;
+  color: #64748b;
+  margin-right: 8px;
+}
+
+.rg-group-count-badge {
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* Thẻ quyền hàng ngang 2 cột (Hình 1) */
+.rg-perm-row-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.rg-perm-row-item:hover {
+  border-color: #93c5fd;
+  background: #f8fafc;
+}
+
+.rg-perm-code-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.rg-perm-code-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.rg-tag-vi-pill {
+  border-radius: 12px;
+  border: none;
+  font-size: 11.5px;
+  font-weight: 500;
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.rg-tag-en-pill {
+  border-radius: 12px;
+  border: none;
+  font-size: 11.5px;
+  font-weight: 500;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.rg-perm-actions {
+  display: flex;
+  align-items: center;
+  opacity: 0.3;
+  transition: opacity 0.2s ease;
+}
+
+.rg-perm-row-item:hover .rg-perm-actions {
+  opacity: 1;
+}
+
+/* Thẻ quyền trong Tab 1 */
+.rg-perm-item-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rg-perm-item-card:hover {
+  border-color: #93c5fd;
+}
+
+.rg-perm-item-checked {
+  background: #f0fdf4;
+  border-color: #86efac !important;
+}
+
+.rg-perm-label-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rg-perm-code {
+  font-family: monospace;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* Thẻ Module dạng lưới 2 cột (Hình 2 & 3) */
+.rg-module-total-counter {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.rg-modules-grid {
+  margin-top: 8px;
+}
+
+.rg-module-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rg-module-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.rg-module-card-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.rg-module-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.rg-module-card-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.rg-module-name-vi {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.3;
+}
+
+.rg-module-name-en {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.rg-module-card-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rg-module-count-badge {
+  border-radius: 12px;
+  border: none;
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 600;
+  padding: 4px 10px;
+  font-size: 12.5px;
+}
+
+.rg-module-actions {
+  opacity: 0.3;
+  transition: opacity 0.2s ease;
+}
+
+.rg-module-card:hover .rg-module-actions {
+  opacity: 1;
+}
+
+.rg-loading-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 0;
+}
+
+.rg-tab-empty {
+  padding: 40px 0;
+}

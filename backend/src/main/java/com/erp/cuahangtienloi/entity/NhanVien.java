@@ -39,6 +39,9 @@ public class NhanVien {
     @Column(name = "vai_tro")
     private String vaiTro;
 
+    @Column(name = "id_vai_tro")
+    private Long idVaiTro;
+
     private String viTri;
 
     @Column(name = "loai_hop_dong")
