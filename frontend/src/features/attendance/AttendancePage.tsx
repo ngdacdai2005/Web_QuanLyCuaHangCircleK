@@ -4,10 +4,8 @@ import {
   Alert,
   Button,
   Card,
-  DatePicker,
   Popconfirm,
   Space,
-  Table,
   Tabs,
   Tag,
   Tooltip,
@@ -16,18 +14,16 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import {
   CheckCircleOutlined,
-  CalculatorOutlined,
   DollarOutlined,
   LoginOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
 import { PageHeader } from '@/components/PageHeader';
 import { SummaryStrip, type SummaryItem } from '@/components/SummaryStrip';
-import { TableToolbar, type ToolbarFilter } from '@/components/TableToolbar';
+import type { ToolbarFilter } from '@/components/TableToolbar';
 import { AttendanceStatusTag } from '@/components/StatusTag';
 import { BRAND } from '@/config/brand';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { isInitialLoading } from '@/utils/tableLoading';
 import {
   canApprovePayment,
   canConfirmHours,
@@ -57,11 +53,13 @@ import {
   type ShiftCode,
 } from '@/types';
 import { today } from '@/utils/dateUtils';
-import { formatDate, formatDateTime, formatPeriod, formatTime } from '@/utils/dateUtils';
+import { formatDate, formatPeriod, formatTime } from '@/utils/dateUtils';
 import dayjs, { type Dayjs } from 'dayjs';
-import { formatNumber, formatVND, matchKeyword } from '@/utils/formatters';
+import { formatVND, matchKeyword } from '@/utils/formatters';
 import { exportToExcel } from '@/utils/exportUtils';
 import { HourAdjustModal } from './components/HourAdjustModal';
+import { AttendanceRegisterTab } from './components/AttendanceRegisterTab';
+import { PayrollTab } from './components/PayrollTab';
 import './AttendancePage.css';
 
 /** Kỳ lương hiện tại theo tháng thực (MM-YYYY). */
@@ -124,10 +122,6 @@ export const AttendancePage: FC = () => {
     }
   };
 
-/**
-   * Khi user vào trang lần đầu, tự sinh lịch 7 ngày tới.
-   * Dùng `user.id` làm idNhanVien (phải khớp với nhan_vien.id trong DB).
-   */
   useEffect(() => {
     if (user?.idNhanVien) {
       void dispatch(scheduleAttendance({ idNhanVien: user.idNhanVien, days: 7 }))
@@ -136,8 +130,7 @@ export const AttendancePage: FC = () => {
           console.warn('Không thể sinh lịch ca tự động:', e?.message || e);
         });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.idNhanVien]);
+  }, [dispatch, user?.idNhanVien]);
 
   useEffect(() => {
     void dispatch(fetchAttendance({
@@ -146,24 +139,22 @@ export const AttendancePage: FC = () => {
     }));
   }, [dispatch, attendanceRange]);
 
-  /** Tải bảng lương tháng từ backend khi vào trang. */
   useEffect(() => {
     void dispatch(fetchPayroll({
       scope: isSelfServiceRole ? 'SELF' : 'SCOPED',
       period: payrollPeriod,
     }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSelfServiceRole, payrollPeriod]);
+  }, [dispatch, isSelfServiceRole, payrollPeriod]);
 
-  /** Người đang thao tác — dùng cho mọi kiểm tra quyền duyệt. */
   const actor = useMemo(
     () => ({
       actorId: user?.idNhanVien ?? user?.id ?? '',
       actorName:
         user === null ? 'Không xác định' : `${user.fullName} (${user.employeeCode})`,
       actorRole: user?.role ?? USER_ROLE.Cashier,
+      actorBranchId: activeBranchId ?? null,
     }),
-    [user],
+    [user, activeBranchId],
   );
 
   const myAttendance = useMemo(
@@ -198,103 +189,69 @@ export const AttendancePage: FC = () => {
     () =>
       payrollRows.filter((row) => {
         const matchSearch = matchKeyword(search, [row.employeeName, row.employeeCode]);
-        const matchBranch = branchFilter === null || row.branchId === branchFilter;
+        const matchBranch =
+          branchFilter === null || row.branchId === branchFilter;
         const matchStatus =
           payrollStatusFilter === null || row.status === payrollStatusFilter;
         return matchSearch && matchBranch && matchStatus;
-      }).filter((row) => row.period === payrollPeriod)
-        .sort((a, b) => comparePayrollPeriodDesc(a.period, b.period)),
-    [payrollRows, search, branchFilter, payrollStatusFilter, payrollPeriod],
-  );
-
-  /** Dòng đang chọn mà người dùng thực sự được duyệt chi. */
-  const approvableSelected = useMemo(
-    () =>
-      payrollRows.filter(
-        (row) =>
-          selectedIds.includes(row.id) &&
-          canApprovePayment(row, actor.actorId, actor.actorRole),
-      ),
-    [payrollRows, selectedIds, actor],
+      }).sort((a, b) => {
+        const periodDiff = comparePayrollPeriodDesc(a.period, b.period);
+        if (periodDiff !== 0) return periodDiff;
+        return a.employeeName.localeCompare(b.employeeName);
+      }),
+    [payrollRows, search, branchFilter, payrollStatusFilter],
   );
 
   const summary = useMemo<SummaryItem[]>(() => {
-    const scoped = attendanceRecords.filter(
-      (record) =>
-        record.workDate >= DEFAULT_ATTENDANCE_FROM.format('YYYY-MM-DD')
-        && record.workDate <= dayjs().format('YYYY-MM-DD')
-        && (branchFilter === null || record.branchId === branchFilter),
-    );
-    const late = scoped.filter((record) => record.status === ATTENDANCE_STATUS.Late);
-    const absent = scoped.filter(
-      (record) => record.status === ATTENDANCE_STATUS.Absent,
-    );
-    const totalHours = scoped.reduce((sum, record) => sum + record.workedHours, 0);
-
-    const scopedPayroll = payrollRows.filter(
-      (row) => row.period === payrollPeriod
-        && (branchFilter === null || row.branchId === branchFilter),
-    );
-    const totalNetPay = scopedPayroll.reduce((sum, row) => sum + row.netPay, 0);
-    const pendingConfirm = scopedPayroll.filter(
-      (row) => row.status === PAYROLL_STATUS.PendingConfirm,
-    );
-    const pendingPayment = scopedPayroll.filter(
-      (row) => row.status === PAYROLL_STATUS.Confirmed,
-    );
+    const todayRecs = attendanceRecords.filter((r) => r.workDate === today());
+    const scheduled = todayRecs.length;
+    const present = todayRecs.filter((r) => r.status === ATTENDANCE_STATUS.Present).length;
+    const late = todayRecs.filter((r) => r.status === ATTENDANCE_STATUS.Late).length;
+    const pendingHours = payrollRows.filter(
+      (r) => r.status === PAYROLL_STATUS.PendingConfirm,
+    ).length;
+    const pendingPayment = payrollRows.filter(
+      (r) => r.status === PAYROLL_STATUS.Confirmed,
+    ).length;
 
     return [
       {
-        key: 'hours',
-        title: 'Tổng giờ làm 30 ngày',
-        value: formatNumber(Math.round(totalHours)),
-        suffix: 'giờ',
-        color: BRAND.primaryRed,
+        key: 'scheduled',
+        title: 'Ca hôm nay',
+        value: `${scheduled} ca`,
+        hint: `${present} đã vào ca`,
+      },
+      {
+        key: 'presentRate',
+        title: 'Đúng giờ',
+        value: `${present}/${scheduled}`,
+        color: BRAND.success,
       },
       {
         key: 'late',
-        title: 'Đi muộn / Vắng',
-        value: `${formatNumber(late.length)} / ${formatNumber(absent.length)}`,
-        suffix: 'lượt',
-        color: BRAND.warning,
+        title: 'Đi muộn hôm nay',
+        value: `${late} ca`,
+        color: late > 0 ? BRAND.warning : undefined,
       },
       {
-        key: 'pending',
-        title: 'Chờ xác nhận giờ (Tầng 1)',
-        value: formatNumber(pendingConfirm.length),
-        suffix: 'bảng',
-        color: BRAND.warning,
-      },
-      {
-        key: 'awaiting',
-        title: 'Chờ duyệt chi (Tầng 2)',
-        value: formatNumber(pendingPayment.length),
-        suffix: 'bảng',
-        color: BRAND.info,
-      },
-      {
-        key: 'payroll',
-        title: `Tổng lương ${formatPeriod(payrollPeriod)}`,
-        value: formatVND(totalNetPay),
-        color: BRAND.success,
+        key: 'pendingPayment',
+        title: 'Chờ thanh toán',
+        value: `${pendingPayment} bảng`,
+        color: pendingPayment > 0 ? BRAND.primaryRed : undefined,
+        hint: `${pendingHours} chờ xác nhận giờ`,
       },
     ];
-  }, [attendanceRecords, branchFilter, payrollRows, payrollPeriod]);
+  }, [attendanceRecords, payrollRows]);
 
   const branches = useAppSelector((state) => state.branch.branches);
-  const branchOptions = useMemo(
-    () => branches.map((branch) => ({ value: branch.id, label: branch.name })),
-    [branches],
-  );
-
   const attendanceFilters: ToolbarFilter[] = [
     {
       key: 'branch',
-      placeholder: 'Chi nhánh',
+      placeholder: 'Tất cả chi nhánh',
       value: branchFilter,
       onChange: setBranchFilter,
-      options: branchOptions,
-      span: 6,
+      options: branches.map((b) => ({ value: b.id, label: b.name })),
+      span: 5,
     },
     {
       key: 'shift',
@@ -452,15 +409,17 @@ export const AttendancePage: FC = () => {
       ),
     },
     {
-      title: 'Đã trả lương',
-      dataIndex: 'isPaid',
-      align: 'center',
-      width: 90,
-      render: (value: boolean) =>
-        value ? (
-          <Tag color="green">Có</Tag>
+      title: 'Ngoài giờ',
+      dataIndex: 'overtimeHours',
+      align: 'right',
+      width: 95,
+      render: (value: number) =>
+        value === 0 ? (
+          <Text type="secondary">—</Text>
         ) : (
-          <Tag>Không</Tag>
+          <Text strong className="numeric-cell att-overtime">
+            +{value}h
+          </Text>
         ),
     },
     {
@@ -468,31 +427,31 @@ export const AttendancePage: FC = () => {
       dataIndex: 'status',
       align: 'center',
       width: 140,
-      render: (status: AttendanceStatus) => <AttendanceStatusTag status={status} />,
+      render: (status: AttendanceStatus) => (
+        <AttendanceStatusTag status={status} />
+      ),
     },
     {
       title: 'Ghi chú',
       dataIndex: 'note',
-      width: 220,
+      ellipsis: true,
       render: (value: string) =>
-        value === '' ? (
+        value.length === 0 ? (
           <Text type="secondary">—</Text>
         ) : (
-          <Text className="att-note">{value}</Text>
+          <Text type="secondary">{value}</Text>
         ),
     },
   ];
 
-  /** Tab "Ca của tôi" — chỉ hiện ca của người đang đăng nhập, nút chấm công bật. */
   const myShiftColumns: ColumnsType<AttendanceRecord> = [
     {
-      title: 'Ngày',
+      title: 'Ngày làm việc',
       dataIndex: 'workDate',
-      width: 110,
-      fixed: 'left',
-      sorter: (a, b) => b.workDate.localeCompare(a.workDate),
-      defaultSortOrder: 'descend',
-      render: (value: string) => formatDate(value),
+      width: 130,
+      render: (value: string) => (
+        <Text strong>{formatDate(value)}</Text>
+      ),
     },
     {
       title: 'Ca',
@@ -500,7 +459,7 @@ export const AttendancePage: FC = () => {
       align: 'center',
       width: 90,
       render: (shift: ShiftCode) => (
-        <Tag color={shift === SHIFT_CODE.Night ? 'geekblue' : 'gold'} className="tag-no-margin">
+        <Tag color={shift === SHIFT_CODE.Night ? 'geekblue' : 'gold'}>
           {SHIFT_SHORT_LABEL[shift]}
         </Tag>
       ),
@@ -509,36 +468,24 @@ export const AttendancePage: FC = () => {
       title: 'Check In',
       dataIndex: 'clockInAt',
       align: 'center',
-      width: 90,
+      width: 120,
       render: renderClockIn,
     },
     {
       title: 'Check Out',
       dataIndex: 'clockOutAt',
       align: 'center',
-      width: 90,
+      width: 120,
       render: renderClockOut,
     },
     {
-      title: 'Nghỉ',
-      dataIndex: 'breakDuration',
-      align: 'right',
-      width: 70,
-      render: (value: number) =>
-        value === 0 ? (
-          <Text type="secondary">—</Text>
-        ) : (
-          <Text className="numeric-cell">{value}h</Text>
-        ),
-    },
-    {
-      title: 'Thực tế',
+      title: 'Giờ làm',
       dataIndex: 'actualHours',
       align: 'right',
-      width: 90,
+      width: 100,
       render: (value: number) => (
         <Text strong className="numeric-cell">
-          {value.toFixed(1)}h
+          {value > 0 ? `${value.toFixed(1)}h` : '—'}
         </Text>
       ),
     },
@@ -546,56 +493,55 @@ export const AttendancePage: FC = () => {
       title: 'Trạng thái',
       dataIndex: 'status',
       align: 'center',
-      width: 120,
-      render: (status: AttendanceStatus) => <AttendanceStatusTag status={status} />,
+      width: 140,
+      render: (status: AttendanceStatus) => (
+        <AttendanceStatusTag status={status} />
+      ),
     },
     {
       title: 'Ghi chú',
       dataIndex: 'note',
-      width: 200,
       render: (value: string) =>
-        value === '' ? (
-          <Text type="secondary">—</Text>
-        ) : (
-          <Text className="att-note">{value}</Text>
-        ),
+        value ? <Text type="secondary">{value}</Text> : <Text type="secondary">—</Text>,
     },
   ];
 
-  /** Tầng 1 — Quản lý xác nhận giờ làm. */
   const handleConfirm = async (row: PayrollRow): Promise<void> => {
     try {
       await dispatch(confirmPayrollHours(row.id)).unwrap();
-      message.success(`Đã xác nhận giờ làm của ${row.employeeName}.`);
+      message.success(`Đã xác nhận giờ làm cho ${row.employeeName}. Chờ duyệt chi.`);
     } catch (e: any) {
-      message.error(e?.message || 'Xác nhận giờ làm thất bại');
+      message.error(e?.message || 'Lỗi xác nhận giờ làm');
     }
   };
 
   const handleApprove = async (row: PayrollRow): Promise<void> => {
     try {
       await dispatch(approvePayrollPayment(row.id)).unwrap();
-      message.success(`Đã duyệt chi ${formatVND(row.netPay)} cho ${row.employeeName}. Phiếu chi lương đã ghi vào sổ quỹ.`);
+      message.success(
+        `Đã duyệt chi ${formatVND(row.netPay)} cho ${row.employeeName}. Tự động ghi Sổ Quỹ.`,
+      );
     } catch (e: any) {
-      message.error(e?.message || 'Duyệt chi lương thất bại');
+      message.error(e?.message || 'Lỗi duyệt chi lương');
     }
   };
 
   const handleApproveBatch = async (): Promise<void> => {
-    const rows = approvableSelected;
-    const total = rows.reduce((sum, row) => sum + row.netPay, 0);
-
+    if (selectedIds.length === 0) return;
     try {
-      await dispatch(approvePayrollPaymentBatch(rows.map((row) => row.id))).unwrap();
+      const rows = await dispatch(approvePayrollPaymentBatch(selectedIds)).unwrap();
+      const totalAmount = rows.reduce((sum, r) => sum + r.netPay, 0);
+      message.success(
+        `Đã duyệt chi ${rows.length} bảng lương (tổng ${formatVND(
+          totalAmount,
+        )}). Tự động ghi Sổ Quỹ.`,
+      );
       setSelectedIds([]);
-      message.success(`Đã duyệt chi ${rows.length} bảng lương, tổng ${formatVND(total)}. Đã ghi ${rows.length} phiếu chi vào sổ quỹ.`);
     } catch (e: any) {
-      message.error(e?.message || 'Một hoặc nhiều bảng lương chưa được duyệt chi');
-      void dispatch(fetchPayroll({ scope: 'SCOPED', period: payrollPeriod }));
+      message.error(e?.message || 'Lỗi duyệt chi hàng loạt');
     }
   };
 
-  /** Tạo bảng lương tháng từ dữ liệu chấm công, rồi tải lại. */
   const handleGeneratePayroll = async (): Promise<void> => {
     try {
       await dispatch(generatePayroll(payrollPeriod)).unwrap();
@@ -756,46 +702,20 @@ export const AttendancePage: FC = () => {
       ),
     },
     {
-      title: 'Duyệt bởi',
-      key: 'approval',
-      width: 230,
-      render: (_, row) => (
-        <Space direction="vertical" size={0}>
-          {row.confirmedBy !== null && (
-            <Text type="secondary" className="pay-approval-line">
-              T1: {row.confirmedBy} · {formatDateTime(row.confirmedAt)}
-            </Text>
-          )}
-          {row.paidBy !== null && (
-            <Text type="secondary" className="pay-approval-line">
-              T2: {row.paidBy} · {formatDateTime(row.paidAt)}
-            </Text>
-          )}
-          {row.confirmedBy === null && row.paidBy === null && (
-            <Text type="secondary">—</Text>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: 'Hành động',
+      title: 'Thao tác',
       key: 'actions',
-      align: 'center',
-      width: 130,
       fixed: 'right',
+      width: 150,
       render: (_, row) => {
         const canConfirm = canConfirmHours(
           row,
           actor.actorId,
           actor.actorRole,
-          user?.branchId ?? null,
+          actor.actorBranchId,
         );
         const canApprove = canApprovePayment(row, actor.actorId, actor.actorRole);
-        const isOwnPayroll = row.employeeId === actor.actorId;
-
-        if (row.status === PAYROLL_STATUS.Paid) {
-          return <Text type="secondary">Hoàn tất</Text>;
-        }
+        const isOwnPayroll =
+          row.employeeId === (user?.idNhanVien ?? user?.id);
 
         return (
           <Space size={4}>
@@ -923,8 +843,15 @@ export const AttendancePage: FC = () => {
     );
   };
 
-  const myShiftCount = myAttendance.length;
-  const registerCount = attendanceRegister.length;
+  const approvableSelected = useMemo(
+    () =>
+      payroll.filter(
+        (row) =>
+          selectedIds.includes(row.id)
+          && canApprovePayment(row, actor.actorId, actor.actorRole),
+      ),
+    [payroll, selectedIds, actor],
+  );
 
   return (
     <>
@@ -944,10 +871,21 @@ export const AttendancePage: FC = () => {
             className="attendance-load-alert"
             message="Không tải được dữ liệu chấm công"
             description={attendanceError}
-            action={<Button size="small" onClick={() => void dispatch(fetchAttendance({
-              from: attendanceRange[0].format('YYYY-MM-DD'),
-              to: attendanceRange[1].format('YYYY-MM-DD'),
-            }))}>Tải lại</Button>}
+            action={
+              <Button
+                size="small"
+                onClick={() =>
+                  void dispatch(
+                    fetchAttendance({
+                      from: attendanceRange[0].format('YYYY-MM-DD'),
+                      to: attendanceRange[1].format('YYYY-MM-DD'),
+                    }),
+                  )
+                }
+              >
+                Tải lại
+              </Button>
+            }
           />
         )}
         {payrollError !== null && (
@@ -957,9 +895,21 @@ export const AttendancePage: FC = () => {
             className="attendance-load-alert"
             message="Không tải được dữ liệu bảng lương"
             description={payrollError}
-            action={<Button size="small" onClick={() => void dispatch(fetchPayroll({
-              scope: isSelfServiceRole ? 'SELF' : 'SCOPED', period: payrollPeriod,
-            }))}>Tải lại</Button>}
+            action={
+              <Button
+                size="small"
+                onClick={() =>
+                  void dispatch(
+                    fetchPayroll({
+                      scope: isSelfServiceRole ? 'SELF' : 'SCOPED',
+                      period: payrollPeriod,
+                    }),
+                  )
+                }
+              >
+                Tải lại
+              </Button>
+            }
           />
         )}
         <Tabs
@@ -968,197 +918,85 @@ export const AttendancePage: FC = () => {
           items={[
             {
               key: 'my-shifts',
-              label: `Ca của tôi (${myShiftCount})`,
+              label: `Ca của tôi (${myAttendance.length})`,
               children: (
-                <>
-                  <TableToolbar
-                    searchValue={search}
-                    searchPlaceholder="Tìm theo tên hoặc mã nhân viên..."
-                    onSearchChange={setSearch}
-                    filters={[]}
-                    actions={
-                      <DatePicker.RangePicker
-                        value={attendanceRange}
-                        format="DD/MM/YYYY"
-                        allowClear={false}
-                        onChange={(values) => {
-                          if (values?.[0] && values[1]) setAttendanceRange([values[0], values[1]]);
-                        }}
-                      />
-                    }
-                    onExport={handleExportAttendance}
-                    onReset={() => {
-                      setSearch('');
-                    }}
-                  />
-
-                  <Table<AttendanceRecord>
-                    columns={myShiftColumns}
-                    dataSource={myAttendance}
-                    rowKey="id"
-                    loading={isInitialLoading(attendanceLoading, attendanceRecords)}
-                    size="small"
-                    scroll={{ x: 1000 }}
-                    pagination={{
-                      defaultPageSize: 10,
-                      showSizeChanger: true,
-                      pageSizeOptions: ['10', '20', '50', '100'],
-                      showTotal: (total) => `${total} bản ghi`,
-                    }}
-                    locale={{ emptyText: 'Chưa có dữ liệu chấm công ca của bạn.' }}
-                  />
-                </>
+                <AttendanceRegisterTab
+                  search={search}
+                  onSearchChange={setSearch}
+                  filters={[]}
+                  attendanceRange={attendanceRange}
+                  onRangeChange={setAttendanceRange}
+                  onReset={() => setSearch('')}
+                  onExport={handleExportAttendance}
+                  columns={myShiftColumns}
+                  dataSource={myAttendance}
+                  loading={attendanceLoading}
+                  scrollX={1000}
+                  emptyText="Chưa có dữ liệu chấm công ca của bạn."
+                />
               ),
             },
-            ...(!isSelfServiceRole ? [{
-              key: 'register',
-              label: `Bảng chấm công (${registerCount})`,
-              children: (
-                <>
-                  <TableToolbar
-                    searchValue={search}
-                    searchPlaceholder="Tìm theo tên hoặc mã nhân viên..."
-                    onSearchChange={setSearch}
-                    filters={attendanceFilters}
-                    actions={
-                      <DatePicker.RangePicker
-                        value={attendanceRange}
-                        format="DD/MM/YYYY"
-                        allowClear={false}
-                        onChange={(values) => {
-                          if (values?.[0] && values[1]) setAttendanceRange([values[0], values[1]]);
+            ...(!isSelfServiceRole
+              ? [
+                  {
+                    key: 'register',
+                    label: `Bảng chấm công (${attendanceRegister.length})`,
+                    children: (
+                      <AttendanceRegisterTab
+                        search={search}
+                        onSearchChange={setSearch}
+                        filters={attendanceFilters}
+                        attendanceRange={attendanceRange}
+                        onRangeChange={setAttendanceRange}
+                        onReset={() => {
+                          setSearch('');
+                          setBranchFilter(null);
+                          setShiftFilter(null);
+                          setStatusFilter(null);
+                          setAttendanceRange([DEFAULT_ATTENDANCE_FROM, DEFAULT_ATTENDANCE_TO]);
                         }}
+                        onExport={handleExportAttendance}
+                        columns={attendanceColumns}
+                        dataSource={attendanceRegister}
+                        loading={attendanceLoading}
+                        scrollX={1420}
                       />
-                    }
-                    onExport={handleExportAttendance}
-                    onReset={() => {
-                      setSearch('');
-                      setBranchFilter(null);
-                      setShiftFilter(null);
-                      setStatusFilter(null);
-                      setAttendanceRange([DEFAULT_ATTENDANCE_FROM, DEFAULT_ATTENDANCE_TO]);
-                    }}
-                  />
-
-                  <Table<AttendanceRecord>
-                    columns={attendanceColumns}
-                    dataSource={attendanceRegister}
-                    rowKey="id"
-                    loading={isInitialLoading(attendanceLoading, attendanceRecords)}
-                    size="small"
-                    scroll={{ x: 1420 }}
-                    pagination={{
-                      defaultPageSize: 10,
-                      showSizeChanger: true,
-                      pageSizeOptions: ['10', '20', '50', '100'],
-                      showTotal: (total) => `${total} bản ghi`,
-                    }}
-                  />
-                </>
-              ),
-            }] : []),
+                    ),
+                  },
+                ]
+              : []),
             {
               key: 'payroll',
               label: isSelfServiceRole
                 ? `Lương của tôi ${formatPeriod(payrollPeriod)}`
                 : `Bảng lương ${formatPeriod(payrollPeriod)}`,
               children: (
-                <>
-                  <TableToolbar
-                    searchValue={search}
-                    searchPlaceholder="Tìm theo tên hoặc mã nhân viên..."
-                    onSearchChange={setSearch}
-                    filters={isSelfServiceRole ? [] : payrollFilters}
-                    onExport={handleExportPayroll}
-                    onReset={() => {
-                      setSearch('');
-                      setBranchFilter(null);
-                      setPayrollStatusFilter(null);
-                      setSelectedIds([]);
-                    }}
-                    actions={(
-                      <>
-                        <DatePicker
-                          picker="month"
-                          value={dayjs(`${payrollPeriod.slice(3)}-${payrollPeriod.slice(0, 2)}-01`)}
-                          format="MM/YYYY"
-                          allowClear={false}
-                          onChange={(value) => {
-                            if (value) setPayrollPeriod(value.format('MM-YYYY'));
-                          }}
-                        />
-                        {!isSelfServiceRole && <Button
-                          type="default"
-                          icon={<CalculatorOutlined />}
-                          onClick={() => void handleGeneratePayroll()}
-                        >
-                          Tạo bảng lương
-                        </Button>}
-                        {!isSelfServiceRole && approvableSelected.length > 0 && (
-                          <Popconfirm
-                            title={`Duyệt chi ${approvableSelected.length} bảng lương?`}
-                            description={`Tổng chi ${formatVND(
-                              approvableSelected.reduce(
-                                (sum, row) => sum + row.netPay,
-                                0,
-                              ),
-                            )}. Hành động này không hoàn tác được.`}
-                            okText="Duyệt chi"
-                            cancelText="Huỷ"
-                            onConfirm={handleApproveBatch}
-                          >
-                            <Button type="primary" icon={<DollarOutlined />}>
-                            Duyệt chi {approvableSelected.length} bảng
-                          </Button>
-                        </Popconfirm>
-                        )}
-                      </>
-                    )}
-                  />
-
-                  <Table<PayrollRow>
-                    columns={payrollColumns}
-                    dataSource={payroll}
-                    rowKey="id"
-                    loading={isInitialLoading(payrollLoading, payrollRows)}
-                    size="small"
-                    scroll={{ x: 2100 }}
-                    className="dense-table"
-                    rowSelection={isSelfServiceRole ? undefined : {
-                      selectedRowKeys: selectedIds,
-                      onChange: (keys) => setSelectedIds(keys as string[]),
-                      getCheckboxProps: (row) => ({
-                        disabled: !canApprovePayment(
-                          row,
-                          actor.actorId,
-                          actor.actorRole,
-                        ),
-                      }),
-                    }}
-                    pagination={{
-                      defaultPageSize: 10,
-                      showSizeChanger: true,
-                      pageSizeOptions: ['10', '20', '50', '100'],
-                      showTotal: (total) => `${total} nhân sự`,
-                    }}
-                    summary={(rows) => {
-                      const totalNet = rows.reduce((sum, row) => sum + row.netPay, 0);
-                      return (
-                        <Table.Summary.Row>
-                          <Table.Summary.Cell index={0} colSpan={12}>
-                            <Text strong>Tổng chi lương (trang hiện tại)</Text>
-                          </Table.Summary.Cell>
-                          <Table.Summary.Cell index={12} align="right">
-                            <Text strong className="pay-net">
-                              {formatVND(totalNet)}
-                            </Text>
-                          </Table.Summary.Cell>
-                          <Table.Summary.Cell index={13} colSpan={2} />
-                        </Table.Summary.Row>
-                      );
-                    }}
-                  />
-                </>
+                <PayrollTab
+                  search={search}
+                  onSearchChange={setSearch}
+                  filters={payrollFilters}
+                  payrollPeriod={payrollPeriod}
+                  onPeriodChange={setPayrollPeriod}
+                  isSelfServiceRole={isSelfServiceRole}
+                  approvableSelected={approvableSelected}
+                  onGeneratePayroll={() => void handleGeneratePayroll()}
+                  onApproveBatch={handleApproveBatch}
+                  onExport={handleExportPayroll}
+                  onReset={() => {
+                    setSearch('');
+                    setBranchFilter(null);
+                    setPayrollStatusFilter(null);
+                    setSelectedIds([]);
+                  }}
+                  columns={payrollColumns}
+                  dataSource={payroll}
+                  loading={payrollLoading}
+                  selectedIds={selectedIds}
+                  onSelectChange={setSelectedIds}
+                  canApprovePaymentRow={(row) =>
+                    canApprovePayment(row, actor.actorId, actor.actorRole)
+                  }
+                />
               ),
             },
           ]}

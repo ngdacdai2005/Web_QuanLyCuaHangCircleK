@@ -138,7 +138,7 @@ export const BranchesPage: FC = () => {
         color: BRAND.primaryRed,
       },
     ];
-  }, [enrichedBranches]);
+  }, [enrichedBranches, branches.length]);
 
   const filters: ToolbarFilter[] = [
     {

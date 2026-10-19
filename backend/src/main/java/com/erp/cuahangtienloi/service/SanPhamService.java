@@ -1,9 +1,10 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.CreateSanPhamRequest;
-import com.erp.cuahangtienloi.dto.SanPhamDTO;
-import com.erp.cuahangtienloi.dto.UpdateSanPhamRequest;
+import com.erp.cuahangtienloi.dto.request.CreateSanPhamRequestDTO;
+import com.erp.cuahangtienloi.dto.response.SanPhamResponseDTO;
+import com.erp.cuahangtienloi.dto.request.UpdateSanPhamRequestDTO;
 import com.erp.cuahangtienloi.entity.SanPham;
+import com.erp.cuahangtienloi.mapper.SanPhamMapper;
 import com.erp.cuahangtienloi.repository.DanhMucRepository;
 import com.erp.cuahangtienloi.repository.NhaCungCapRepository;
 import com.erp.cuahangtienloi.repository.SanPhamRepository;
@@ -27,12 +28,13 @@ public class SanPhamService {
     private final DanhMucRepository danhMucRepository;
     private final NhaCungCapRepository nhaCungCapRepository;
     private final BranchProductStatusService branchProductStatusService;
+    private final SanPhamMapper sanPhamMapper;
 
     @Transactional(readOnly = true)
-    public List<SanPhamDTO> getAll(UUID branchId, boolean isAdmin) {
+    public List<SanPhamResponseDTO> getAll(UUID branchId, boolean isAdmin) {
         return sanPhamRepository.findAll().stream()
                 .map(sp -> {
-                    SanPhamDTO dto = toDTO(sp);
+                    SanPhamResponseDTO dto = sanPhamMapper.toResponse(sp);
                     if (Boolean.FALSE.equals(sp.getDangHoatDong())) {
                         dto.setDangHoatDong(false);
                     } else if (!isAdmin && branchId != null) {
@@ -47,24 +49,24 @@ public class SanPhamService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<SanPhamDTO> getById(UUID id) {
-        return sanPhamRepository.findById(id).map(this::toDTO);
+    public Optional<SanPhamResponseDTO> getById(UUID id) {
+        return sanPhamRepository.findById(id).map(sanPhamMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public List<SanPhamDTO> getByDanhMuc(UUID idDanhMuc) {
+    public List<SanPhamResponseDTO> getByDanhMuc(UUID idDanhMuc) {
         return sanPhamRepository.findByIdDanhMuc(idDanhMuc).stream()
-                .map(this::toDTO)
+                .map(sanPhamMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public Optional<SanPhamDTO> getByMaVach(String maVach) {
-        return sanPhamRepository.findByMaVach(maVach).map(this::toDTO);
+    public Optional<SanPhamResponseDTO> getByMaVach(String maVach) {
+        return sanPhamRepository.findByMaVach(maVach).map(sanPhamMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public List<SanPhamDTO> getActive(UUID branchId, boolean isAdmin) {
+    public List<SanPhamResponseDTO> getActive(UUID branchId, boolean isAdmin) {
         return sanPhamRepository.findByDangHoatDong(true).stream()
                 .filter(sp -> {
                     if (isAdmin || branchId == null) return true;
@@ -72,12 +74,12 @@ public class SanPhamService {
                     if (sp.getIdDanhMuc() != null && branchProductStatusService.isCategoryInactiveForBranch(branchId, sp.getIdDanhMuc())) return false;
                     return true;
                 })
-                .map(this::toDTO)
+                .map(sanPhamMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Transactional
-    public SanPhamDTO create(CreateSanPhamRequest request) {
+    public SanPhamResponseDTO create(CreateSanPhamRequestDTO request) {
         if (sanPhamRepository.existsBySku(request.getSku())) {
             throw new IllegalArgumentException("SKU đã tồn tại");
         }
@@ -118,12 +120,12 @@ public class SanPhamService {
         sp.setNgayTao(LocalDateTime.now());
         sp.setNgayCapNhat(LocalDateTime.now());
 
-        sanPhamRepository.save(sp);
-        return toDTO(sp);
+        SanPham saved = sanPhamRepository.save(sp);
+        return sanPhamMapper.toResponse(saved);
     }
 
     @Transactional
-    public Optional<SanPhamDTO> update(UUID id, UpdateSanPhamRequest request) {
+    public Optional<SanPhamResponseDTO> update(UUID id, UpdateSanPhamRequestDTO request) {
         return sanPhamRepository.findById(id)
                 .map(sp -> {
                     if (request.getTenSanPham() != null && request.getTenSanPham().isBlank()) {
@@ -174,8 +176,8 @@ public class SanPhamService {
                     if (request.getHanSuDungNgay() != null) sp.setHanSuDungNgay(request.getHanSuDungNgay());
                     sp.setNgayCapNhat(LocalDateTime.now());
 
-                    sanPhamRepository.save(sp);
-                    return toDTO(sp);
+                    SanPham saved = sanPhamRepository.save(sp);
+                    return sanPhamMapper.toResponse(saved);
                 });
     }
 
@@ -242,38 +244,5 @@ public class SanPhamService {
             return "Sản phẩm đã được kích hoạt kinh doanh lại tại chi nhánh";
         }
     }
-
-    public SanPhamDTO toDTO(SanPham sp) {
-        SanPhamDTO dto = new SanPhamDTO();
-        dto.setId(sp.getId());
-        dto.setIdDanhMuc(sp.getIdDanhMuc());
-        dto.setSku(sp.getSku());
-        dto.setMaVach(sp.getMaVach());
-        dto.setTenSanPham(sp.getTenSanPham());
-        dto.setDonVi(sp.getDonVi());
-        dto.setImageUrl(sp.getImageUrl());
-        dto.setMoTa(sp.getMoTa());
-        dto.setDangHoatDong(sp.getDangHoatDong());
-        dto.setGiaVon(sp.getGiaVon());
-        dto.setGiaBan(sp.getGiaBan());
-        dto.setVatPhantram(sp.getVatPhantram());
-        dto.setIdNhaCungCap(sp.getIdNhaCungCap());
-        dto.setTonToiThieu(sp.getTonToiThieu());
-        dto.setTonToiDa(sp.getTonToiDa());
-        dto.setDeHong(sp.getDeHong());
-        dto.setHanSuDungNgay(sp.getHanSuDungNgay());
-        dto.setNgayTao(sp.getNgayTao());
-        dto.setNgayCapNhat(sp.getNgayCapNhat());
-
-        if (sp.getIdDanhMuc() != null) {
-            danhMucRepository.findById(sp.getIdDanhMuc())
-                    .ifPresent(dm -> dto.setTenDanhMuc(dm.getTenDanhMuc()));
-        }
-        if (sp.getIdNhaCungCap() != null) {
-            nhaCungCapRepository.findById(sp.getIdNhaCungCap())
-                    .ifPresent(ncc -> dto.setTenNhaCungCap(ncc.getTenNcc()));
-        }
-
-        return dto;
-    }
+    
 }

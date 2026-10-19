@@ -1,8 +1,9 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.TonKhoDTO;
+import com.erp.cuahangtienloi.dto.response.TonKhoResponseDTO;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.TonKho;
+import com.erp.cuahangtienloi.mapper.TonKhoMapper;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
 import com.erp.cuahangtienloi.repository.SanPhamRepository;
 import com.erp.cuahangtienloi.repository.TonKhoRepository;
@@ -20,6 +21,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.erp.cuahangtienloi.dto.request.TonKhoAdjustmentRequestDTO;
+import com.erp.cuahangtienloi.dto.request.TonKhoRequestDTO;
 import static com.erp.cuahangtienloi.validation.InputValidator.nonNegative;
 
 @Service
@@ -30,6 +33,7 @@ public class TonKhoService {
     private final SanPhamRepository sanPhamRepository;
     private final ChiNhanhRepository chiNhanhRepository;
     private final BranchAccessService branchAccessService;
+    private final TonKhoMapper tonKhoMapper;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -40,49 +44,51 @@ public class TonKhoService {
             String ghiChu, LocalDateTime ngayPhatSinh) {}
 
     @Transactional(readOnly = true)
-    public List<TonKhoDTO> getAll(NhanVien employee) {
+    public List<TonKhoResponseDTO> getAll(NhanVien employee) {
         List<TonKho> source = branchAccessService.isSystemWide(employee)
                 ? tonKhoRepository.findAll()
                 : tonKhoRepository.findByIdChiNhanh(branchAccessService.requiredOwnBranch(employee));
-        return source.stream().map(this::toDTO).collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public List<TonKhoDTO> getByChiNhanh(UUID idChiNhanh, NhanVien employee) {
-        branchAccessService.requireReadableBranch(employee, idChiNhanh);
-        return tonKhoRepository.findByIdChiNhanh(idChiNhanh).stream()
-                .map(this::toDTO)
+        return source.stream()
+                .map(tonKhoMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public List<TonKhoDTO> getBySanPham(UUID idSanPham, NhanVien employee) {
+    public List<TonKhoResponseDTO> getByChiNhanh(UUID idChiNhanh, NhanVien employee) {
+        branchAccessService.requireReadableBranch(employee, idChiNhanh);
+        return tonKhoRepository.findByIdChiNhanh(idChiNhanh).stream()
+                .map(tonKhoMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<TonKhoResponseDTO> getBySanPham(UUID idSanPham, NhanVien employee) {
         List<TonKho> source = branchAccessService.isSystemWide(employee)
                 ? tonKhoRepository.findByIdSanPham(idSanPham)
                 : tonKhoRepository.findByIdSanPhamAndIdChiNhanh(idSanPham,
                         branchAccessService.requiredOwnBranch(employee)).stream().toList();
-        return source.stream().map(this::toDTO).collect(Collectors.toList());
+        return source.stream().map(tonKhoMapper::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public List<TonKhoDTO> getAvailableForTransfer() {
+    public List<TonKhoResponseDTO> getAvailableForTransfer() {
         UUID khoTongId = chiNhanhRepository.findFirstByLoai("KHO_TONG")
                 .map(cn -> cn.getId())
                 .orElseThrow(() -> new IllegalStateException("Chưa cấu hình Kho Tổng"));
         return tonKhoRepository.findByIdChiNhanh(khoTongId).stream()
                 .filter(tk -> tk.getSoLuongTon() != null && tk.getSoLuongTon() > 0)
-                .map(this::toDTO)
+                .map(tonKhoMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public Optional<TonKhoDTO> getDetail(UUID idSanPham, UUID idChiNhanh, NhanVien employee) {
+    public Optional<TonKhoResponseDTO> getDetail(UUID idSanPham, UUID idChiNhanh, NhanVien employee) {
         branchAccessService.requireReadableBranch(employee, idChiNhanh);
-        return tonKhoRepository.findByIdSanPhamAndIdChiNhanh(idSanPham, idChiNhanh).map(this::toDTO);
+        return tonKhoRepository.findByIdSanPhamAndIdChiNhanh(idSanPham, idChiNhanh).map(tonKhoMapper::toResponse);
     }
 
     @Transactional
-    public TonKhoDTO create(TonKho request) {
+    public TonKhoResponseDTO create(TonKho request) {
         if (request.getIdSanPham() == null || !sanPhamRepository.existsById(request.getIdSanPham())) {
             throw new IllegalArgumentException("Sản phẩm không tồn tại");
         }
@@ -108,11 +114,11 @@ public class TonKhoService {
         tk.setNgayCapNhat(LocalDateTime.now());
 
         tonKhoRepository.save(tk);
-        return toDTO(tk);
+        return tonKhoMapper.toResponse(tk);
     }
 
     @Transactional
-    public Optional<TonKhoDTO> update(UUID idSanPham, UUID idChiNhanh, TonKho request) {
+    public Optional<TonKhoResponseDTO> update(UUID idSanPham, UUID idChiNhanh, TonKho request) {
         return tonKhoRepository.findByIdSanPhamAndIdChiNhanh(idSanPham, idChiNhanh)
                 .map(tk -> {
                     validateConfiguration(request);
@@ -122,12 +128,30 @@ public class TonKhoService {
                     tk.setLanBienDongCuoi(LocalDateTime.now());
                     tk.setNgayCapNhat(LocalDateTime.now());
                     tonKhoRepository.save(tk);
-                    return toDTO(tk);
+                    return tonKhoMapper.toResponse(tk);
                 });
     }
 
     @Transactional
-    public Optional<TonKhoDTO> adjust(TonKhoAdjustmentRequest request, NhanVien employee) {
+    public TonKhoResponseDTO create(TonKhoRequestDTO request) {
+        return create(tonKhoMapper.toEntity(request));
+    }
+
+    @Transactional
+    public Optional<TonKhoResponseDTO> update(UUID idSanPham, UUID idChiNhanh, TonKhoRequestDTO request) {
+        return update(idSanPham, idChiNhanh, tonKhoMapper.toEntity(request));
+    }
+
+    @Transactional
+    public Optional<TonKhoResponseDTO> adjust(TonKhoAdjustmentRequestDTO request, NhanVien employee) {
+        return adjust(new TonKhoAdjustmentRequest(
+                request.idSanPham(), request.idChiNhanh(), request.soLuong(), request.donGia(),
+                request.maChungTu(), request.nguoiThucHien(), request.hanSuDung(),
+                request.ghiChu(), request.ngayPhatSinh()), employee);
+    }
+
+    @Transactional
+    public Optional<TonKhoResponseDTO> adjust(TonKhoAdjustmentRequest request, NhanVien employee) {
         if (request.idSanPham() == null || !sanPhamRepository.existsById(request.idSanPham())) {
             throw new IllegalArgumentException("Sản phẩm không tồn tại");
         }
@@ -154,7 +178,7 @@ public class TonKhoService {
                 .getSingleResult();
 
         entityManager.flush();
-        return tonKhoRepository.findByIdSanPhamAndIdChiNhanh(request.idSanPham(), request.idChiNhanh()).map(this::toDTO);
+        return tonKhoRepository.findByIdSanPhamAndIdChiNhanh(request.idSanPham(), request.idChiNhanh()).map(tonKhoMapper::toResponse);
     }
 
     @Transactional
@@ -172,30 +196,4 @@ public class TonKhoService {
         }
     }
 
-    public TonKhoDTO toDTO(TonKho tk) {
-        TonKhoDTO dto = new TonKhoDTO();
-        dto.setIdSanPham(tk.getIdSanPham());
-        dto.setIdChiNhanh(tk.getIdChiNhanh());
-        dto.setSoLuongTon(tk.getSoLuongTon());
-        dto.setGiaVonTrungBinh(tk.getGiaVonTrungBinh());
-        dto.setGiaTriTon(tk.getGiaTriTon());
-        dto.setTonToiThieu(tk.getTonToiThieu());
-        dto.setTonToiDa(tk.getTonToiDa());
-        dto.setHanSuDungGanNhat(tk.getHanSuDungGanNhat());
-        dto.setLanBienDongCuoi(tk.getLanBienDongCuoi());
-
-        if (tk.getIdSanPham() != null) {
-            sanPhamRepository.findById(tk.getIdSanPham())
-                    .ifPresent(sp -> {
-                        dto.setTenSanPham(sp.getTenSanPham());
-                        dto.setMaVach(sp.getMaVach());
-                    });
-        }
-        if (tk.getIdChiNhanh() != null) {
-            chiNhanhRepository.findById(tk.getIdChiNhanh())
-                    .ifPresent(cn -> dto.setTenChiNhanh(cn.getTenChiNhanh()));
-        }
-
-        return dto;
-    }
 }

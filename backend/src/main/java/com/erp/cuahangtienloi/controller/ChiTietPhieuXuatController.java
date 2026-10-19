@@ -1,7 +1,8 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.Response.ApiResponse;
-import com.erp.cuahangtienloi.entity.ChiTietPhieuXuat;
+import com.erp.cuahangtienloi.dto.request.ChiTietPhieuXuatRequestDTO;
+import com.erp.cuahangtienloi.dto.response.ApiResponse;
+import com.erp.cuahangtienloi.dto.response.ChiTietPhieuXuatResponseDTO;
 import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.PhieuXuatKhoService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,28 +24,28 @@ public class ChiTietPhieuXuatController {
 
     @GetMapping("/by-phieu/{idPhieuXuat}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<ChiTietPhieuXuat>> getByPhieuXuat(@PathVariable UUID idPhieuXuat, HttpServletRequest request) {
+    public ResponseEntity<List<ChiTietPhieuXuatResponseDTO>> getByPhieuXuat(@PathVariable UUID idPhieuXuat, HttpServletRequest request) {
         var actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuXuatKhoService.getLinesByPhieuXuat(idPhieuXuat, actor));
     }
 
     @GetMapping("/by-san-pham/{idSanPham}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<ChiTietPhieuXuat>> getBySanPham(@PathVariable UUID idSanPham, HttpServletRequest request) {
+    public ResponseEntity<List<ChiTietPhieuXuatResponseDTO>> getBySanPham(@PathVariable UUID idSanPham, HttpServletRequest request) {
         var actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuXuatKhoService.getLinesBySanPham(idSanPham, actor));
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<?> create(@RequestBody ChiTietPhieuXuat request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> create(@RequestBody ChiTietPhieuXuatRequestDTO request, HttpServletRequest httpRequest) {
         var actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return ResponseEntity.ok(phieuXuatKhoService.createLine(request, actor));
     }
 
     @PostMapping("/batch")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<?> createBatch(@RequestBody List<ChiTietPhieuXuat> requests, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> createBatch(@RequestBody List<ChiTietPhieuXuatRequestDTO> requests, HttpServletRequest httpRequest) {
         var actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         phieuXuatKhoService.createBatchLines(requests, actor);
         return ResponseEntity.ok(ApiResponse.ok("Tạo chi tiết phiếu xuất thành công"));

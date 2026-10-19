@@ -1,7 +1,7 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.ChamCongDTO;
-import com.erp.cuahangtienloi.entity.ChamCong;
+import com.erp.cuahangtienloi.dto.response.ChamCongResponseDTO;
+import com.erp.cuahangtienloi.dto.request.ChamCongRequestDTO;
 import com.erp.cuahangtienloi.service.ChamCongService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,7 @@ public class ChamCongController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<ChamCongDTO>> getAll(HttpServletRequest request) {
+    public ResponseEntity<List<ChamCongResponseDTO>> getAll(HttpServletRequest request) {
         return ResponseEntity.ok(chamCongService.getAll(request));
     }
 
@@ -34,19 +34,19 @@ public class ChamCongController {
 
     @GetMapping("/by-employee/{idNhanVien}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<ChamCongDTO>> getByNhanVien(@PathVariable UUID idNhanVien, HttpServletRequest request) {
+    public ResponseEntity<List<ChamCongResponseDTO>> getByNhanVien(@PathVariable UUID idNhanVien, HttpServletRequest request) {
         return ResponseEntity.ok(chamCongService.getByNhanVien(idNhanVien, request));
     }
 
     @GetMapping("/by-date/{workDate}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<ChamCongDTO>> getByDate(@PathVariable LocalDate workDate, HttpServletRequest request) {
+    public ResponseEntity<List<ChamCongResponseDTO>> getByDate(@PathVariable LocalDate workDate, HttpServletRequest request) {
         return ResponseEntity.ok(chamCongService.getByDate(workDate, request));
     }
 
     @GetMapping("/by-employee/{idNhanVien}/from/{from}/to/{to}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<ChamCongDTO>> getByNhanVienAndDateRange(
+    public ResponseEntity<List<ChamCongResponseDTO>> getByNhanVienAndDateRange(
             @PathVariable UUID idNhanVien,
             @PathVariable LocalDate from,
             @PathVariable LocalDate to, HttpServletRequest request) {
@@ -55,7 +55,7 @@ public class ChamCongController {
 
     @GetMapping("/by-date-range")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<ChamCongDTO>> getByDateRange(
+    public ResponseEntity<List<ChamCongResponseDTO>> getByDateRange(
             @RequestParam("from") LocalDate start,
             @RequestParam("to") LocalDate end, HttpServletRequest request) {
         return ResponseEntity.ok(chamCongService.getByDateRange(start, end, request));
@@ -63,13 +63,13 @@ public class ChamCongController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
-    public ResponseEntity<?> create(@RequestBody ChamCong request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> create(@RequestBody ChamCongRequestDTO request, HttpServletRequest httpRequest) {
         return chamCongService.create(request, httpRequest);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody ChamCong request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody ChamCongRequestDTO request, HttpServletRequest httpRequest) {
         return chamCongService.update(id, request, httpRequest);
     }
 

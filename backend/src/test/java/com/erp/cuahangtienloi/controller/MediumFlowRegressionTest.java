@@ -1,6 +1,8 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.UpdateSanPhamRequest;
+import com.erp.cuahangtienloi.dto.request.ChiTietKiemKeRequestDTO;
+import com.erp.cuahangtienloi.dto.request.NhanVienRequestDTO;
+import com.erp.cuahangtienloi.dto.request.UpdateSanPhamRequestDTO;
 import com.erp.cuahangtienloi.entity.ChiTietKiemKe;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.SanPham;
@@ -16,7 +18,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import jakarta.servlet.http.HttpServletRequest;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -49,7 +50,7 @@ class MediumFlowRegressionTest {
         product.setTenSanPham("Bánh mì");
         product.setTonToiThieu(null);
         product.setTonToiDa(null);
-        UpdateSanPhamRequest request = new UpdateSanPhamRequest();
+        UpdateSanPhamRequestDTO request = new UpdateSanPhamRequestDTO();
         request.setTenSanPham("Bánh mì mới");
 
         when(sanPhamRepository.findById(productId)).thenReturn(Optional.of(product));
@@ -81,7 +82,7 @@ class MediumFlowRegressionTest {
         employee.setId(employeeId);
         employee.setVaiTro("THU_NGAN");
         employee.setIdChiNhanh(null);
-        NhanVien request = new NhanVien();
+        NhanVienRequestDTO request = new NhanVienRequestDTO();
         request.setEmail("new_email@gmail.com");
         request.setLuongCung(8_000_000);
 
@@ -115,7 +116,7 @@ class MediumFlowRegressionTest {
         employee.setId(employeeId);
         employee.setVaiTro("ADMIN");
         employee.setIdChiNhanh(null);
-        NhanVien request = new NhanVien();
+        NhanVienRequestDTO request = new NhanVienRequestDTO();
         request.setVaiTro("THU_NGAN");
 
         when(nhanVienRepository.findById(employeeId)).thenReturn(Optional.of(employee));
@@ -128,7 +129,7 @@ class MediumFlowRegressionTest {
     @Test
     void stocktakeWriteEndpointsDeclareRolesExplicitly() throws NoSuchMethodException {
         List<Method> writeMethods = List.of(
-                ChiTietKiemKeController.class.getDeclaredMethod("create", ChiTietKiemKe.class, HttpServletRequest.class),
+                ChiTietKiemKeController.class.getDeclaredMethod("create", ChiTietKiemKeRequestDTO.class, HttpServletRequest.class),
                 ChiTietKiemKeController.class.getDeclaredMethod("createBatch", List.class, HttpServletRequest.class),
                 ChiTietKiemKeController.class.getDeclaredMethod("delete", UUID.class, HttpServletRequest.class),
                 ChiTietKiemKeController.class.getDeclaredMethod("deleteByPhieuKiemKe", UUID.class, HttpServletRequest.class)

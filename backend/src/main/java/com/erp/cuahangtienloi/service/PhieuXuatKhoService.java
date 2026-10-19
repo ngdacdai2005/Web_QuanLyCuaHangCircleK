@@ -1,10 +1,14 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.PhieuXuatKhoDTO;
+import com.erp.cuahangtienloi.dto.request.ChiTietPhieuXuatRequestDTO;
+import com.erp.cuahangtienloi.dto.response.ChiTietPhieuXuatResponseDTO;
+import com.erp.cuahangtienloi.dto.response.PhieuXuatKhoResponseDTO;
 import com.erp.cuahangtienloi.entity.ChiNhanh;
 import com.erp.cuahangtienloi.entity.ChiTietPhieuXuat;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.PhieuXuatKho;
+import com.erp.cuahangtienloi.mapper.ChiTietPhieuXuatMapper;
+import com.erp.cuahangtienloi.mapper.PhieuXuatKhoMapper;
 import com.erp.cuahangtienloi.repository.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -33,6 +37,8 @@ public class PhieuXuatKhoService {
     private final JdbcTemplate jdbcTemplate;
     private final BranchAccessService branchAccessService;
     private final LoHangService loHangService;
+    private final PhieuXuatKhoMapper phieuXuatKhoMapper;
+    private final ChiTietPhieuXuatMapper chiTietPhieuXuatMapper;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -54,46 +60,46 @@ public class PhieuXuatKhoService {
     }
 
     @Transactional(readOnly = true)
-    public List<PhieuXuatKhoDTO> getAll(NhanVien actor) {
+    public List<PhieuXuatKhoResponseDTO> getAll(NhanVien actor) {
         return phieuXuatKhoRepository.findAll().stream()
                 .filter(pxk -> canReadTransfer(actor, pxk))
-                .map(this::toDTO)
+                .map(phieuXuatKhoMapper::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public Optional<PhieuXuatKhoDTO> getById(UUID id, NhanVien actor) {
+    public Optional<PhieuXuatKhoResponseDTO> getById(UUID id, NhanVien actor) {
         return phieuXuatKhoRepository.findById(id)
                 .filter(pxk -> canReadTransfer(actor, pxk))
-                .map(this::toDTO);
+                .map(phieuXuatKhoMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public List<PhieuXuatKhoDTO> getByBranchXuat(UUID idChiNhanhXuat, NhanVien actor) {
+    public List<PhieuXuatKhoResponseDTO> getByBranchXuat(UUID idChiNhanhXuat, NhanVien actor) {
         return phieuXuatKhoRepository.findByIdChiNhanhXuat(idChiNhanhXuat).stream()
                 .filter(pxk -> canReadTransfer(actor, pxk))
-                .map(this::toDTO)
+                .map(phieuXuatKhoMapper::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<PhieuXuatKhoDTO> getByBranchNhan(UUID idChiNhanhNhan, NhanVien actor) {
+    public List<PhieuXuatKhoResponseDTO> getByBranchNhan(UUID idChiNhanhNhan, NhanVien actor) {
         return phieuXuatKhoRepository.findByIdChiNhanhNhan(idChiNhanhNhan).stream()
                 .filter(pxk -> canReadTransfer(actor, pxk))
-                .map(this::toDTO)
+                .map(phieuXuatKhoMapper::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<PhieuXuatKhoDTO> getByStatus(String trangThai, NhanVien actor) {
+    public List<PhieuXuatKhoResponseDTO> getByStatus(String trangThai, NhanVien actor) {
         return phieuXuatKhoRepository.findByTrangThai(trangThai).stream()
                 .filter(pxk -> canReadTransfer(actor, pxk))
-                .map(this::toDTO)
+                .map(phieuXuatKhoMapper::toResponse)
                 .toList();
     }
 
     @Transactional
-    public PhieuXuatKhoDTO create(PhieuXuatKho request, UUID idNguoiTao, NhanVien actor) {
+    public PhieuXuatKhoResponseDTO create(PhieuXuatKho request, UUID idNguoiTao, NhanVien actor) {
         if (request.getIdChiNhanhXuat() == null || request.getIdChiNhanhNhan() == null) {
             throw new IllegalArgumentException("Chi nhánh xuất hoặc nhận không được để trống");
         }
@@ -136,11 +142,11 @@ public class PhieuXuatKhoService {
 
         PhieuXuatKho saved = phieuXuatKhoRepository.saveAndFlush(pxk);
         entityManager.clear();
-        return toDTO(phieuXuatKhoRepository.findById(saved.getId()).orElseThrow());
+        return phieuXuatKhoMapper.toResponse(phieuXuatKhoRepository.findById(saved.getId()).orElseThrow());
     }
 
     @Transactional
-    public Optional<PhieuXuatKhoDTO> update(UUID id, PhieuXuatKho request, NhanVien actor) {
+    public Optional<PhieuXuatKhoResponseDTO> update(UUID id, PhieuXuatKho request, NhanVien actor) {
         return phieuXuatKhoRepository.findById(id)
                 .map(pxk -> {
                     requireTransferAccess(actor, pxk.getIdChiNhanhXuat(), pxk.getIdChiNhanhNhan());
@@ -172,8 +178,18 @@ public class PhieuXuatKhoService {
                     if (request.getGhiChu() != null) pxk.setGhiChu(request.getGhiChu());
                     pxk.setNgayCapNhat(LocalDateTime.now());
                     phieuXuatKhoRepository.save(pxk);
-                    return toDTO(pxk);
+                    return phieuXuatKhoMapper.toResponse(pxk);
                 });
+    }
+
+    @Transactional
+    public PhieuXuatKhoResponseDTO create(com.erp.cuahangtienloi.dto.request.PhieuXuatKhoRequestDTO request, UUID idNguoiTao, NhanVien actor) {
+        return create(phieuXuatKhoMapper.toEntity(request), idNguoiTao, actor);
+    }
+
+    @Transactional
+    public Optional<PhieuXuatKhoResponseDTO> update(UUID id, com.erp.cuahangtienloi.dto.request.PhieuXuatKhoRequestDTO request, NhanVien actor) {
+        return update(id, phieuXuatKhoMapper.toEntity(request), actor);
     }
 
     @Transactional
@@ -186,7 +202,7 @@ public class PhieuXuatKhoService {
     }
 
     @Transactional
-    public Optional<PhieuXuatKhoDTO> approve(UUID id, ApproveRequest body, NhanVien actor) {
+    public Optional<PhieuXuatKhoResponseDTO> approve(UUID id, ApproveRequest body, NhanVien actor) {
         return phieuXuatKhoRepository.findById(id)
                 .map(pxk -> {
                     requireTransferAccess(actor, pxk.getIdChiNhanhXuat(), pxk.getIdChiNhanhNhan());
@@ -197,12 +213,12 @@ public class PhieuXuatKhoService {
                     pxk.setIdNguoiDuyet(actor.getId());
                     pxk.setNgayCapNhat(LocalDateTime.now());
                     phieuXuatKhoRepository.save(pxk);
-                    return toDTO(pxk);
+                    return phieuXuatKhoMapper.toResponse(pxk);
                 });
     }
 
     @Transactional
-    public Optional<PhieuXuatKhoDTO> reject(UUID id, RejectRequest body, NhanVien actor) {
+    public Optional<PhieuXuatKhoResponseDTO> reject(UUID id, RejectRequest body, NhanVien actor) {
         return phieuXuatKhoRepository.findById(id)
                 .map(pxk -> {
                     requireTransferAccess(actor, pxk.getIdChiNhanhXuat(), pxk.getIdChiNhanhNhan());
@@ -214,12 +230,12 @@ public class PhieuXuatKhoService {
                     pxk.setGhiChu(body != null && body.lyDo() != null ? body.lyDo() : pxk.getGhiChu());
                     pxk.setNgayCapNhat(LocalDateTime.now());
                     phieuXuatKhoRepository.save(pxk);
-                    return toDTO(pxk);
+                    return phieuXuatKhoMapper.toResponse(pxk);
                 });
     }
 
     @Transactional
-    public Optional<PhieuXuatKhoDTO> ship(UUID id, MoveRequest body, UUID idNguoiDuyet, NhanVien actor) {
+    public Optional<PhieuXuatKhoResponseDTO> ship(UUID id, MoveRequest body, UUID idNguoiDuyet, NhanVien actor) {
         return phieuXuatKhoRepository.findById(id).map(pxk -> {
             requireTransferAccess(actor, pxk.getIdChiNhanhXuat(), pxk.getIdChiNhanhNhan());
             if (!"PENDING".equals(pxk.getTrangThai()) && !"APPROVED".equals(pxk.getTrangThai())) {
@@ -295,12 +311,12 @@ public class PhieuXuatKhoService {
             phieuXuatKhoRepository.flush();
             chiTietPhieuXuatRepository.flush();
             entityManager.clear();
-            return toDTO(phieuXuatKhoRepository.findById(id).orElseThrow());
+            return phieuXuatKhoMapper.toResponse(phieuXuatKhoRepository.findById(id).orElseThrow());
         });
     }
 
     @Transactional
-    public Optional<PhieuXuatKhoDTO> receive(UUID id, MoveRequest body, UUID idNguoiNhan, NhanVien actor) {
+    public Optional<PhieuXuatKhoResponseDTO> receive(UUID id, MoveRequest body, UUID idNguoiNhan, NhanVien actor) {
         return phieuXuatKhoRepository.findById(id).map(pxk -> {
             requireTransferAccess(actor, pxk.getIdChiNhanhXuat(), pxk.getIdChiNhanhNhan());
             if (!"SHIPPED".equals(pxk.getTrangThai())) {
@@ -361,26 +377,29 @@ public class PhieuXuatKhoService {
             phieuXuatKhoRepository.save(pxk);
             phieuXuatKhoRepository.flush();
             entityManager.clear();
-            return toDTO(phieuXuatKhoRepository.findById(id).orElseThrow());
+            return phieuXuatKhoMapper.toResponse(phieuXuatKhoRepository.findById(id).orElseThrow());
         });
     }
 
     // --- Logic ChiTietPhieuXuat ---
     @Transactional(readOnly = true)
-    public List<ChiTietPhieuXuat> getLinesByPhieuXuat(UUID idPhieuXuat, NhanVien actor) {
+    public List<ChiTietPhieuXuatResponseDTO> getLinesByPhieuXuat(UUID idPhieuXuat, NhanVien actor) {
         requireReadableHeader(idPhieuXuat, actor);
-        return chiTietPhieuXuatRepository.findByIdPhieuXuat(idPhieuXuat);
+        return chiTietPhieuXuatRepository.findByIdPhieuXuat(idPhieuXuat).stream()
+                .map(chiTietPhieuXuatMapper::toResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<ChiTietPhieuXuat> getLinesBySanPham(UUID idSanPham, NhanVien actor) {
+    public List<ChiTietPhieuXuatResponseDTO> getLinesBySanPham(UUID idSanPham, NhanVien actor) {
         return chiTietPhieuXuatRepository.findByIdSanPham(idSanPham).stream()
                 .filter(ct -> canReadHeader(actor, ct.getIdPhieuXuat()))
+                .map(chiTietPhieuXuatMapper::toResponse)
                 .toList();
     }
 
     @Transactional
-    public ChiTietPhieuXuat createLine(ChiTietPhieuXuat request, NhanVien actor) {
+    public ChiTietPhieuXuatResponseDTO createLine(ChiTietPhieuXuatRequestDTO request, NhanVien actor) {
         validateLine(request, actor);
         ChiTietPhieuXuat ct = new ChiTietPhieuXuat();
         ct.setId(UUID.randomUUID());
@@ -394,15 +413,15 @@ public class PhieuXuatKhoService {
         ct.setHanSuDung(request.getHanSuDung());
         ct.setThuTu(request.getThuTu() != null ? request.getThuTu() : 0);
         ct.setNgayTao(LocalDateTime.now());
-        return chiTietPhieuXuatRepository.save(ct);
+        return chiTietPhieuXuatMapper.toResponse(chiTietPhieuXuatRepository.save(ct));
     }
 
     @Transactional
-    public void createBatchLines(List<ChiTietPhieuXuat> requests, NhanVien actor) {
+    public void createBatchLines(List<ChiTietPhieuXuatRequestDTO> requests, NhanVien actor) {
         if (requests == null || requests.isEmpty()) {
             throw new IllegalArgumentException("Danh sách chi tiết phiếu xuất rỗng");
         }
-        for (ChiTietPhieuXuat request : requests) {
+        for (ChiTietPhieuXuatRequestDTO request : requests) {
             validateLine(request, actor);
             ChiTietPhieuXuat ct = new ChiTietPhieuXuat();
             ct.setId(UUID.randomUUID());
@@ -436,7 +455,7 @@ public class PhieuXuatKhoService {
         chiTietPhieuXuatRepository.deleteAll(list);
     }
 
-    private void validateLine(ChiTietPhieuXuat request, NhanVien actor) {
+    private void validateLine(ChiTietPhieuXuatRequestDTO request, NhanVien actor) {
         if (request.getIdPhieuXuat() == null || !phieuXuatKhoRepository.existsById(request.getIdPhieuXuat())) {
             throw new IllegalArgumentException("Phiếu xuất không tồn tại");
         }
@@ -480,42 +499,4 @@ public class PhieuXuatKhoService {
         }
     }
 
-    public PhieuXuatKhoDTO toDTO(PhieuXuatKho pxk) {
-        PhieuXuatKhoDTO dto = new PhieuXuatKhoDTO();
-        dto.setId(pxk.getId());
-        dto.setMaPhieu(pxk.getMaPhieu());
-        dto.setIdChiNhanhXuat(pxk.getIdChiNhanhXuat());
-        dto.setIdChiNhanhNhan(pxk.getIdChiNhanhNhan());
-        dto.setIdNguoiTao(pxk.getIdNguoiTao());
-        dto.setIdNguoiDuyet(pxk.getIdNguoiDuyet());
-        dto.setIdNguoiNhan(pxk.getIdNguoiNhan());
-        dto.setNgayYeuCau(pxk.getNgayYeuCau());
-        dto.setNgayXuatThucTe(pxk.getNgayXuatThucTe());
-        dto.setNgayNhanThucTe(pxk.getNgayNhanThucTe());
-        dto.setTrangThai(pxk.getTrangThai());
-        dto.setGhiChu(pxk.getGhiChu());
-
-        if (pxk.getIdChiNhanhXuat() != null) {
-            chiNhanhRepository.findById(pxk.getIdChiNhanhXuat())
-                    .ifPresent(cn -> dto.setTenChiNhanhXuat(cn.getTenChiNhanh()));
-        }
-        if (pxk.getIdChiNhanhNhan() != null) {
-            chiNhanhRepository.findById(pxk.getIdChiNhanhNhan())
-                    .ifPresent(cn -> dto.setTenChiNhanhNhan(cn.getTenChiNhanh()));
-        }
-        if (pxk.getIdNguoiTao() != null) {
-            nhanVienRepository.findById(pxk.getIdNguoiTao())
-                    .ifPresent(nv -> dto.setTenNguoiTao(nv.getHoTen()));
-        }
-        if (pxk.getIdNguoiDuyet() != null) {
-            nhanVienRepository.findById(pxk.getIdNguoiDuyet())
-                    .ifPresent(nv -> dto.setTenNguoiDuyet(nv.getHoTen()));
-        }
-        if (pxk.getIdNguoiNhan() != null) {
-            nhanVienRepository.findById(pxk.getIdNguoiNhan())
-                    .ifPresent(nv -> dto.setTenNguoiNhan(nv.getHoTen()));
-        }
-
-        return dto;
-    }
 }

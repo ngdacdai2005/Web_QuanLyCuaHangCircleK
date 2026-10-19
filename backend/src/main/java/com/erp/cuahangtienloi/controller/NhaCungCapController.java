@@ -1,12 +1,9 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.NccActivityReportDTO;
-import com.erp.cuahangtienloi.dto.NhaCungCapDTO;
-import com.erp.cuahangtienloi.dto.Response.ApiResponse;
-import com.erp.cuahangtienloi.entity.NhanVien;
-import com.erp.cuahangtienloi.service.BranchAccessService;
+import com.erp.cuahangtienloi.dto.request.NhaCungCapRequestDTO;
+import com.erp.cuahangtienloi.dto.response.NhaCungCapResponseDTO;
+import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.service.NhaCungCapService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,11 +19,10 @@ import java.util.UUID;
 public class NhaCungCapController {
 
     private final NhaCungCapService nhaCungCapService;
-    private final BranchAccessService branchAccessService;
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<NhaCungCapDTO>> getAll() {
+    public ResponseEntity<List<NhaCungCapResponseDTO>> getAll() {
         return ResponseEntity.ok(nhaCungCapService.getAll());
     }
 
@@ -40,34 +36,22 @@ public class NhaCungCapController {
 
     @GetMapping("/active")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<NhaCungCapDTO>> getActive() {
+    public ResponseEntity<List<NhaCungCapResponseDTO>> getActive() {
         return ResponseEntity.ok(nhaCungCapService.getActive());
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> create(@Valid @RequestBody NhaCungCapDTO request,
-                                    HttpServletRequest httpRequest) {
-        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
-        return ResponseEntity.ok(nhaCungCapService.create(request, actor.getId()));
+    public ResponseEntity<?> create(@Valid @RequestBody NhaCungCapRequestDTO request) {
+        return ResponseEntity.ok(nhaCungCapService.create(request));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> update(@PathVariable UUID id,
-                                    @Valid @RequestBody NhaCungCapDTO request,
-                                    HttpServletRequest httpRequest) {
-        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
-        return nhaCungCapService.update(id, request, actor.getId())
+    public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestBody NhaCungCapRequestDTO request) {
+        return nhaCungCapService.update(id, request)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/inactive-report")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<NccActivityReportDTO>> getInactiveReport(
-            @RequestParam(name = "months", defaultValue = "6") int months) {
-        return ResponseEntity.ok(nhaCungCapService.reportInactive(months));
     }
 
     @DeleteMapping("/{id}")

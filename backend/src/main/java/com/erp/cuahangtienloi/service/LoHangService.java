@@ -1,10 +1,11 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.LoHangDTO;
+import com.erp.cuahangtienloi.dto.response.LoHangResponseDTO;
 import com.erp.cuahangtienloi.entity.ChiNhanh;
 import com.erp.cuahangtienloi.entity.LoHang;
 import com.erp.cuahangtienloi.entity.SanPham;
 import com.erp.cuahangtienloi.entity.TonKho;
+import com.erp.cuahangtienloi.mapper.LoHangMapper;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
 import com.erp.cuahangtienloi.repository.LoHangRepository;
 import com.erp.cuahangtienloi.repository.SanPhamRepository;
@@ -31,6 +32,7 @@ public class LoHangService {
     private final SanPhamRepository sanPhamRepository;
     private final ChiNhanhRepository chiNhanhRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final LoHangMapper loHangMapper;
 
     /**
      * Tạo mới hoặc cộng dồn vào lô hàng khi nhập kho.
@@ -367,31 +369,16 @@ public class LoHangService {
      * Lấy danh sách toàn bộ lô hàng của một sản phẩm tại một chi nhánh.
      */
     @Transactional
-    public List<LoHangDTO> getDanhSachLoHang(UUID idChiNhanh, UUID idSanPham) {
+    public List<LoHangResponseDTO> getDanhSachLoHang(UUID idChiNhanh, UUID idSanPham) {
         tuDongDongBoLoHangNeuThieu(idChiNhanh, idSanPham);
 
         List<LoHang> list = loHangRepository.findByIdChiNhanhAndIdSanPhamOrderByHanSuDungAscNgayTaoAsc(idChiNhanh, idSanPham);
         SanPham sp = sanPhamRepository.findById(idSanPham).orElse(null);
         ChiNhanh cn = chiNhanhRepository.findById(idChiNhanh).orElse(null);
 
-        return list.stream().map(lo -> {
-            LoHangDTO dto = new LoHangDTO();
-            dto.setId(lo.getId());
-            dto.setMaLo(lo.getMaLo());
-            dto.setIdSanPham(lo.getIdSanPham());
-            dto.setTenSanPham(sp != null ? sp.getTenSanPham() : "");
-            dto.setSku(sp != null ? sp.getSku() : "");
-            dto.setIdChiNhanh(lo.getIdChiNhanh());
-            dto.setTenChiNhanh(cn != null ? cn.getTenChiNhanh() : "");
-            dto.setSoLuongTon(lo.getSoLuongTon());
-            dto.setHanSuDung(lo.getHanSuDung());
-            dto.setNgaySanXuat(lo.getNgaySanXuat());
-            dto.setGiaVon(lo.getGiaVon());
-            dto.setTrangThai(lo.getTrangThai());
-            dto.setNgayTao(lo.getNgayTao());
-            dto.setNgayCapNhat(lo.getNgayCapNhat());
-            return dto;
-        }).toList();
+        return list.stream()
+                .map(lo -> loHangMapper.toResponse(lo, sp, cn))
+                .toList();
     }
 
     /**

@@ -1,13 +1,14 @@
 package com.erp.cuahangtienloi.service;
 
-import com.erp.cuahangtienloi.dto.BangLuongDTO;
-import com.erp.cuahangtienloi.dto.BatchApproveRequest;
-import com.erp.cuahangtienloi.dto.HourAdjustmentRequest;
-import com.erp.cuahangtienloi.dto.Response.ApiResponse;
+import com.erp.cuahangtienloi.dto.response.BangLuongResponseDTO;
+import com.erp.cuahangtienloi.dto.request.BatchApproveRequestDTO;
+import com.erp.cuahangtienloi.dto.request.HourAdjustmentRequestDTO;
+import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.entity.BangLuong;
 import com.erp.cuahangtienloi.entity.ChamCong;
 import com.erp.cuahangtienloi.entity.NhanVien;
 import com.erp.cuahangtienloi.entity.SoQuy;
+import com.erp.cuahangtienloi.mapper.BangLuongMapper;
 import com.erp.cuahangtienloi.repository.BangLuongRepository;
 import com.erp.cuahangtienloi.repository.ChamCongRepository;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
@@ -45,6 +46,7 @@ public class BangLuongService {
     private final ChamCongRepository chamCongRepository;
     private final SoQuyRepository soQuyRepository;
     private final BranchAccessService branchAccessService;
+    private final BangLuongMapper bangLuongMapper;
 
     public record PayrollMetrics(BigDecimal totalHours, BigDecimal overtimeHours,
                                  BigDecimal regularHours, int completedShifts) {}
@@ -127,24 +129,24 @@ public class BangLuongService {
     }
 
     @Transactional(readOnly = true)
-    public List<BangLuongDTO> getAll(String period, HttpServletRequest request) {
+    public List<BangLuongResponseDTO> getAll(String period, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         List<BangLuong> source = period == null || period.isBlank()
                 ? bangLuongRepository.findAll()
                 : bangLuongRepository.findByThangNam(requirePeriod(period));
         return source.stream()
                 .filter(bl -> branchAccessService.canReadBranch(actor, bl.getIdChiNhanh()))
-                .map(this::toDTO)
+                .map(bangLuongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public List<BangLuongDTO> getMine(String period, HttpServletRequest request) {
+    public List<BangLuongResponseDTO> getMine(String period, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         String requestedPeriod = period == null || period.isBlank() ? null : requirePeriod(period);
         return bangLuongRepository.findByIdNhanVien(actor.getId()).stream()
                 .filter(bl -> requestedPeriod == null || bl.getThangNam().equals(requestedPeriod))
-                .map(this::toDTO)
+                .map(bangLuongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -153,43 +155,43 @@ public class BangLuongService {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return bangLuongRepository.findById(id)
                 .filter(bl -> branchAccessService.canReadBranch(actor, bl.getIdChiNhanh()))
-                .map(bl -> ResponseEntity.ok(toDTO(bl)))
+                .map(bl -> ResponseEntity.ok(bangLuongMapper.toResponse(bl)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @Transactional(readOnly = true)
-    public List<BangLuongDTO> getByNhanVien(UUID idNhanVien, HttpServletRequest request) {
+    public List<BangLuongResponseDTO> getByNhanVien(UUID idNhanVien, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return bangLuongRepository.findByIdNhanVien(idNhanVien).stream()
                 .filter(bl -> branchAccessService.canReadBranch(actor, bl.getIdChiNhanh()))
-                .map(this::toDTO)
+                .map(bangLuongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public List<BangLuongDTO> getByThangNam(String thangNam, HttpServletRequest request) {
+    public List<BangLuongResponseDTO> getByThangNam(String thangNam, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return bangLuongRepository.findByThangNam(thangNam).stream()
                 .filter(bl -> branchAccessService.canReadBranch(actor, bl.getIdChiNhanh()))
-                .map(this::toDTO)
+                .map(bangLuongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public List<BangLuongDTO> getByChiNhanhAndThangNam(UUID idChiNhanh, String thangNam, HttpServletRequest request) {
+    public List<BangLuongResponseDTO> getByChiNhanhAndThangNam(UUID idChiNhanh, String thangNam, HttpServletRequest request) {
         branchAccessService.requireReadableBranch(branchAccessService.requireAuthenticatedEmployee(request), idChiNhanh);
         return bangLuongRepository
                 .findByIdChiNhanhAndThangNam(idChiNhanh, thangNam).stream()
-                .map(this::toDTO)
+                .map(bangLuongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public List<BangLuongDTO> getByStatus(String trangThai, HttpServletRequest request) {
+    public List<BangLuongResponseDTO> getByStatus(String trangThai, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return bangLuongRepository.findByTrangThai(trangThai).stream()
                 .filter(bl -> branchAccessService.canReadBranch(actor, bl.getIdChiNhanh()))
-                .map(this::toDTO)
+                .map(bangLuongMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -228,7 +230,7 @@ public class BangLuongService {
         bl.setNgayCapNhat(LocalDateTime.now());
 
         bangLuongRepository.save(bl);
-        return ResponseEntity.ok(toDTO(bl));
+        return ResponseEntity.ok(bangLuongMapper.toResponse(bl));
     }
 
     @Transactional
@@ -260,13 +262,23 @@ public class BangLuongService {
                     }
                     bl.setNgayCapNhat(LocalDateTime.now());
                     bangLuongRepository.save(bl);
-                    return ResponseEntity.ok(toDTO(bl));
+                    return ResponseEntity.ok(bangLuongMapper.toResponse(bl));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @Transactional
-    public ResponseEntity<?> adjustHours(UUID id, HourAdjustmentRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> create(com.erp.cuahangtienloi.dto.request.BangLuongRequestDTO request) {
+        return create(bangLuongMapper.toEntity(request));
+    }
+
+    @Transactional
+    public ResponseEntity<?> update(UUID id, com.erp.cuahangtienloi.dto.request.BangLuongRequestDTO request, HttpServletRequest httpRequest) {
+        return update(id, bangLuongMapper.toEntity(request), httpRequest);
+    }
+
+    @Transactional
+    public ResponseEntity<?> adjustHours(UUID id, HourAdjustmentRequestDTO request, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         BangLuong payroll = bangLuongRepository.findById(id).orElse(null);
         if (payroll == null) return ResponseEntity.notFound().build();
@@ -305,7 +317,7 @@ public class BangLuongService {
         recalculatePayrollAmounts(payroll);
         payroll.setNgayCapNhat(LocalDateTime.now());
         bangLuongRepository.save(payroll);
-        return ResponseEntity.ok(toDTO(payroll));
+        return ResponseEntity.ok(bangLuongMapper.toResponse(payroll));
     }
 
     @Transactional
@@ -332,11 +344,11 @@ public class BangLuongService {
         payroll.setIdNguoiXacNhan(actor.getId());
         payroll.setNgayXacNhan(LocalDateTime.now());
         bangLuongRepository.save(payroll);
-        return ResponseEntity.ok(toDTO(payroll));
+        return ResponseEntity.ok(bangLuongMapper.toResponse(payroll));
     }
 
     @Transactional
-    public BangLuongDTO approvePayment(UUID id, HttpServletRequest request) {
+    public BangLuongResponseDTO approvePayment(UUID id, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         BangLuong payroll = bangLuongRepository.findById(id).orElse(null);
         if (payroll == null) {
@@ -346,7 +358,7 @@ public class BangLuongService {
     }
 
     @Transactional
-    public List<BangLuongDTO> approvePaymentBatch(BatchApproveRequest request, HttpServletRequest httpRequest) {
+    public List<BangLuongResponseDTO> approvePaymentBatch(BatchApproveRequestDTO request, HttpServletRequest httpRequest) {
         if (request == null || request.ids() == null || request.ids().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hãy chọn ít nhất một bảng lương");
         }
@@ -373,7 +385,7 @@ public class BangLuongService {
         return ResponseEntity.notFound().build();
     }
 
-    public BangLuongDTO approvePaymentInternal(BangLuong payroll, NhanVien actor) {
+    public BangLuongResponseDTO approvePaymentInternal(BangLuong payroll, NhanVien actor) {
         NhanVien employee = nhanVienRepository.findById(payroll.getIdNhanVien()).orElse(null);
         if (employee == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nhân viên không tồn tại");
         if (actor.getId().equals(employee.getId())) {
@@ -433,65 +445,9 @@ public class BangLuongService {
                         && cc.getClockOutAt() != null && cc.getTongGioLam() != null)
                 .forEach(cc -> cc.setDaThanhToan(true));
         chamCongRepository.flush();
-        return toDTO(payroll);
+        return bangLuongMapper.toResponse(payroll);
     }
-
-    public BangLuongDTO toDTO(BangLuong bl) {
-        BangLuongDTO dto = new BangLuongDTO();
-        dto.setId(bl.getId());
-        dto.setIdNhanVien(bl.getIdNhanVien());
-        dto.setIdChiNhanh(bl.getIdChiNhanh());
-        dto.setLoaiHopDong(bl.getLoaiHopDong());
-        dto.setThangNam(bl.getThangNam());
-        dto.setTongGioLam(bl.getTongGioLam());
-        dto.setOvertimeHours(bl.getOvertimeHours());
-        dto.setTongSoCa(bl.getTongSoCa());
-        dto.setGioDieuChinh(bl.getGioDieuChinh());
-        dto.setLyDoDieuChinh(bl.getLyDoDieuChinh());
-        dto.setLuongTheoGio(bl.getLuongTheoGio());
-        dto.setLuongCung(bl.getLuongCung());
-        dto.setLuongCungThucTe(bl.getLuongCungThucTe());
-        dto.setTienCongTheoGio(bl.getTienCongTheoGio());
-        dto.setTienOt(bl.getTienOt());
-        dto.setThuong(bl.getThuong());
-        dto.setKhauTru(bl.getKhauTru());
-        dto.setTongTienLuong(bl.getTongTienLuong());
-        dto.setTrangThai(bl.getTrangThai());
-        dto.setIdNguoiXacNhan(bl.getIdNguoiXacNhan());
-        dto.setNgayXacNhan(bl.getNgayXacNhan());
-        dto.setIdNguoiDuyetChi(bl.getIdNguoiDuyetChi());
-        dto.setNgayDuyetChi(bl.getNgayDuyetChi());
-        dto.setIdNguoiThanhToan(bl.getIdNguoiThanhToan());
-        dto.setNgayThanhToan(bl.getNgayThanhToan());
-        dto.setMaPhieuChi(bl.getMaPhieuChi());
-
-        if (bl.getIdNhanVien() != null) {
-            nhanVienRepository.findById(bl.getIdNhanVien())
-                    .ifPresent(nv -> {
-                        dto.setTenNhanVien(nv.getHoTen());
-                        dto.setMaNhanVien(nv.getMaNhanVien());
-                        dto.setVaiTro(nv.getVaiTro());
-                    });
-        }
-        if (bl.getIdChiNhanh() != null) {
-            chiNhanhRepository.findById(bl.getIdChiNhanh())
-                    .ifPresent(cn -> dto.setTenChiNhanh(cn.getTenChiNhanh()));
-        }
-        if (bl.getIdNguoiXacNhan() != null) {
-            nhanVienRepository.findById(bl.getIdNguoiXacNhan())
-                    .ifPresent(nv -> dto.setTenNguoiXacNhan(nv.getHoTen()));
-        }
-        if (bl.getIdNguoiDuyetChi() != null) {
-            nhanVienRepository.findById(bl.getIdNguoiDuyetChi())
-                    .ifPresent(nv -> dto.setTenNguoiDuyetChi(nv.getHoTen()));
-        }
-        if (bl.getIdNguoiThanhToan() != null) {
-            nhanVienRepository.findById(bl.getIdNguoiThanhToan())
-                    .ifPresent(nv -> dto.setTenNguoiThanhToan(nv.getHoTen()));
-        }
-
-        return dto;
-    }
+    
 
     private void validateAmounts(BangLuong request) {
         nonNegative(request.getTongGioLam(), "Tổng giờ làm");

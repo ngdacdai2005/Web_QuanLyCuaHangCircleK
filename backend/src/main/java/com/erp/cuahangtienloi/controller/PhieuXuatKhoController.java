@@ -1,9 +1,9 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.PhieuXuatKhoDTO;
-import com.erp.cuahangtienloi.dto.Response.ApiResponse;
+import com.erp.cuahangtienloi.dto.response.PhieuXuatKhoResponseDTO;
+import com.erp.cuahangtienloi.dto.response.ApiResponse;
 import com.erp.cuahangtienloi.entity.NhanVien;
-import com.erp.cuahangtienloi.entity.PhieuXuatKho;
+import com.erp.cuahangtienloi.dto.request.PhieuXuatKhoRequestDTO;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
 import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.PhieuXuatKhoService;
@@ -46,7 +46,7 @@ public class PhieuXuatKhoController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<PhieuXuatKhoDTO>> getAll(HttpServletRequest request) {
+    public ResponseEntity<List<PhieuXuatKhoResponseDTO>> getAll(HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuXuatKhoService.getAll(actor));
     }
@@ -62,28 +62,28 @@ public class PhieuXuatKhoController {
 
     @GetMapping("/by-branch-xuat/{idChiNhanhXuat}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<PhieuXuatKhoDTO>> getByBranchXuat(@PathVariable UUID idChiNhanhXuat, HttpServletRequest request) {
+    public ResponseEntity<List<PhieuXuatKhoResponseDTO>> getByBranchXuat(@PathVariable UUID idChiNhanhXuat, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuXuatKhoService.getByBranchXuat(idChiNhanhXuat, actor));
     }
 
     @GetMapping("/by-branch-nhan/{idChiNhanhNhan}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<PhieuXuatKhoDTO>> getByBranchNhan(@PathVariable UUID idChiNhanhNhan, HttpServletRequest request) {
+    public ResponseEntity<List<PhieuXuatKhoResponseDTO>> getByBranchNhan(@PathVariable UUID idChiNhanhNhan, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuXuatKhoService.getByBranchNhan(idChiNhanhNhan, actor));
     }
 
     @GetMapping("/by-status/{trangThai}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<PhieuXuatKhoDTO>> getByStatus(@PathVariable String trangThai, HttpServletRequest request) {
+    public ResponseEntity<List<PhieuXuatKhoResponseDTO>> getByStatus(@PathVariable String trangThai, HttpServletRequest request) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(phieuXuatKhoService.getByStatus(trangThai, actor));
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<?> create(@RequestBody PhieuXuatKho request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> create(@RequestBody PhieuXuatKhoRequestDTO request, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         String dedupKey = "TRANSFER_CREATE:" + actor.getId() + ":" + request.getIdChiNhanhXuat() + ":" + request.getIdChiNhanhNhan();
         if (!requestDeduplicationService.tryAcquire(dedupKey, 5)) {
@@ -105,7 +105,7 @@ public class PhieuXuatKhoController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody PhieuXuatKho request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody PhieuXuatKhoRequestDTO request, HttpServletRequest httpRequest) {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return phieuXuatKhoService.update(id, request, actor)
                 .map(ResponseEntity::ok)

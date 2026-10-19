@@ -1,9 +1,9 @@
 package com.erp.cuahangtienloi.validation;
 
-import com.erp.cuahangtienloi.dto.ChangePasswordRequest;
-import com.erp.cuahangtienloi.dto.CreateSanPhamRequest;
-import com.erp.cuahangtienloi.dto.CreateTaiKhoanRequest;
-import com.erp.cuahangtienloi.dto.UpdateTaiKhoanRequest;
+import com.erp.cuahangtienloi.dto.request.ChangePasswordRequestDTO;
+import com.erp.cuahangtienloi.dto.request.CreateSanPhamRequestDTO;
+import com.erp.cuahangtienloi.dto.request.CreateTaiKhoanRequestDTO;
+import com.erp.cuahangtienloi.dto.request.UpdateTaiKhoanRequestDTO;
 import com.erp.cuahangtienloi.controller.TaiKhoanController;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -26,7 +26,7 @@ class InputValidationTest {
 
     @Test
     void productCreateRejectsMissingRequiredAndNegativeValues() {
-        CreateSanPhamRequest request = new CreateSanPhamRequest();
+        CreateSanPhamRequestDTO request = new CreateSanPhamRequestDTO();
         request.setIdDanhMuc(UUID.randomUUID());
         request.setSku(" ");
         request.setTenSanPham("");
@@ -45,7 +45,7 @@ class InputValidationTest {
 
     @Test
     void accountCreateRejectsInvalidUsernameAndShortPassword() {
-        CreateTaiKhoanRequest request = new CreateTaiKhoanRequest();
+        CreateTaiKhoanRequestDTO request = new CreateTaiKhoanRequestDTO();
         request.setTenDangNhap("a b");
         request.setMatKhau("123");
 
@@ -77,10 +77,7 @@ class InputValidationTest {
 
     @Test
     void changePasswordRejectsValuesShorterThanEightCharacters() {
-        var request = new ChangePasswordRequest(
-                "current-password",
-                "123456"
-        );
+        var request = new ChangePasswordRequestDTO("current-password", "123456");
 
         var messages = validator.validate(request).stream()
                 .map(v -> v.getMessage())
@@ -91,10 +88,10 @@ class InputValidationTest {
 
     @Test
     void accountCreateAndUpdateUseTheSameEightCharacterPasswordPolicy() {
-        CreateTaiKhoanRequest createRequest = new CreateTaiKhoanRequest();
+        CreateTaiKhoanRequestDTO createRequest = new CreateTaiKhoanRequestDTO();
         createRequest.setTenDangNhap("valid_user");
         createRequest.setMatKhau("1234567");
-        UpdateTaiKhoanRequest updateRequest = new UpdateTaiKhoanRequest();
+        UpdateTaiKhoanRequestDTO updateRequest = new UpdateTaiKhoanRequestDTO();
         updateRequest.setMatKhau("1234567");
 
         assertTrue(validator.validate(createRequest).stream()

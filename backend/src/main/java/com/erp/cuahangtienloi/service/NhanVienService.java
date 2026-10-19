@@ -1,7 +1,10 @@
 package com.erp.cuahangtienloi.service;
 
+import com.erp.cuahangtienloi.dto.request.NhanVienRequestDTO;
+import com.erp.cuahangtienloi.dto.response.NhanVienResponseDTO;
 import com.erp.cuahangtienloi.entity.ChiNhanh;
 import com.erp.cuahangtienloi.entity.NhanVien;
+import com.erp.cuahangtienloi.mapper.NhanVienMapper;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
 import com.erp.cuahangtienloi.repository.TaiKhoanRepository;
@@ -25,34 +28,39 @@ public class NhanVienService {
     private final ChiNhanhRepository chiNhanhRepository;
     private final TaiKhoanRepository taiKhoanRepository;
     private final BranchAccessService branchAccessService;
+    private final NhanVienMapper nhanVienMapper;
 
-    public List<NhanVien> getAll(NhanVien actor) {
+    public List<NhanVienResponseDTO> getAll(NhanVien actor) {
         return nhanVienRepository.findAll().stream()
                 .filter(nv -> branchAccessService.canReadEmployee(actor, nv))
+                .map(nhanVienMapper::toResponse)
                 .toList();
     }
 
-    public Optional<NhanVien> getById(UUID id, NhanVien actor) {
+    public Optional<NhanVienResponseDTO> getById(UUID id, NhanVien actor) {
         return nhanVienRepository.findById(id)
-                .filter(nv -> branchAccessService.canReadEmployee(actor, nv));
+                .filter(nv -> branchAccessService.canReadEmployee(actor, nv))
+                .map(nhanVienMapper::toResponse);
     }
 
-    public List<NhanVien> getByChiNhanh(UUID idChiNhanh, NhanVien actor) {
+    public List<NhanVienResponseDTO> getByChiNhanh(UUID idChiNhanh, NhanVien actor) {
         branchAccessService.requireReadableBranch(actor, idChiNhanh);
         return nhanVienRepository.findAll().stream()
                 .filter(nv -> idChiNhanh.equals(nv.getIdChiNhanh()))
+                .map(nhanVienMapper::toResponse)
                 .toList();
     }
 
-    public List<NhanVien> getActive(NhanVien actor) {
+    public List<NhanVienResponseDTO> getActive(NhanVien actor) {
         return nhanVienRepository.findAll().stream()
                 .filter(nv -> branchAccessService.canReadEmployee(actor, nv))
                 .filter(nv -> nv.getTrangThai() != null && !"INACTIVE".equals(nv.getTrangThai()))
+                .map(nhanVienMapper::toResponse)
                 .toList();
     }
 
     @Transactional
-    public NhanVien create(NhanVien request, NhanVien actor) {
+    public NhanVienResponseDTO create(NhanVienRequestDTO request, NhanVien actor) {
         request.setHoTen(requireText(request.getHoTen(), "Họ tên", 1, 255));
         optionalEmail(request.getEmail());
         optionalPhone(request.getSoDienThoai(), "Số điện thoại");
@@ -115,11 +123,11 @@ public class NhanVienService {
             nv.setNgayVaoLam(java.time.LocalDate.now());
         }
 
-        return nhanVienRepository.save(nv);
+        return nhanVienMapper.toResponse(nhanVienRepository.save(nv));
     }
 
     @Transactional
-    public Optional<NhanVien> update(UUID id, NhanVien request, NhanVien actor) {
+    public Optional<NhanVienResponseDTO> update(UUID id, NhanVienRequestDTO request, NhanVien actor) {
         return nhanVienRepository.findById(id).map(nv -> {
             if (actor != null && "QUAN_LY".equals(actor.getVaiTro())) {
                 UUID ownBranch = branchAccessService.requiredOwnBranch(actor);
@@ -202,12 +210,12 @@ public class NhanVienService {
                     taiKhoanRepository.save(tk);
                 });
             }
-            return nv;
+            return nhanVienMapper.toResponse(nv);
         });
     }
 
     @Transactional
-    public Optional<NhanVien> update(UUID id, NhanVien request) {
+    public Optional<NhanVienResponseDTO> update(UUID id, NhanVienRequestDTO request) {
         return update(id, request, null);
     }
 

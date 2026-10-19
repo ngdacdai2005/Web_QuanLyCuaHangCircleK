@@ -1,8 +1,9 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.Response.ApiResponse;
-import com.erp.cuahangtienloi.dto.TonKhoDTO;
-import com.erp.cuahangtienloi.entity.TonKho;
+import com.erp.cuahangtienloi.dto.response.ApiResponse;
+import com.erp.cuahangtienloi.dto.response.TonKhoResponseDTO;
+import com.erp.cuahangtienloi.dto.request.TonKhoAdjustmentRequestDTO;
+import com.erp.cuahangtienloi.dto.request.TonKhoRequestDTO;
 import com.erp.cuahangtienloi.service.BranchAccessService;
 import com.erp.cuahangtienloi.service.TonKhoService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,28 +25,28 @@ public class TonKhoController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<TonKhoDTO>> getAll(HttpServletRequest request) {
+    public ResponseEntity<List<TonKhoResponseDTO>> getAll(HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(tonKhoService.getAll(employee));
     }
 
     @GetMapping("/by-branch/{idChiNhanh}")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY', 'THU_NGAN')")
-    public ResponseEntity<List<TonKhoDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
+    public ResponseEntity<List<TonKhoResponseDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(tonKhoService.getByChiNhanh(idChiNhanh, employee));
     }
 
     @GetMapping("/by-product/{idSanPham}")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<TonKhoDTO>> getBySanPham(@PathVariable UUID idSanPham, HttpServletRequest request) {
+    public ResponseEntity<List<TonKhoResponseDTO>> getBySanPham(@PathVariable UUID idSanPham, HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(tonKhoService.getBySanPham(idSanPham, employee));
     }
 
     @GetMapping("/available-for-transfer")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<List<TonKhoDTO>> getAvailableForTransfer() {
+    public ResponseEntity<List<TonKhoResponseDTO>> getAvailableForTransfer() {
         return ResponseEntity.ok(tonKhoService.getAvailableForTransfer());
     }
 
@@ -60,13 +61,13 @@ public class TonKhoController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> create(@RequestBody TonKho request) {
+    public ResponseEntity<?> create(@RequestBody TonKhoRequestDTO request) {
         return ResponseEntity.ok(tonKhoService.create(request));
     }
 
     @PutMapping("/{idSanPham}/{idChiNhanh}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> update(@PathVariable UUID idSanPham, @PathVariable UUID idChiNhanh, @RequestBody TonKho request) {
+    public ResponseEntity<?> update(@PathVariable UUID idSanPham, @PathVariable UUID idChiNhanh, @RequestBody TonKhoRequestDTO request) {
         return tonKhoService.update(idSanPham, idChiNhanh, request)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -74,7 +75,7 @@ public class TonKhoController {
 
     @PostMapping("/adjust")
     @PreAuthorize("hasAnyRole('ADMIN', 'THU_KHO', 'QUAN_LY')")
-    public ResponseEntity<?> adjust(@RequestBody TonKhoService.TonKhoAdjustmentRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> adjust(@RequestBody TonKhoAdjustmentRequestDTO request, HttpServletRequest httpRequest) {
         var employee = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return tonKhoService.adjust(request, employee)
                 .map(ResponseEntity::ok)

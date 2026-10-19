@@ -1,9 +1,9 @@
 package com.erp.cuahangtienloi.controller;
 
-import com.erp.cuahangtienloi.dto.BangLuongDTO;
-import com.erp.cuahangtienloi.dto.BatchApproveRequest;
-import com.erp.cuahangtienloi.dto.HourAdjustmentRequest;
-import com.erp.cuahangtienloi.entity.BangLuong;
+import com.erp.cuahangtienloi.dto.request.BangLuongRequestDTO;
+import com.erp.cuahangtienloi.dto.request.BatchApproveRequestDTO;
+import com.erp.cuahangtienloi.dto.request.HourAdjustmentRequestDTO;
+import com.erp.cuahangtienloi.dto.response.BangLuongResponseDTO;
 import com.erp.cuahangtienloi.service.BangLuongService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -29,14 +29,14 @@ public class BangLuongController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
-    public ResponseEntity<List<BangLuongDTO>> getAll(
+    public ResponseEntity<List<BangLuongResponseDTO>> getAll(
             @RequestParam(required = false) String period, HttpServletRequest request) {
         return ResponseEntity.ok(bangLuongService.getAll(period, request));
     }
 
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<BangLuongDTO>> getMine(
+    public ResponseEntity<List<BangLuongResponseDTO>> getMine(
             @RequestParam(required = false) String period, HttpServletRequest request) {
         return ResponseEntity.ok(bangLuongService.getMine(period, request));
     }
@@ -49,45 +49,45 @@ public class BangLuongController {
 
     @GetMapping("/by-employee/{idNhanVien}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
-    public ResponseEntity<List<BangLuongDTO>> getByNhanVien(@PathVariable UUID idNhanVien, HttpServletRequest request) {
+    public ResponseEntity<List<BangLuongResponseDTO>> getByNhanVien(@PathVariable UUID idNhanVien, HttpServletRequest request) {
         return ResponseEntity.ok(bangLuongService.getByNhanVien(idNhanVien, request));
     }
 
     @GetMapping("/by-month/{thangNam}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
-    public ResponseEntity<List<BangLuongDTO>> getByThangNam(@PathVariable String thangNam, HttpServletRequest request) {
+    public ResponseEntity<List<BangLuongResponseDTO>> getByThangNam(@PathVariable String thangNam, HttpServletRequest request) {
         return ResponseEntity.ok(bangLuongService.getByThangNam(thangNam, request));
     }
 
     @GetMapping("/by-branch/{idChiNhanh}/month/{thangNam}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
-    public ResponseEntity<List<BangLuongDTO>> getByChiNhanhAndThangNam(
+    public ResponseEntity<List<BangLuongResponseDTO>> getByChiNhanhAndThangNam(
             @PathVariable UUID idChiNhanh, @PathVariable String thangNam, HttpServletRequest request) {
         return ResponseEntity.ok(bangLuongService.getByChiNhanhAndThangNam(idChiNhanh, thangNam, request));
     }
 
     @GetMapping("/by-status/{trangThai}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
-    public ResponseEntity<List<BangLuongDTO>> getByStatus(@PathVariable String trangThai, HttpServletRequest request) {
+    public ResponseEntity<List<BangLuongResponseDTO>> getByStatus(@PathVariable String trangThai, HttpServletRequest request) {
         return ResponseEntity.ok(bangLuongService.getByStatus(trangThai, request));
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
-    public ResponseEntity<?> create(@RequestBody BangLuong request) {
+    public ResponseEntity<?> create(@RequestBody BangLuongRequestDTO request) {
         return bangLuongService.create(request);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN', 'QUAN_LY')")
-    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody BangLuong request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> update(@PathVariable UUID id, @RequestBody BangLuongRequestDTO request, HttpServletRequest httpRequest) {
         return bangLuongService.update(id, request, httpRequest);
     }
 
     @PatchMapping("/{id}/hours-adjustment")
     @PreAuthorize("hasAnyRole('ADMIN', 'QUAN_LY')")
     public ResponseEntity<?> adjustHours(@PathVariable UUID id,
-                                         @RequestBody HourAdjustmentRequest request,
+                                         @RequestBody HourAdjustmentRequestDTO request,
                                          HttpServletRequest httpRequest) {
         return bangLuongService.adjustHours(id, request, httpRequest);
     }
@@ -106,7 +106,7 @@ public class BangLuongController {
 
     @PostMapping("/approve-payment/batch")
     @PreAuthorize("hasAnyRole('ADMIN', 'KE_TOAN')")
-    public ResponseEntity<?> approvePaymentBatch(@RequestBody BatchApproveRequest request,
+    public ResponseEntity<?> approvePaymentBatch(@RequestBody BatchApproveRequestDTO request,
                                                   HttpServletRequest httpRequest) {
         return ResponseEntity.ok(bangLuongService.approvePaymentBatch(request, httpRequest));
     }
