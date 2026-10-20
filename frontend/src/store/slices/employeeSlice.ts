@@ -39,6 +39,21 @@ const mapDtoToEmployee = (dto: NhanVienDTO): Employee => ({
   status: dto.trangThai === 'INACTIVE' ? ('Inactive' as const) : ('Active' as const),
   createdAt: dto.ngayTao,
   updatedAt: dto.ngayCapNhat || dto.ngayTao || undefined,
+  // Extended fields
+  avatarUrl: dto.anhDaiDien || '',
+  gender: dto.gioiTinh || 'Nam',
+  dateOfBirth: dto.ngaySinh || '',
+  citizenId: dto.soCccd || '',
+  citizenIdDate: dto.ngayCapCccd || '',
+  citizenIdPlace: dto.noiCapCccd || '',
+  permanentAddress: dto.diaChiThuongTru || '',
+  currentAddress: dto.diaChiHienTai || '',
+  note: dto.ghiChu || '',
+  bankAccount: dto.soTaiKhoan || '',
+  bankName: dto.tenNganHang || '',
+  hasAccount: dto.hasTaiKhoan ?? false,
+  accountUsername: dto.tenDangNhap || '',
+  accountStatus: dto.taiKhoanTrangThai || 'CHUA_TAO',
 });
 
 export const fetchEmployees = createAsyncThunk('employee/fetchAll', async () => {
@@ -63,6 +78,23 @@ export const createEmployee = createAsyncThunk(
       luongCung: values.baseSalary,
       ...(values.branchId ? { idChiNhanh: values.branchId } : {}),
       trangThai: values.status === 'Active' ? 'ACTIVE' : 'INACTIVE',
+      // Extended fields
+      anhDaiDien: values.avatarUrl,
+      gioiTinh: values.gender,
+      ngaySinh: values.dateOfBirth,
+      soCccd: values.citizenId,
+      ngayCapCccd: values.citizenIdDate,
+      noiCapCccd: values.citizenIdPlace,
+      diaChiThuongTru: values.permanentAddress,
+      diaChiHienTai: values.currentAddress,
+      ghiChu: values.note,
+      soTaiKhoan: values.bankAccount,
+      tenNganHang: values.bankName,
+      ngayVaoLam: values.joinedAt,
+      // Account creation fields
+      taoTaiKhoan: values.createAccount,
+      tenDangNhap: values.username,
+      matKhau: values.initialPassword,
     };
     const data = await nhanVienApi.create(dto);
     return mapDtoToEmployee(data);
@@ -85,6 +117,19 @@ export const updateEmployeeThunk = createAsyncThunk(
       luongCung: values.baseSalary,
       ...(values.branchId ? { idChiNhanh: values.branchId } : {}),
       trangThai: values.status === 'Active' ? 'ACTIVE' : 'INACTIVE',
+      // Extended fields
+      anhDaiDien: values.avatarUrl,
+      gioiTinh: values.gender,
+      ngaySinh: values.dateOfBirth,
+      soCccd: values.citizenId,
+      ngayCapCccd: values.citizenIdDate,
+      noiCapCccd: values.citizenIdPlace,
+      diaChiThuongTru: values.permanentAddress,
+      diaChiHienTai: values.currentAddress,
+      ghiChu: values.note,
+      soTaiKhoan: values.bankAccount,
+      tenNganHang: values.bankName,
+      ngayVaoLam: values.joinedAt,
     };
     const data = await nhanVienApi.update(id, dto);
     return mapDtoToEmployee(data);

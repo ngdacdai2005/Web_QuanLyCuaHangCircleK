@@ -9,19 +9,23 @@ import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
 import com.erp.cuahangtienloi.repository.TaiKhoanRepository;
 import lombok.RequiredArgsConstructor;
+import com.erp.cuahangtienloi.entity.TaiKhoan;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.erp.cuahangtienloi.validation.InputValidator.*;
 
 @Service
-@RequiredArgsConstructor
 public class NhanVienService {
 
     private final NhanVienRepository nhanVienRepository;
@@ -29,18 +33,77 @@ public class NhanVienService {
     private final TaiKhoanRepository taiKhoanRepository;
     private final BranchAccessService branchAccessService;
     private final NhanVienMapper nhanVienMapper;
+    private final PasswordEncoder passwordEncoder;
+
+    @Autowired
+    public NhanVienService(
+            NhanVienRepository nhanVienRepository,
+            ChiNhanhRepository chiNhanhRepository,
+            TaiKhoanRepository taiKhoanRepository,
+            BranchAccessService branchAccessService,
+            NhanVienMapper nhanVienMapper,
+            PasswordEncoder passwordEncoder
+    ) {
+        this.nhanVienRepository = nhanVienRepository;
+        this.chiNhanhRepository = chiNhanhRepository;
+        this.taiKhoanRepository = taiKhoanRepository;
+        this.branchAccessService = branchAccessService;
+        this.nhanVienMapper = nhanVienMapper;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    // Constructor for tests
+    public NhanVienService(
+            NhanVienRepository nhanVienRepository,
+            ChiNhanhRepository chiNhanhRepository,
+            TaiKhoanRepository taiKhoanRepository,
+            BranchAccessService branchAccessService,
+            NhanVienMapper nhanVienMapper
+    ) {
+        this(nhanVienRepository, chiNhanhRepository, taiKhoanRepository, branchAccessService, nhanVienMapper,
+                new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder());
+    }
 
     public List<NhanVienResponseDTO> getAll(NhanVien actor) {
+        List<TaiKhoan> allAccounts = taiKhoanRepository.findAll();
+        Map<UUID, TaiKhoan> accountByNvId = allAccounts.stream()
+                .filter(tk -> tk.getIdNhanVien() != null)
+                .collect(Collectors.toMap(
+                        TaiKhoan::getIdNhanVien,
+                        tk -> tk,
+                        (existing, replacing) -> existing
+                ));
+
         return nhanVienRepository.findAll().stream()
                 .filter(nv -> branchAccessService.canReadEmployee(actor, nv))
-                .map(nhanVienMapper::toResponse)
+                .map(nv -> {
+                    NhanVienResponseDTO dto = nhanVienMapper.toResponse(nv);
+                    TaiKhoan tk = accountByNvId.get(nv.getId());
+                    if (tk != null) {
+                        dto.setHasTaiKhoan(true);
+                        dto.setTenDangNhap(tk.getTenDangNhap());
+                        dto.setTaiKhoanTrangThai(tk.getTrangThai());
+                    } else {
+                        dto.setHasTaiKhoan(false);
+                        dto.setTaiKhoanTrangThai("CHUA_TAO");
+                    }
+                    return dto;
+                })
                 .toList();
     }
 
     public Optional<NhanVienResponseDTO> getById(UUID id, NhanVien actor) {
         return nhanVienRepository.findById(id)
                 .filter(nv -> branchAccessService.canReadEmployee(actor, nv))
-                .map(nhanVienMapper::toResponse);
+                .map(nv -> {
+                    NhanVienResponseDTO dto = nhanVienMapper.toResponse(nv);
+                    taiKhoanRepository.findByIdNhanVien(nv.getId()).ifPresent(tk -> {
+                        dto.setHasTaiKhoan(true);
+                        dto.setTenDangNhap(tk.getTenDangNhap());
+                        dto.setTaiKhoanTrangThai(tk.getTrangThai());
+                    });
+                    return dto;
+                });
     }
 
     public List<NhanVienResponseDTO> getByChiNhanh(UUID idChiNhanh, NhanVien actor) {
@@ -123,7 +186,61 @@ public class NhanVienService {
             nv.setNgayVaoLam(java.time.LocalDate.now());
         }
 
-        return nhanVienMapper.toResponse(nhanVienRepository.save(nv));
+        // Thông tin mở rộng
+        nv.setAnhDaiDien(request.getAnhDaiDien());
+        nv.setGioiTinh(request.getGioiTinh());
+        nv.setNgaySinh(request.getNgaySinh());
+        nv.setSoCccd(request.getSoCccd());
+        nv.setNgayCapCccd(request.getNgayCapCccd());
+        nv.setNoiCapCccd(request.getNoiCapCccd());
+        nv.setDiaChiThuongTru(request.getDiaChiThuongTru());
+        nv.setDiaChiHienTai(request.getDiaChiHienTai());
+        nv.setGhiChu(request.getGhiChu());
+
+        NhanVien saved = nhanVienRepository.save(nv);
+
+        // Tạo tài khoản đồng thời nếu được yêu cầu
+        boolean shouldCreateAccount = Boolean.TRUE.equals(request.getTaoTaiKhoan())
+                || (request.getTenDangNhap() != null && !request.getTenDangNhap().isBlank());
+
+        if (shouldCreateAccount) {
+            String accUsername = request.getTenDangNhap();
+            if (accUsername == null || accUsername.isBlank()) {
+                if (request.getEmail() != null && !request.getEmail().isBlank()) {
+                    accUsername = request.getEmail().split("@")[0];
+                } else {
+                    accUsername = saved.getMaNhanVien().toLowerCase();
+                }
+            }
+            accUsername = accUsername.trim().toLowerCase();
+
+            if (taiKhoanRepository.findByTenDangNhap(accUsername).isPresent()) {
+                accUsername = accUsername + "_" + (int) (Math.random() * 900 + 100);
+            }
+
+            String rawPassword = request.getMatKhau();
+            if (rawPassword == null || rawPassword.trim().isEmpty()) {
+                rawPassword = "ChangeMe@123";
+            }
+
+            TaiKhoan tk = new TaiKhoan();
+            tk.setId(UUID.randomUUID());
+            tk.setIdNhanVien(saved.getId());
+            tk.setTenDangNhap(accUsername);
+            tk.setMatKhauHash(passwordEncoder.encode(rawPassword));
+            tk.setTrangThai("ACTIVE");
+            tk.setNgayTao(LocalDateTime.now());
+            taiKhoanRepository.save(tk);
+
+            saved.setTenDangNhap(accUsername);
+            saved.setMatKhau(tk.getMatKhauHash());
+            saved = nhanVienRepository.save(saved);
+        }
+
+        NhanVienResponseDTO response = nhanVienMapper.toResponse(saved);
+        response.setHasTaiKhoan(shouldCreateAccount);
+        response.setTaiKhoanTrangThai(shouldCreateAccount ? "ACTIVE" : "CHUA_TAO");
+        return response;
     }
 
     @Transactional
@@ -200,9 +317,18 @@ public class NhanVienService {
             }
             nv.setIdChiNhanh(effectiveBranchId);
             if (request.getTrangThai() != null) nv.setTrangThai(request.getTrangThai());
-            if (request.getNguoiCapNhat() != null) nv.setNguoiCapNhat(request.getNguoiCapNhat());
-            nv.setNgayCapNhat(LocalDateTime.now());
-            nhanVienRepository.save(nv);
+            if (request.getAnhDaiDien() != null) nv.setAnhDaiDien(request.getAnhDaiDien());
+            if (request.getGioiTinh() != null) nv.setGioiTinh(request.getGioiTinh());
+            if (request.getNgaySinh() != null) nv.setNgaySinh(request.getNgaySinh());
+            if (request.getSoCccd() != null) nv.setSoCccd(request.getSoCccd());
+            if (request.getNgayCapCccd() != null) nv.setNgayCapCccd(request.getNgayCapCccd());
+            if (request.getNoiCapCccd() != null) nv.setNoiCapCccd(request.getNoiCapCccd());
+            if (request.getDiaChiThuongTru() != null) nv.setDiaChiThuongTru(request.getDiaChiThuongTru());
+            if (request.getDiaChiHienTai() != null) nv.setDiaChiHienTai(request.getDiaChiHienTai());
+            if (request.getGhiChu() != null) nv.setGhiChu(request.getGhiChu());
+            if (request.getSoTaiKhoan() != null) nv.setSoTaiKhoan(request.getSoTaiKhoan());
+            if (request.getTenNganHang() != null) nv.setTenNganHang(request.getTenNganHang());
+            if (request.getNgayVaoLam() != null) nv.setNgayVaoLam(request.getNgayVaoLam());
 
             if (request.getTrangThai() != null) {
                 taiKhoanRepository.findByIdNhanVien(nv.getId()).ifPresent(tk -> {
@@ -210,7 +336,14 @@ public class NhanVienService {
                     taiKhoanRepository.save(tk);
                 });
             }
-            return nhanVienMapper.toResponse(nv);
+
+            NhanVienResponseDTO resp = nhanVienMapper.toResponse(nv);
+            taiKhoanRepository.findByIdNhanVien(nv.getId()).ifPresent(tk -> {
+                resp.setHasTaiKhoan(true);
+                resp.setTenDangNhap(tk.getTenDangNhap());
+                resp.setTaiKhoanTrangThai(tk.getTrangThai());
+            });
+            return resp;
         });
     }
 
@@ -320,5 +453,58 @@ public class NhanVienService {
             nextCode = String.format("NV-%04d", nextVal);
         }
         return nextCode;
+    }
+
+    @Transactional
+    public void resetAccountPassword(UUID idNhanVien, String newPassword) {
+        TaiKhoan tk = taiKhoanRepository.findByIdNhanVien(idNhanVien)
+                .orElseThrow(() -> new IllegalArgumentException("Nhân viên này chưa có tài khoản"));
+        String pass = (newPassword == null || newPassword.isBlank()) ? "ChangeMe@123" : newPassword;
+        tk.setMatKhauHash(passwordEncoder.encode(pass));
+        taiKhoanRepository.save(tk);
+    }
+
+    @Transactional
+    public String toggleAccountStatus(UUID idNhanVien) {
+        TaiKhoan tk = taiKhoanRepository.findByIdNhanVien(idNhanVien)
+                .orElseThrow(() -> new IllegalArgumentException("Nhân viên này chưa có tài khoản"));
+        String newStatus = "ACTIVE".equalsIgnoreCase(tk.getTrangThai()) ? "INACTIVE" : "ACTIVE";
+        tk.setTrangThai(newStatus);
+        taiKhoanRepository.save(tk);
+        return newStatus;
+    }
+
+    @Transactional
+    public TaiKhoan createAccountForEmployee(UUID idNhanVien, String username, String password) {
+        NhanVien nv = nhanVienRepository.findById(idNhanVien)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhân viên"));
+
+        if (taiKhoanRepository.findByIdNhanVien(idNhanVien).isPresent()) {
+            throw new IllegalArgumentException("Nhân viên này đã có tài khoản");
+        }
+
+        String finalUsername = (username != null && !username.isBlank())
+                ? username.trim().toLowerCase()
+                : (nv.getEmail() != null && !nv.getEmail().isBlank() ? nv.getEmail().split("@")[0].toLowerCase() : nv.getMaNhanVien().toLowerCase());
+
+        if (taiKhoanRepository.findByTenDangNhap(finalUsername).isPresent()) {
+            throw new IllegalArgumentException("Tên đăng nhập đã tồn tại, vui lòng chọn tên khác");
+        }
+
+        String finalPass = (password != null && !password.isBlank()) ? password : "ChangeMe@123";
+
+        TaiKhoan tk = new TaiKhoan();
+        tk.setId(UUID.randomUUID());
+        tk.setIdNhanVien(idNhanVien);
+        tk.setTenDangNhap(finalUsername);
+        tk.setMatKhauHash(passwordEncoder.encode(finalPass));
+        tk.setTrangThai("ACTIVE");
+        tk.setNgayTao(LocalDateTime.now());
+
+        nv.setTenDangNhap(finalUsername);
+        nv.setMatKhau(tk.getMatKhauHash());
+        nhanVienRepository.save(nv);
+
+        return taiKhoanRepository.save(tk);
     }
 }

@@ -29,4 +29,19 @@ public class NhanVienResponseDTO {
     private String nguoiTao;
     private LocalDateTime ngayCapNhat;
     private String nguoiCapNhat;
+
+    // Extended personal fields
+    private String anhDaiDien;
+    private String gioiTinh;
+    private LocalDate ngaySinh;
+    private String soCccd;
+    private LocalDate ngayCapCccd;
+    private String noiCapCccd;
+    private String diaChiThuongTru;
+    private String diaChiHienTai;
+    private String ghiChu;
+
+    // Account link info
+    private Boolean hasTaiKhoan;
+    private String taiKhoanTrangThai;
 }

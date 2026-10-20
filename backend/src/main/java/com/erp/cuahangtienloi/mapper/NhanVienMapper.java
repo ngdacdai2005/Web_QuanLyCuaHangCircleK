@@ -31,6 +31,15 @@ public class NhanVienMapper {
         dto.setNguoiTao(nv.getNguoiTao());
         dto.setNgayCapNhat(nv.getNgayCapNhat());
         dto.setNguoiCapNhat(nv.getNguoiCapNhat());
+        dto.setAnhDaiDien(nv.getAnhDaiDien());
+        dto.setGioiTinh(nv.getGioiTinh());
+        dto.setNgaySinh(nv.getNgaySinh());
+        dto.setSoCccd(nv.getSoCccd());
+        dto.setNgayCapCccd(nv.getNgayCapCccd());
+        dto.setNoiCapCccd(nv.getNoiCapCccd());
+        dto.setDiaChiThuongTru(nv.getDiaChiThuongTru());
+        dto.setDiaChiHienTai(nv.getDiaChiHienTai());
+        dto.setGhiChu(nv.getGhiChu());
         return dto;
     }
 }

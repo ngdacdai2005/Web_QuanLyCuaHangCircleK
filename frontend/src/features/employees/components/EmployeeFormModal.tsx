@@ -1,14 +1,29 @@
-import { useEffect, type FC } from 'react';
+import { useEffect, useState, type FC } from 'react';
 import {
+  Alert,
   App as AntdApp,
+  Button,
   Col,
+  DatePicker,
   Form,
   Input,
   InputNumber,
   Modal,
   Row,
   Select,
+  Space,
+  Switch,
+  Typography,
 } from 'antd';
+import {
+  CheckCircleFilled,
+  CheckOutlined,
+  KeyOutlined,
+  LockOutlined,
+  SaveOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
+import dayjs from 'dayjs';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   createEmployee,
@@ -18,31 +33,44 @@ import {
 } from '@/store/slices/employeeSlice';
 import { fetchBranches } from '@/store/slices/branchSlice';
 import {
+  BRANCH_KIND,
+  EMPLOYEE_POSITIONS,
   EMPLOYMENT_TYPE,
-  EMPLOYMENT_TYPE_LABEL,
+  POSITION_ROLE_MAP,
   RECORD_STATUS,
   SHIFT_CODE,
   SHIFT_LABEL,
   USER_ROLE,
   USER_ROLE_LABEL,
-  BRANCH_KIND,
-  POSITION_ROLE_MAP,
-  EMPLOYEE_POSITIONS,
   positionForRole,
   type EmployeeFormValues,
+  type UserRole,
 } from '@/types';
-import {
-  applyFormErrors,
-  COMMON_PATTERNS,
-  getErrorMessage,
-  isFormValidationError,
-} from '@/utils/apiError';
+import { today } from '@/utils/dateUtils';
 import './EmployeeFormModal.css';
 
-const ROLE_OPTIONS = Object.values(USER_ROLE).map((role) => ({
-  value: role,
-  label: USER_ROLE_LABEL[role],
+const { Text } = Typography;
+
+const GENDER_OPTIONS = [
+  { value: 'Nam', label: 'Nam' },
+  { value: 'Nữ', label: 'Nữ' },
+  { value: 'Khác', label: 'Khác' },
+];
+
+const CONTRACT_OPTIONS = [
+  { value: EMPLOYMENT_TYPE.FullTime, label: 'Chính thức (Lương cứng theo tháng)' },
+  { value: EMPLOYMENT_TYPE.PartTime, label: 'Bán thời gian (Lương theo giờ)' },
+];
+
+const SHIFT_OPTIONS = Object.values(SHIFT_CODE).map((shift) => ({
+  value: shift,
+  label: SHIFT_LABEL[shift],
 }));
+
+const STATUS_OPTIONS = [
+  { value: 'Active', label: 'Đang hoạt động' },
+  { value: 'Inactive', label: 'Ngừng hoạt động' },
+];
 
 const generateNextEmployeeCode = (employees: Array<{ code: string }>): string => {
   let maxNum = 0;
@@ -65,10 +93,21 @@ const generateNextEmployeeCode = (employees: Array<{ code: string }>): string =>
   return candidate;
 };
 
+const WIZARD_STEPS = [
+  { step: 0, title: 'Thông tin cá nhân' },
+  { step: 1, title: 'Thông tin công việc' },
+  { step: 2, title: 'Thông tin tài khoản' },
+  { step: 3, title: 'Thông tin khác' },
+  { step: 4, title: 'Xác nhận' },
+];
+
 export const EmployeeFormModal: FC = () => {
   const [form] = Form.useForm<EmployeeFormValues>();
   const dispatch = useAppDispatch();
   const { message } = AntdApp.useApp();
+
+  const [currentStep, setCurrentStep] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
   const { isModalOpen, selectedEmployee, employees } = useAppSelector(
     (state) => state.employee,
@@ -76,424 +115,701 @@ export const EmployeeFormModal: FC = () => {
   const branches = useAppSelector((state) => state.branch.branches);
   const user = useAppSelector((state) => state.auth.user);
   const isEditing = selectedEmployee !== null;
-  const salaryType = Form.useWatch('employmentType', form);
+
   const isManager = user?.role === 'QUAN_LY';
-  // const isAdmin = user?.role === 'ADMIN';
+  const createAccount = Form.useWatch('createAccount', form);
+  const watchPosition = Form.useWatch('position', form);
+  const watchRole = Form.useWatch('role', form);
+  const watchEmploymentType = Form.useWatch('employmentType', form);
+  const watchAvatarUrl = Form.useWatch('avatarUrl', form);
+  const watchFullName = Form.useWatch('fullName', form);
+
+  // Vai trò hệ thống được suy ra từ Chức vụ (position) đã chọn, hoặc từ role hiện thời
+  const effectiveRole: UserRole = (
+    (watchPosition && POSITION_ROLE_MAP[watchPosition]) ||
+    watchRole ||
+    (form.getFieldValue('role') as UserRole) ||
+    USER_ROLE.Cashier
+  ) as UserRole;
 
   // Lọc chi nhánh theo vai trò: THU_KHO chỉ được chọn Kho tổng
   const filterBranchesByRole = (role: string) => {
-    let filtered = branches.filter(
-        (b) => b.status === RECORD_STATUS.Active,
-    );
-
-    // QUẢN LÝ chỉ được thao tác tại chi nhánh của mình.
+    let filtered = branches.filter((b) => b.status === RECORD_STATUS.Active);
     if (isManager) {
-      filtered = filtered.filter(
-          (b) => b.id === user?.branchId,
-      );
+      filtered = filtered.filter((b) => b.id === user?.branchId);
     }
-
     if (role === USER_ROLE.WarehouseKeeper) {
-      return filtered.filter(
-          (b) => b.kind === BRANCH_KIND.DistributionCenter,
-      );
+      return filtered.filter((b) => b.kind === BRANCH_KIND.DistributionCenter);
     }
-
-    return filtered.filter(
-        (b) => b.kind === BRANCH_KIND.Store,
-    );
+    return filtered;
   };
 
+  // Tự động đồng bộ role vào form field khi position thay đổi
   useEffect(() => {
-    if (branches.length === 0) {
-      dispatch(fetchBranches());
+    if (watchPosition && POSITION_ROLE_MAP[watchPosition]) {
+      const targetRole = POSITION_ROLE_MAP[watchPosition];
+      if (form.getFieldValue('role') !== targetRole) {
+        form.setFieldValue('role', targetRole);
+      }
     }
-  }, [branches.length, dispatch]);
+  }, [watchPosition, form]);
 
   useEffect(() => {
     if (!isModalOpen) return;
+    dispatch(fetchBranches());
+    setCurrentStep(0);
 
     if (selectedEmployee !== null) {
-      // Chuẩn hóa chức vụ của nhân viên cũ.
-      // Nếu vi_tri cũ không nằm trong danh sách mới
-      // thì suy ra chức vụ từ role.
-      const position = POSITION_ROLE_MAP[selectedEmployee.position]
-          ? selectedEmployee.position
-          : positionForRole(selectedEmployee.role);
-
-      // Xác định hình thức trả lương từ dữ liệu cũ.
-      // Có lương cứng > 0 → Lương cứng.
-      // Ngược lại → Lương giờ.
-      const employmentType =
-          selectedEmployee.baseSalary > 0
-              ? EMPLOYMENT_TYPE.FullTime
-              : EMPLOYMENT_TYPE.PartTime;
-
       form.setFieldsValue({
         ...selectedEmployee,
-        position,
-        role: selectedEmployee.role,
-        employmentType,
-        branchId: isManager
-            ? user?.branchId ?? selectedEmployee.branchId
-            : selectedEmployee.branchId,
+        dateOfBirth: selectedEmployee.dateOfBirth ? (dayjs(selectedEmployee.dateOfBirth) as any) : undefined,
+        joinedAt: selectedEmployee.joinedAt ? (dayjs(selectedEmployee.joinedAt) as any) : undefined,
+        citizenIdDate: selectedEmployee.citizenIdDate ? (dayjs(selectedEmployee.citizenIdDate) as any) : undefined,
+        createAccount: false,
+        username: selectedEmployee.accountUsername || '',
       });
-
       return;
     }
 
-    // Form thêm mới
     form.resetFields();
-
     const autoCode = generateNextEmployeeCode(employees);
+    const defaultRole = USER_ROLE.Cashier;
+    const defaultPos = positionForRole(defaultRole);
+
     form.setFieldsValue({
       code: autoCode,
-      position: 'Thu ngân',
+      role: defaultRole,
+      position: defaultPos,
       employmentType: EMPLOYMENT_TYPE.FullTime,
       defaultShift: SHIFT_CODE.Morning,
-      role: USER_ROLE.Cashier,
       status: RECORD_STATUS.Active,
-      hourlyWage: 0,
-      baseSalary: 0,
-      branchId: isManager ? user?.branchId ?? null : null,
+      gender: 'Nam',
+      joinedAt: dayjs(today()) as any,
+      branchId: isManager && user?.branchId ? user.branchId : (branches[0]?.id || ''),
+      hourlyWage: 25000,
+      baseSalary: 6500000,
+      createAccount: true,
+      username: autoCode.toLowerCase(),
+      initialPassword: '',
     });
-  }, [isModalOpen, selectedEmployee, employees, form, isManager, user?.branchId]);
+  }, [isModalOpen, selectedEmployee, employees, branches, isManager, user, form, dispatch]);
 
-  const handleSubmit = async (): Promise<void> => {
-    try {
-      const values = await form.validateFields();
-      /**
-       * Chỉ lưu một hình thức trả lương.
-       *
-       * FULL_TIME → dùng baseSalary, hourlyWage = 0
-       * PART_TIME → dùng hourlyWage, baseSalary = 0
-       */
-      if (values.employmentType === EMPLOYMENT_TYPE.FullTime) {
-        values.hourlyWage = 0;
-      } else {
-        values.baseSalary = 0;
-      }
-
-      /**
-       * QUẢN LÝ chỉ được quản lý THU_NGAN
-       * tại chi nhánh của chính mình.
-       *
-       * Backend vẫn kiểm tra lại rule này.
-       */
-      if (isManager) {
-        values.role = USER_ROLE.Cashier;
-        values.branchId = user?.branchId ?? null;
-      }
-
-      // Nếu vai trò là ADMIN/KE_TOAN → KHÔNG gửi branchId (DB constraint)
-      if (values.role === USER_ROLE.Admin || values.role === USER_ROLE.Accountant) {
-        values.branchId = null;
-      }
-      if (isEditing && selectedEmployee) {
-        await dispatch(updateEmployeeThunk({ id: selectedEmployee.id, values })).unwrap();
-        message.success('Đã cập nhật thông tin nhân viên.');
-      } else {
-        await dispatch(createEmployee(values)).unwrap();
-        message.success('Đã thêm nhân viên mới.');
-      }
-      // Reload danh sách để cập nhật branchName từ Redux
-      dispatch(fetchEmployees());
-      dispatch(setEmployeeModalOpen(false));
-    } catch (error: unknown) {
-      if (isFormValidationError(error)) return;
-      const errorMessage = getErrorMessage(error, 'Không thể lưu thông tin nhân viên');
-      const handled = applyFormErrors(form, errorMessage, {
-        email: ['email', 'hòm thư'],
-        phone: ['số điện thoại', 'sđt', 'phone'],
-        code: ['mã nhân viên'],
-        branchId: ['chi nhánh'],
-      });
-      if (!handled) message.error(errorMessage);
+  const handlePositionChange = (position: string) => {
+    const role = POSITION_ROLE_MAP[position] || USER_ROLE.Cashier;
+    form.setFieldValue('role', role);
+    const availableBranches = filterBranchesByRole(role);
+    const currentBranchId = form.getFieldValue('branchId');
+    if (['ADMIN', 'KE_TOAN'].includes(role)) {
+      form.setFieldValue('branchId', null);
+    } else if (!availableBranches.some((b) => b.id === currentBranchId)) {
+      form.setFieldValue('branchId', availableBranches[0]?.id || null);
     }
   };
+
+  const handleEmailBlur = () => {
+    const email = form.getFieldValue('email');
+    const currentUsername = form.getFieldValue('username');
+    if (email && (!currentUsername || currentUsername.startsWith('nv-'))) {
+      const suggested = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '');
+      if (suggested) {
+        form.setFieldValue('username', suggested);
+      }
+    }
+  };
+
+  // Xác thực trước khi sang bước tiếp theo
+  const handleNext = async () => {
+    try {
+      if (currentStep === 0) {
+        await form.validateFields(['fullName', 'phone', 'email']);
+      } else if (currentStep === 1) {
+        await form.validateFields(['code', 'position', 'employmentType', 'branchId', 'joinedAt', 'defaultShift']);
+      } else if (currentStep === 2) {
+        if (createAccount) {
+          await form.validateFields(['username']);
+        }
+      } else if (currentStep === 3) {
+        await form.validateFields(['status']);
+      }
+      setCurrentStep((prev) => Math.min(prev + 1, 4));
+    } catch {
+      // Form validation failed - Antd will highlight invalid fields
+    }
+  };
+
+  const handleBack = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 0));
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setSubmitting(true);
+      const rawValues = form.getFieldsValue(true);
+      const formattedValues: any = {
+        ...rawValues,
+        role: rawValues.role || effectiveRole,
+        dateOfBirth: rawValues.dateOfBirth ? dayjs(rawValues.dateOfBirth).format('YYYY-MM-DD') : undefined,
+        joinedAt: rawValues.joinedAt ? dayjs(rawValues.joinedAt).format('YYYY-MM-DD') : today(),
+        citizenIdDate: rawValues.citizenIdDate ? dayjs(rawValues.citizenIdDate).format('YYYY-MM-DD') : undefined,
+      };
+
+      if (isEditing && selectedEmployee) {
+        await dispatch(updateEmployeeThunk({ id: selectedEmployee.id, values: formattedValues })).unwrap();
+        message.success('Cập nhật thông tin nhân viên thành công!');
+      } else {
+        await dispatch(createEmployee(formattedValues)).unwrap();
+        message.success(
+          formattedValues.createAccount
+            ? 'Thêm nhân viên & cấp tài khoản thành công!'
+            : 'Thêm nhân viên mới thành công!'
+        );
+      }
+      dispatch(fetchEmployees());
+      dispatch(setEmployeeModalOpen(false));
+    } catch (err: any) {
+      message.error(err?.message || 'Có lỗi xảy ra khi lưu thông tin nhân viên.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const currentValues = form.getFieldsValue(true);
+  const selectedBranchObj = branches.find((b) => b.id === currentValues.branchId);
 
   return (
     <Modal
       open={isModalOpen}
-      title={
-        isEditing
-          ? `Chỉnh sửa nhân viên ${selectedEmployee?.code}`
-          : 'Thêm nhân viên mới'
-      }
-      okText={isEditing ? 'Lưu thay đổi' : 'Thêm nhân viên'}
-      cancelText="Huỷ"
-      width={720}
-      onOk={handleSubmit}
-      onCancel={() => dispatch(setEmployeeModalOpen(false))}
+      title={isEditing ? `Cập nhật nhân viên ${selectedEmployee?.code}` : 'Thêm mới nhân viên'}
+      width={920}
+      footer={null}
       destroyOnHidden
+      className="employee-wizard-modal"
+      onCancel={() => dispatch(setEmployeeModalOpen(false))}
     >
-      <Form form={form} layout="vertical" className="employee-form">
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Form.Item
-              name="fullName"
-              label="Họ và tên"
-              rules={[
-                { required: true, whitespace: true, message: 'Vui lòng nhập họ và tên.' },
-                { max: 255, message: 'Họ và tên tối đa 255 ký tự.' },
-              ]}
-            >
-              <Input placeholder="Họ và tên nhân viên" />
+      <div className="employee-wizard-layout">
+        {/* Cột Stepper bên trái */}
+        <div className="employee-wizard-sidebar">
+          {WIZARD_STEPS.map((s) => {
+            const isCompleted = currentStep > s.step;
+            const isActive = currentStep === s.step;
+            return (
+              <div
+                key={s.step}
+                className={`wizard-step-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}
+                onClick={() => {
+                  if (currentStep > s.step) setCurrentStep(s.step);
+                }}
+              >
+                <div className="wizard-step-badge">
+                  {isCompleted ? <CheckOutlined /> : s.step + 1}
+                </div>
+                <span>{s.title}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Vùng nội dung form bên phải */}
+        <div className="employee-wizard-content">
+          <Form form={form} layout="vertical" className="employee-form-body">
+            {/* Hidden field để AntD Form luôn theo dõi và lưu trữ role */}
+            <Form.Item name="role" hidden>
+              <Input />
             </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item
-              name="code"
-              label="Mã nhân viên"
-              rules={[
-                { required: true, message: 'Vui lòng nhập mã nhân viên.' },
-              ]}
-            >
-              <Input placeholder="VD: NV-0042" disabled />
-            </Form.Item>
-          </Col>
-        </Row>
 
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Form.Item
-                name="position"
-                label="Chức vụ"
-                rules={[{ required: true, message: 'Vui lòng chọn chức vụ.' }]}
-            >
-              <Select
-                  placeholder="Chọn chức vụ"
-                  options={EMPLOYEE_POSITIONS
-                      .filter((position) => !isManager || POSITION_ROLE_MAP[position] === USER_ROLE.Cashier)
-                      .map((position) => ({
-                        value: position,
-                        label: position,
-                      }))}
-                  disabled={isManager && isEditing}
-                  onChange={(value) => {
-                    const role = POSITION_ROLE_MAP[value];
+            {/* BƯỚC 1: Thông tin cá nhân */}
+            {currentStep === 0 && (
+              <div>
+                <div className="wizard-step-header">
+                  <h3 className="wizard-step-title">Thông tin cá nhân</h3>
+                  <div className="wizard-step-desc">Điền đầy đủ họ tên, thông tin liên hệ và định danh cá nhân</div>
+                </div>
 
-                    form.setFieldValue('role', role);
+                {/* Avatar preview & input URL */}
+                <div className="avatar-upload-section">
+                  <div className="avatar-preview-box">
+                    {watchAvatarUrl ? (
+                      <img src={watchAvatarUrl} alt="Avatar preview" />
+                    ) : (
+                      watchFullName?.charAt(0)?.toUpperCase() || <UserOutlined />
+                    )}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Form.Item name="avatarUrl" label="Link ảnh đại diện (URL)" style={{ marginBottom: 0 }}>
+                      <Input placeholder="https://example.com/avatar.jpg" />
+                    </Form.Item>
+                  </div>
+                </div>
 
-                    // Khi QUẢN LÝ tạo THU_NGAN thì giữ chi nhánh của mình.
-                    if (isManager && role === USER_ROLE.Cashier) {
-                      form.setFieldValue('branchId', user?.branchId ?? null);
-                    } else {
-                      form.setFieldValue('branchId', null);
-                    }
-                  }}
-              />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item
-                name="role"
-                label="Vai trò hệ thống"
-                rules={[
-                  {
-                    required: true,
-                    message: 'Vai trò hệ thống được xác định từ chức vụ.',
-                  },
-                ]}
-            >
-              <Select
-                  options={
-                    isManager
-                        ? ROLE_OPTIONS.filter((option) => option.value === USER_ROLE.Cashier)
-                        : ROLE_OPTIONS
-                  }
-                  disabled
-              />
-            </Form.Item>
-          </Col>
-        </Row>
-
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Form.Item
-                noStyle
-                shouldUpdate={(prev, curr) => prev.role !== curr.role}
-            >
-              {({ getFieldValue }) => {
-                const role = getFieldValue('role');
-                const requiresBranch = !['ADMIN', 'KE_TOAN'].includes(role);
-                const filteredBranches = requiresBranch
-                    ? filterBranchesByRole(role)
-                    : [];
-
-                return (
+                <Row gutter={16}>
+                  <Col span={14}>
                     <Form.Item
-                        name="branchId"
-                        label={`Chi nhánh${
-                            requiresBranch
-                                ? role === 'THU_KHO'
-                                    ? ' (Thủ kho chỉ được gán Kho tổng)'
-                                    : ''
-                                : ' (không bắt buộc với Admin/Kế toán)'
-                        }`}
-                        rules={
-                          requiresBranch
-                              ? [{ required: true, message: 'Chọn chi nhánh.' }]
-                              : []
-                        }
+                      name="fullName"
+                      label="Họ và tên"
+                      rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}
+                    >
+                      <Input placeholder="VD: Nguyễn Văn A" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={10}>
+                    <Form.Item name="gender" label="Giới tính">
+                      <Select options={GENDER_OPTIONS} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      name="phone"
+                      label="Số điện thoại"
+                      rules={[{ required: true, message: 'Vui lòng nhập SĐT' }]}
+                    >
+                      <Input placeholder="VD: 0912345678" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      name="email"
+                      label="Email"
+                      rules={[
+                        { required: true, message: 'Vui lòng nhập email' },
+                        { type: 'email', message: 'Email không hợp lệ' },
+                      ]}
+                    >
+                      <Input placeholder="VD: annguyen@circlek.vn" onBlur={handleEmailBlur} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Row gutter={16}>
+                  <Col span={8}>
+                    <Form.Item name="citizenId" label="Số CCCD (12 số)">
+                      <Input placeholder="Nhập 12 số CCCD" maxLength={12} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={8}>
+                    <Form.Item name="citizenIdDate" label="Ngày cấp">
+                      <DatePicker style={{ width: '100%' }} placeholder="dd/mm/yyyy" format="DD/MM/YYYY" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={8}>
+                    <Form.Item name="citizenIdPlace" label="Nơi cấp">
+                      <Input placeholder="VD: Cục CS QLHC..." />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item name="permanentAddress" label="Địa chỉ thường trú">
+                      <Input placeholder="Nhập địa chỉ thường trú" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item name="currentAddress" label="Địa chỉ hiện tại">
+                      <Input placeholder="Nhập địa chỉ hiện tại" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Form.Item name="note" label="Ghi chú">
+                  <Input.TextArea rows={2} placeholder="Nhập ghi chú thêm (nếu có)..." />
+                </Form.Item>
+              </div>
+            )}
+
+            {/* BƯỚC 2: Thông tin công việc */}
+            {currentStep === 1 && (
+              <div>
+                <div className="wizard-step-header">
+                  <h3 className="wizard-step-title">Thông tin công việc</h3>
+                  <div className="wizard-step-desc">Thiết lập chi nhánh, chức vụ, hợp đồng và chế độ đãi ngộ</div>
+                </div>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      name="code"
+                      label="Mã nhân viên"
+                      rules={[{ required: true, message: 'Vui lòng nhập mã NV' }]}
+                    >
+                      <Input placeholder="VD: NV-0001" disabled />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      name="employmentType"
+                      label="Loại hợp đồng"
+                      rules={[{ required: true, message: 'Chọn loại hợp đồng' }]}
+                    >
+                      <Select options={CONTRACT_OPTIONS} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      name="position"
+                      label="Chức vụ"
+                      rules={[{ required: true, message: 'Vui lòng chọn chức vụ' }]}
                     >
                       <Select
-                          options={filteredBranches.map((b) => ({
-                            value: b.id,
-                            label: `${b.code} - ${b.name}`,
-                          }))}
-                          allowClear
-                          disabled={!requiresBranch || isManager}
-                          placeholder={
-                            requiresBranch
-                                ? role === 'THU_KHO'
-                                    ? 'Chọn Kho tổng'
-                                    : isManager
-                                        ? 'Chi nhánh của bạn'
-                                        : 'Chọn chi nhánh'
-                                : 'Không cần chọn'
-                          }
+                        placeholder="Chọn chức vụ"
+                        onChange={handlePositionChange}
+                        options={EMPLOYEE_POSITIONS.map((pos) => ({
+                          value: pos,
+                          label: pos,
+                        }))}
                       />
                     </Form.Item>
-                );
-              }}
-            </Form.Item>
-          </Col>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      name="branchId"
+                      label="Chi nhánh làm việc"
+                      rules={[
+                        {
+                          required: !['ADMIN', 'KE_TOAN'].includes(effectiveRole || ''),
+                          message: 'Vui lòng chọn chi nhánh',
+                        },
+                      ]}
+                    >
+                      <Select
+                        placeholder="Chọn chi nhánh"
+                        disabled={['ADMIN', 'KE_TOAN'].includes(effectiveRole || '')}
+                        options={filterBranchesByRole(effectiveRole || '').map((b) => ({
+                          value: b.id,
+                          label: `${b.code} - ${b.name}`,
+                        }))}
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
 
-          <Col xs={24} md={12}>
-            <Form.Item
-                name="defaultShift"
-                label="Ca mặc định"
-                rules={[{ required: true, message: 'Chọn ca mặc định.' }]}
-            >
-              <Select
-                  options={Object.values(SHIFT_CODE).map((shift) => ({
-                    value: shift,
-                    label: SHIFT_LABEL[shift],
-                  }))}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      name="joinedAt"
+                      label="Ngày vào công ty"
+                      rules={[{ required: true, message: 'Chọn ngày vào' }]}
+                    >
+                      <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      name="defaultShift"
+                      label="Ca làm việc mặc định"
+                      rules={[{ required: true, message: 'Chọn ca mặc định' }]}
+                    >
+                      <Select options={SHIFT_OPTIONS} />
+                    </Form.Item>
+                  </Col>
+                </Row>
 
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Form.Item
-                name="employmentType"
-                label="Hình thức trả lương"
-                rules={[
-                  {
-                    required: true,
-                    message: 'Chọn hình thức trả lương.',
-                  },
-                ]}
-            >
-              <Select
-                  options={Object.values(EMPLOYMENT_TYPE).map((type) => ({
-                    value: type,
-                    label: EMPLOYMENT_TYPE_LABEL[type],
-                  }))}
-              />
-            </Form.Item>
-          </Col>
-
-          <Col xs={24} md={12}>
-            {salaryType === EMPLOYMENT_TYPE.PartTime ? (
-                <Form.Item
-                    name="hourlyWage"
-                    label="Lương giờ (đồng)"
-                    rules={[
-                      {
-                        required: true,
-                        type: 'number',
-                        min: 0,
-                        message: 'Vui lòng nhập lương giờ >= 0.',
-                      },
-                    ]}
-                >
-                  <InputNumber
-                      className="employee-amount-input"
-                      min={0}
-                      step={1000}
-                      addonAfter="₫"
-                      style={{ width: '100%' }}
-                  />
-                </Form.Item>
-            ) : (
-                <Form.Item
-                    name="baseSalary"
-                    label="Lương cứng (đồng/tháng)"
-                    rules={[
-                      {
-                        required: true,
-                        type: 'number',
-                        min: 0,
-                        message: 'Vui lòng nhập lương cứng >= 0.',
-                      },
-                    ]}
-                >
-                  <InputNumber
-                      className="employee-amount-input"
-                      min={0}
-                      step={100000}
-                      addonAfter="₫"
-                      style={{ width: '100%' }}
-                  />
-                </Form.Item>
+                <Row gutter={16}>
+                  {watchEmploymentType === EMPLOYMENT_TYPE.FullTime ? (
+                    <Col span={12}>
+                      <Form.Item
+                        name="baseSalary"
+                        label="Lương cứng (VNĐ/tháng)"
+                        rules={[{ required: true, message: 'Nhập lương cứng' }]}
+                      >
+                        <InputNumber
+                          style={{ width: '100%' }}
+                          min={0}
+                          step={500000}
+                          formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                          parser={(value) => value?.replace(/\$\s?|(,*)/g, '') as any}
+                        />
+                      </Form.Item>
+                    </Col>
+                  ) : (
+                    <Col span={12}>
+                      <Form.Item
+                        name="hourlyWage"
+                        label="Lương theo giờ (VNĐ/h)"
+                        rules={[{ required: true, message: 'Nhập lương giờ' }]}
+                      >
+                        <InputNumber
+                          style={{ width: '100%' }}
+                          min={0}
+                          step={1000}
+                          formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                          parser={(value) => value?.replace(/\$\s?|(,*)/g, '') as any}
+                        />
+                      </Form.Item>
+                    </Col>
+                  )}
+                  <Col span={12}>
+                    <Form.Item label="Vai trò hệ thống tương ứng">
+                      <Input
+                        value={
+                          effectiveRole
+                            ? `${USER_ROLE_LABEL[effectiveRole] || effectiveRole} (${effectiveRole})`
+                            : ''
+                        }
+                        disabled
+                        prefix={<LockOutlined style={{ color: '#0284c7' }} />}
+                        style={{ backgroundColor: '#f8fafc', color: '#0f172a', fontWeight: 600 }}
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </div>
             )}
-          </Col>
-        </Row>
 
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Form.Item
-                name="status"
-                label="Trạng thái"
-                rules={[{ required: true, message: 'Chọn trạng thái.' }]}
-            >
-              <Select
-                  options={[
-                    { value: 'Active', label: 'Đang hoạt động' },
-                    { value: 'Inactive', label: 'Ngừng hoạt động' },
-                  ]}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
+            {/* BƯỚC 3: Thông tin tài khoản */}
+            {currentStep === 2 && (
+              <div>
+                <div className="wizard-step-header">
+                  <h3 className="wizard-step-title">Thông tin tài khoản</h3>
+                  <div className="wizard-step-desc">Thiết lập tài khoản đăng nhập và phân quyền hệ thống cho nhân viên</div>
+                </div>
 
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Form.Item
-              name="email"
-              label="Email"
-              rules={[
-                { required: true, message: 'Vui lòng nhập email.' },
-                {
-                  pattern: COMMON_PATTERNS.EMAIL,
-                  message: 'Email không đúng định dạng (VD: example@domain.com).',
-                },
-              ]}
-            >
-              <Input placeholder="nv@example.com" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item
-              name="phone"
-              label="Số điện thoại"
-              rules={[
-                { required: true, message: 'Vui lòng nhập số điện thoại.' },
-                {
-                  pattern: COMMON_PATTERNS.PHONE,
-                  message: 'Số điện thoại không hợp lệ (bắt đầu bằng 0, gồm 10 hoặc 11 chữ số).',
-                },
-              ]}
-            >
-              <Input placeholder="09xx xxx xxx" />
-            </Form.Item>
-          </Col>
-        </Row>
-      </Form>
+                {!isEditing && (
+                  <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <Form.Item name="createAccount" valuePropName="checked" noStyle>
+                      <Switch />
+                    </Form.Item>
+                    <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                      Cấp tài khoản đăng nhập cho nhân viên này ngay bây giờ
+                    </span>
+                  </div>
+                )}
+
+                {createAccount || isEditing ? (
+                  <>
+                    <Alert
+                      className="account-init-alert"
+                      icon={<KeyOutlined style={{ color: '#d97706', fontSize: 18 }} />}
+                      showIcon
+                      message="Mật khẩu khởi tạo"
+                      description="Có thể để trống để hệ thống cấp mật khẩu mặc định: ChangeMe@123"
+                    />
+
+                    <Form.Item
+                      name="username"
+                      label="Tên đăng nhập"
+                      rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập' }]}
+                    >
+                      <Input
+                        prefix={<UserOutlined style={{ color: '#94a3b8' }} />}
+                        placeholder="VD: annguyen hoặc nv-0001"
+                      />
+                    </Form.Item>
+
+                    {!isEditing && (
+                      <Form.Item
+                        name="initialPassword"
+                        label="Mật khẩu khởi tạo (tùy chọn)"
+                      >
+                        <Input.Password
+                          prefix={<LockOutlined style={{ color: '#94a3b8' }} />}
+                          placeholder="Mặc định: ChangeMe@123 (ít nhất 8 ký tự nếu nhập)"
+                        />
+                      </Form.Item>
+                    )}
+
+                    <Form.Item label="Vai trò / Quyền hạn được cấp">
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        <Button type="primary" ghost size="middle">
+                          {USER_ROLE_LABEL[effectiveRole] || effectiveRole} ({effectiveRole})
+                        </Button>
+                      </div>
+                      <Text type="secondary" style={{ fontSize: 12, marginTop: 6, display: 'block' }}>
+                        * Vai trò được tự động phân quyền theo chức danh công việc ở Bước 2.
+                      </Text>
+                    </Form.Item>
+                  </>
+                ) : (
+                  <Alert
+                    type="info"
+                    message="Không tạo tài khoản"
+                    description="Nhân viên này sẽ chỉ được lưu hồ sơ nhân sự mà không thể đăng nhập vào hệ thống ERP. Bạn có thể cấp tài khoản bổ sung sau."
+                    showIcon
+                  />
+                )}
+              </div>
+            )}
+
+            {/* BƯỚC 4: Thông tin khác */}
+            {currentStep === 3 && (
+              <div>
+                <div className="wizard-step-header">
+                  <h3 className="wizard-step-title">Thông tin khác</h3>
+                  <div className="wizard-step-desc">Thiết lập tài khoản ngân hàng nhận lương và trạng thái làm việc</div>
+                </div>
+
+                <Form.Item
+                  name="status"
+                  label="Trạng thái làm việc"
+                  rules={[{ required: true, message: 'Chọn trạng thái' }]}
+                >
+                  <Select options={STATUS_OPTIONS} />
+                </Form.Item>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item name="bankName" label="Tên Ngân hàng">
+                      <Input placeholder="VD: Vietcombank, MB Bank, Techcombank..." />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item name="bankAccount" label="Số tài khoản">
+                      <Input placeholder="Số tài khoản nhận lương" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </div>
+            )}
+
+            {/* BƯỚC 5: Xác nhận thông tin */}
+            {currentStep === 4 && (
+              <div>
+                <div className="confirm-header-box">
+                  <CheckCircleFilled className="confirm-success-icon" />
+                  <div className="confirm-title">Xác nhận thông tin</div>
+                  <div className="confirm-subtitle">Vui lòng kiểm tra lại toàn bộ thông tin trước khi lưu hồ sơ</div>
+                </div>
+
+                <div className="confirm-grid">
+                  <div className="confirm-card">
+                    <div className="confirm-card-title">Thông tin cơ bản</div>
+                    <div className="confirm-card-row">
+                      <span className="confirm-card-label">Họ và tên:</span>
+                      <span className="confirm-card-value">{currentValues.fullName || '—'}</span>
+                    </div>
+                    <div className="confirm-card-row">
+                      <span className="confirm-card-label">Giới tính:</span>
+                      <span className="confirm-card-value">{currentValues.gender || '—'}</span>
+                    </div>
+                    <div className="confirm-card-row">
+                      <span className="confirm-card-label">SĐT:</span>
+                      <span className="confirm-card-value">{currentValues.phone || '—'}</span>
+                    </div>
+                    <div className="confirm-card-row">
+                      <span className="confirm-card-label">Email:</span>
+                      <span className="confirm-card-value">{currentValues.email || '—'}</span>
+                    </div>
+                    <div className="confirm-card-row">
+                      <span className="confirm-card-label">Số CCCD:</span>
+                      <span className="confirm-card-value">{currentValues.citizenId || '—'}</span>
+                    </div>
+                  </div>
+
+                  <div className="confirm-card">
+                    <div className="confirm-card-title">Công việc & Tổ chức</div>
+                    <div className="confirm-card-row">
+                      <span className="confirm-card-label">Mã NV:</span>
+                      <span className="confirm-card-value" style={{ color: '#dc2626' }}>
+                        {currentValues.code || '—'}
+                      </span>
+                    </div>
+                    <div className="confirm-card-row">
+                      <span className="confirm-card-label">Loại HĐ:</span>
+                      <span className="confirm-card-value">
+                        {currentValues.employmentType === EMPLOYMENT_TYPE.FullTime ? 'Chính thức' : 'Bán thời gian'}
+                      </span>
+                    </div>
+                    <div className="confirm-card-row">
+                      <span className="confirm-card-label">Chi nhánh:</span>
+                      <span className="confirm-card-value">{selectedBranchObj?.name || 'Trụ sở chính'}</span>
+                    </div>
+                    <div className="confirm-card-row">
+                      <span className="confirm-card-label">Chức vụ:</span>
+                      <span className="confirm-card-value">{watchPosition || currentValues.position || '—'}</span>
+                    </div>
+                    <div className="confirm-card-row">
+                      <span className="confirm-card-label">Vai trò:</span>
+                      <span className="confirm-card-value">
+                        {USER_ROLE_LABEL[effectiveRole] || effectiveRole} ({effectiveRole})
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="confirm-card">
+                    <div className="confirm-card-title">Tài khoản đăng nhập</div>
+                    <div className="confirm-card-row">
+                      <span className="confirm-card-label">Cấp tài khoản:</span>
+                      <span className="confirm-card-value">
+                        {currentValues.createAccount || isEditing ? 'Có' : 'Không'}
+                      </span>
+                    </div>
+                    {(currentValues.createAccount || isEditing) && (
+                      <>
+                        <div className="confirm-card-row">
+                          <span className="confirm-card-label">Tên đăng nhập:</span>
+                          <span className="confirm-card-value" style={{ fontFamily: 'monospace' }}>
+                            {currentValues.username || '—'}
+                          </span>
+                        </div>
+                        <div className="confirm-card-row">
+                          <span className="confirm-card-label">Mật khẩu:</span>
+                          <span className="confirm-card-value">
+                            {currentValues.initialPassword ? '******' : 'ChangeMe@123 (Mặc định)'}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="confirm-card">
+                    <div className="confirm-card-title">Ngân hàng & Trạng thái</div>
+                    <div className="confirm-card-row">
+                      <span className="confirm-card-label">Trạng thái:</span>
+                      <span className="confirm-card-value" style={{ color: currentValues.status === 'Active' ? '#10b981' : '#ef4444' }}>
+                        {currentValues.status === 'Active' ? 'Đang hoạt động' : 'Ngừng hoạt động'}
+                      </span>
+                    </div>
+                    <div className="confirm-card-row">
+                      <span className="confirm-card-label">Ngân hàng:</span>
+                      <span className="confirm-card-value">{currentValues.bankName || '—'}</span>
+                    </div>
+                    <div className="confirm-card-row">
+                      <span className="confirm-card-label">Số tài khoản:</span>
+                      <span className="confirm-card-value">{currentValues.bankAccount || '—'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </Form>
+
+          {/* Action buttons chân modal */}
+          <div className="wizard-footer">
+            <Button onClick={() => dispatch(setEmployeeModalOpen(false))}>
+              Hủy bỏ
+            </Button>
+
+            <Space size={10}>
+              {currentStep > 0 && (
+                <Button onClick={handleBack}>
+                  Quay lại
+                </Button>
+              )}
+
+              {currentStep < 4 ? (
+                <Button type="primary" onClick={handleNext}>
+                  Tiếp tục &gt;
+                </Button>
+              ) : (
+                <Button
+                  type="primary"
+                  className="btn-submit-green"
+                  icon={<SaveOutlined />}
+                  loading={submitting}
+                  onClick={handleSubmit}
+                >
+                  Lưu thông tin
+                </Button>
+              )}
+            </Space>
+          </div>
+        </div>
+      </div>
     </Modal>
   );
 };

@@ -22,7 +22,6 @@ import { AttendancePage } from '@/features/attendance/AttendancePage';
 import { CashbookPage } from '@/features/cashbook/CashbookPage';
 import { ReportsPage } from '@/features/reports/ReportsPage';
 import { AccountPage } from '@/features/profile/AccountPage';
-import { AccountManagementPage } from '@/features/userManagement/AccountManagementPage';
 import { RoleGroupsPage } from '@/features/roleGroups/RoleGroupsPage';
 import { NotificationsPage } from '@/features/notifications/NotificationsPage';
 import { NotFoundPage } from '@/features/shared/NotFoundPage';
@@ -87,8 +86,8 @@ export const AppRouter: FC = () => (
             vào được — kể cả thu ngân, để tự đổi được mật khẩu. */}
         <Route path="/account" element={<AccountPage />} />
 
-        {/* Chỉ ADMIN mới được vào trang quản lý tài khoản và phân quyền */}
-        <Route path="/admin/accounts" element={<AccountManagementPage />} />
+        {/* Quản lý tài khoản đã được gộp vào module Quản lý nhân viên */}
+        <Route path="/admin/accounts" element={<Navigate to="/employees" replace />} />
         <Route path="/role-groups" element={<RoleGroupsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
 

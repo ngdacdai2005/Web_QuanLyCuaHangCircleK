@@ -90,11 +90,32 @@ export interface Employee {
   joinedAt: string;
   status: RecordStatus;
   avatarText: string;
+  avatarUrl?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  citizenId?: string;
+  citizenIdDate?: string;
+  citizenIdPlace?: string;
+  permanentAddress?: string;
+  currentAddress?: string;
+  note?: string;
+  bankAccount?: string;
+  bankName?: string;
+  hasAccount?: boolean;
+  accountUsername?: string;
+  accountStatus?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
-export type EmployeeFormValues = Omit<Employee, 'id' | 'avatarText' | 'branchName' | 'createdAt' | 'updatedAt'>;
+export type EmployeeFormValues = Omit<
+  Employee,
+  'id' | 'avatarText' | 'branchName' | 'createdAt' | 'updatedAt' | 'hasAccount' | 'accountUsername' | 'accountStatus'
+> & {
+  createAccount?: boolean;
+  username?: string;
+  initialPassword?: string;
+};
 
 /**
  * Module 11 — Bản ghi chấm công của 1 nhân viên trong 1 ca.

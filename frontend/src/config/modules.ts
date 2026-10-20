@@ -335,19 +335,7 @@ export const MODULES: readonly ModuleDefinition[] = [
     description:
       'Báo cáo doanh thu, lợi nhuận, hàng bán chạy và hao hụt theo kỳ.',
   },
-  {
-    order: 16,
-    key: 'admin-accounts',
-    path: '/admin/accounts',
-    label: 'Quản lý Tài khoản',
-    shortLabel: 'QL Tài khoản',
-    icon: 'account-manage',
-    allowedRoles: ADMIN_ONLY,
-    group: MODULE_GROUP.MasterData,
-    implemented: true,
-    description:
-      'Tạo, sửa, xóa tài khoản người dùng và phân quyền hệ thống.',
-  },
+
   {
     order: 17,
     key: 'contracts',

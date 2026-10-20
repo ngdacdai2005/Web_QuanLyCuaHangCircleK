@@ -23,4 +23,20 @@ public class NhanVienRequestDTO {
     private String trangThai;
     private String nguoiTao;
     private String nguoiCapNhat;
+
+    // Extended personal fields
+    private String anhDaiDien;
+    private String gioiTinh;
+    private LocalDate ngaySinh;
+    private String soCccd;
+    private LocalDate ngayCapCccd;
+    private String noiCapCccd;
+    private String diaChiThuongTru;
+    private String diaChiHienTai;
+    private String ghiChu;
+
+    // Account creation fields
+    private Boolean taoTaiKhoan;
+    private String tenDangNhap;
+    private String matKhau;
 }

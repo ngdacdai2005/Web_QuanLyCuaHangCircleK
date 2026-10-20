@@ -111,4 +111,40 @@ public class NhanVienController {
         nhanVienService.delete(id, actor);
         return ResponseEntity.ok(ApiResponse.ok("Xóa nhân viên thành công"));
     }
+
+    @PostMapping("/{id}/reset-password")
+    @PreAuthorize("hasAuthority('employee:update')")
+    public ResponseEntity<?> resetPassword(@PathVariable UUID id, @RequestBody(required = false) java.util.Map<String, String> body) {
+        try {
+            String newPassword = body != null ? body.get("newPassword") : null;
+            nhanVienService.resetAccountPassword(id, newPassword);
+            return ResponseEntity.ok(ApiResponse.ok("Đặt lại mật khẩu thành công (Mặc định: ChangeMe@123)"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/toggle-account")
+    @PreAuthorize("hasAuthority('employee:update')")
+    public ResponseEntity<?> toggleAccount(@PathVariable UUID id) {
+        try {
+            String status = nhanVienService.toggleAccountStatus(id);
+            return ResponseEntity.ok(ApiResponse.ok("Cập nhật trạng thái tài khoản: " + status));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/create-account")
+    @PreAuthorize("hasAuthority('employee:update')")
+    public ResponseEntity<?> createAccount(@PathVariable UUID id, @RequestBody(required = false) java.util.Map<String, String> body) {
+        try {
+            String username = body != null ? body.get("username") : null;
+            String password = body != null ? body.get("password") : null;
+            nhanVienService.createAccountForEmployee(id, username, password);
+            return ResponseEntity.ok(ApiResponse.ok("Cấp tài khoản cho nhân viên thành công"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
+        }
+    }
 }

@@ -86,6 +86,33 @@ public class NhanVien {
     @Column(name = "nguoi_cap_nhat")
     private String nguoiCapNhat;
 
+    @Column(name = "anh_dai_dien")
+    private String anhDaiDien;
+
+    @Column(name = "gioi_tinh")
+    private String gioiTinh;
+
+    @Column(name = "ngay_sinh")
+    private LocalDate ngaySinh;
+
+    @Column(name = "so_cccd")
+    private String soCccd;
+
+    @Column(name = "ngay_cap_cccd")
+    private LocalDate ngayCapCccd;
+
+    @Column(name = "noi_cap_cccd")
+    private String noiCapCccd;
+
+    @Column(name = "dia_chi_thuong_tru")
+    private String diaChiThuongTru;
+
+    @Column(name = "dia_chi_hien_tai")
+    private String diaChiHienTai;
+
+    @Column(name = "ghi_chu")
+    private String ghiChu;
+
     public String getTrangThai() {
         if (trangThai != null) {
             return trangThai;

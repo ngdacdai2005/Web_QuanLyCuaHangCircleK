@@ -9,19 +9,25 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   DeleteOutlined,
   EditOutlined,
+  KeyOutlined,
   PlusOutlined,
+  StopOutlined,
+  CheckCircleOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import { PageHeader } from '@/components/PageHeader';
 import { SummaryStrip, type SummaryItem } from '@/components/SummaryStrip';
 import { TableToolbar, type ToolbarFilter } from '@/components/TableToolbar';
 import { RecordStatusTag } from '@/components/StatusTag';
 import { BRAND } from '@/config/brand';
+import { nhanVienApi } from '@/api/nhanVien';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   deleteEmployeeThunk,
@@ -41,7 +47,7 @@ import {
   type Employee,
   type ShiftCode,
 } from '@/types';
-import { formatDate, formatDateShort } from '@/utils/dateUtils';
+import { formatDate } from '@/utils/dateUtils';
 import { compareDateDescWithId, formatNumber, formatVND, matchKeyword } from '@/utils/formatters';
 import { exportToExcel } from '@/utils/exportUtils';
 import { getErrorMessage } from '@/utils/apiError';
@@ -58,7 +64,7 @@ const SHIFT_COLOR: Record<ShiftCode, string> = {
 
 export const EmployeesPage: FC = () => {
   const dispatch = useAppDispatch();
-  const { message } = AntdApp.useApp();
+  const { message, modal } = AntdApp.useApp();
   const { user, activeBranchId } = useAppSelector((state) => state.auth);
   const { employees, loading } = useAppSelector((state) => state.employee);
   const branchesState = useAppSelector((state) => state.branch.branches);
@@ -220,11 +226,38 @@ export const EmployeesPage: FC = () => {
     }
   };
 
+  const handleResetPassword = (employee: Employee): void => {
+    modal.confirm({
+      title: 'Đặt lại mật khẩu đăng nhập',
+      content: `Đặt lại mật khẩu cho tài khoản "${employee.accountUsername || employee.code}" về mật khẩu mặc định (ChangeMe@123)?`,
+      okText: 'Đặt lại',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        try {
+          await nhanVienApi.resetPassword(employee.id);
+          message.success('Đặt lại mật khẩu thành công! Mật khẩu mới: ChangeMe@123');
+        } catch (err: any) {
+          message.error(err?.message || 'Không thể đặt lại mật khẩu');
+        }
+      },
+    });
+  };
+
+  const handleToggleAccount = async (employee: Employee): Promise<void> => {
+    try {
+      await nhanVienApi.toggleAccount(employee.id);
+      message.success('Cập nhật trạng thái tài khoản thành công!');
+      dispatch(fetchEmployees());
+    } catch (err: any) {
+      message.error(err?.message || 'Không thể thay đổi trạng thái tài khoản');
+    }
+  };
+
   const columns: ColumnsType<Employee> = [
     {
       title: 'Mã',
       dataIndex: 'code',
-      width: 110,
+      width: 95,
       fixed: 'left',
       sorter: (a, b) => (a.code ?? '').localeCompare(b.code ?? ''),
       render: (code: string) => <span className="mono-code">{code}</span>,
@@ -232,34 +265,60 @@ export const EmployeesPage: FC = () => {
     {
       title: 'Nhân viên',
       dataIndex: 'fullName',
-      width: 230,
+      width: 220,
       fixed: 'left',
       render: (name: string, row) => (
         <Space size={10}>
-          <Avatar className="employee-avatar" size={36}>
-            {row.avatarText}
+          <Avatar
+            className="employee-avatar"
+            size={36}
+            src={row.avatarUrl || undefined}
+          >
+            {!row.avatarUrl && row.avatarText}
           </Avatar>
           <span className="employee-info">
             <Text strong className="employee-name">
               {name}
             </Text>
             <Text type="secondary" className="employee-sub">
-              {row.position}
+              {row.position || '—'}
             </Text>
           </span>
         </Space>
       ),
     },
     {
+      title: 'Tài khoản',
+      key: 'account',
+      width: 160,
+      align: 'center',
+      render: (_, row) =>
+        row.hasAccount || row.accountUsername ? (
+          <Space direction="vertical" size={2} align="center">
+            <span className="mono-code" style={{ fontSize: 12 }}>
+              <UserOutlined style={{ marginRight: 4 }} />
+              {row.accountUsername}
+            </span>
+            <Tag color={row.accountStatus === 'ACTIVE' ? 'green' : 'error'} className="tag-no-margin">
+              {row.accountStatus === 'ACTIVE' ? 'Hoạt động' : 'Đã khóa'}
+            </Tag>
+          </Space>
+        ) : (
+          <Tag color="default" className="tag-no-margin">
+            Chưa cấp
+          </Tag>
+        ),
+    },
+    {
       title: 'Chi nhánh',
       dataIndex: 'branchName',
-      width: 210,
-      render: (value: string) => <Text className="emp-text-12-5">{value}</Text>,
+      width: 180,
+      render: (value: string) => <Text className="emp-text-12-5">{value || 'Trụ sở chính'}</Text>,
     },
     {
       title: 'Vai trò hệ thống',
       dataIndex: 'role',
-      width: 150,
+      width: 140,
       render: (role: Employee['role']) => (
         <Tag color="red" className="tag-no-margin">
           {USER_ROLE_LABEL[role]}
@@ -269,7 +328,7 @@ export const EmployeesPage: FC = () => {
     {
       title: 'Ca mặc định',
       dataIndex: 'defaultShift',
-      width: 190,
+      width: 170,
       render: (shift: ShiftCode) => (
         <Tag color={SHIFT_COLOR[shift]} className="tag-no-margin">
           {SHIFT_LABEL[shift]}
@@ -315,7 +374,7 @@ export const EmployeesPage: FC = () => {
     {
       title: 'Liên hệ',
       key: 'contact',
-      width: 190,
+      width: 180,
       render: (_, row) => (
         <span>
           <Text className="emp-line">{row.phone}</Text>
@@ -333,16 +392,6 @@ export const EmployeesPage: FC = () => {
       render: (value: string) => formatDate(value),
     },
     {
-      title: 'Ngày cập nhật',
-      dataIndex: 'updatedAt',
-      width: 120,
-      align: 'center',
-      sorter: (a, b) => (a.updatedAt ?? a.joinedAt ?? '').localeCompare(b.updatedAt ?? b.joinedAt ?? ''),
-      render: (_: unknown, row: Employee) => (
-        <Text type="secondary">{formatDateShort(row.updatedAt || row.joinedAt)}</Text>
-      ),
-    },
-    {
       title: 'Trạng thái',
       dataIndex: 'status',
       align: 'center',
@@ -351,10 +400,10 @@ export const EmployeesPage: FC = () => {
       render: (status: Employee['status']) => <RecordStatusTag status={status} />,
     },
     {
-      title: '',
+      title: 'Thao tác',
       key: 'actions',
       align: 'center',
-      width: 90,
+      width: 120,
       fixed: 'right',
       render: (_, row) => {
         if (!canManageRow(row)) {
@@ -362,27 +411,61 @@ export const EmployeesPage: FC = () => {
         }
 
         return (
-            <Space size={0}>
+          <Space size={2}>
+            <Tooltip title="Chỉnh sửa hồ sơ">
               <Button
-                  type="text"
-                  icon={<EditOutlined className="action-edit-icon" />}
-                  onClick={() => handleEdit(row)}
+                type="text"
+                size="small"
+                icon={<EditOutlined className="action-edit-icon" />}
+                onClick={() => handleEdit(row)}
               />
+            </Tooltip>
 
-              <Popconfirm
-                  title="Xoá nhân viên?"
-                  description={`Xoá "${row.fullName}" khỏi danh sách?`}
-                  okText="Xoá"
-                  cancelText="Huỷ"
-                  okButtonProps={{ danger: true }}
-                  onConfirm={() => handleDelete(row)}
-              >
-                <Button
+            {(row.hasAccount || row.accountUsername) && (
+              <>
+                <Tooltip title="Đặt lại mật khẩu (ChangeMe@123)">
+                  <Button
                     type="text"
-                    icon={<DeleteOutlined className="action-delete-icon" />}
+                    size="small"
+                    icon={<KeyOutlined style={{ color: '#d97706' }} />}
+                    onClick={() => handleResetPassword(row)}
+                  />
+                </Tooltip>
+
+                <Tooltip title={row.accountStatus === 'ACTIVE' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={
+                      row.accountStatus === 'ACTIVE' ? (
+                        <StopOutlined style={{ color: '#ef4444' }} />
+                      ) : (
+                        <CheckCircleOutlined style={{ color: '#10b981' }} />
+                      )
+                    }
+                    onClick={() => handleToggleAccount(row)}
+                  />
+                </Tooltip>
+              </>
+            )}
+
+            <Popconfirm
+              title="Xoá nhân viên?"
+              description={`Xoá "${row.fullName}" khỏi danh sách?`}
+              okText="Xoá"
+              cancelText="Huỷ"
+              okButtonProps={{ danger: true }}
+              onConfirm={() => handleDelete(row)}
+            >
+              <Tooltip title="Xóa nhân viên">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<DeleteOutlined className="action-delete-icon" />}
                 />
-              </Popconfirm>
-            </Space>
+              </Tooltip>
+            </Popconfirm>
+          </Space>
         );
       },
     },
@@ -416,8 +499,8 @@ export const EmployeesPage: FC = () => {
     <>
       <PageHeader
         eyebrow="DANH MỤC & NHÂN SỰ / MODULE 4"
-        title="Quản lý nhân viên"
-        description="Danh sách nhân sự, ca làm việc được phân công, chi nhánh và vai trò hệ thống."
+        title="Quản lý nhân viên & tài khoản"
+        description="Hồ sơ nhân sự, chức danh, chi nhánh làm việc và cấp tài khoản đăng nhập hệ thống."
         extra={
           <Space wrap>
             {(canManageAll || user?.role === 'QUAN_LY') && (

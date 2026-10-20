@@ -5,6 +5,7 @@ import { parseApiError } from '@/utils/apiError';
 export interface NhanVienDTO {
   id: string;
   maNhanVien?: string;
+  tenDangNhap?: string;
   hoTen: string;
   email?: string;
   soDienThoai?: string;
@@ -21,6 +22,22 @@ export interface NhanVienDTO {
   ngayVaoLam?: string;
   ngayTao?: string;
   ngayCapNhat?: string;
+  // Extended fields
+  anhDaiDien?: string;
+  gioiTinh?: string;
+  ngaySinh?: string;
+  soCccd?: string;
+  ngayCapCccd?: string;
+  noiCapCccd?: string;
+  diaChiThuongTru?: string;
+  diaChiHienTai?: string;
+  ghiChu?: string;
+  // Account info
+  hasTaiKhoan?: boolean;
+  taiKhoanTrangThai?: string;
+  // Account create request
+  taoTaiKhoan?: boolean;
+  matKhau?: string;
 }
 
 const getHeaders = (): HeadersInit => {
@@ -70,5 +87,34 @@ export const nhanVienApi = {
       headers: getHeaders(),
     });
     if (!response.ok) throw await parseApiError(response, 'Không thể xóa nhân viên');
+  },
+
+  resetPassword: async (id: string, newPassword?: string): Promise<{ success: boolean; message: string }> => {
+    const response = await fetch(`${API_BASE_URL}/api/nhan-vien/${id}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getHeaders() },
+      body: JSON.stringify({ newPassword: newPassword || '' }),
+    });
+    if (!response.ok) throw await parseApiError(response, 'Không thể đặt lại mật khẩu');
+    return response.json();
+  },
+
+  toggleAccount: async (id: string): Promise<{ success: boolean; message: string }> => {
+    const response = await fetch(`${API_BASE_URL}/api/nhan-vien/${id}/toggle-account`, {
+      method: 'PUT',
+      headers: getHeaders(),
+    });
+    if (!response.ok) throw await parseApiError(response, 'Không thể cập nhật trạng thái tài khoản');
+    return response.json();
+  },
+
+  createAccount: async (id: string, username?: string, password?: string): Promise<{ success: boolean; message: string }> => {
+    const response = await fetch(`${API_BASE_URL}/api/nhan-vien/${id}/create-account`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getHeaders() },
+      body: JSON.stringify({ username: username || '', password: password || '' }),
+    });
+    if (!response.ok) throw await parseApiError(response, 'Không thể cấp tài khoản');
+    return response.json();
   },
 };
