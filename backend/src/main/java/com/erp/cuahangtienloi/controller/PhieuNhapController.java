@@ -28,6 +28,16 @@ public class PhieuNhapController {
     private final PhieuNhapService phieuNhapService;
     private final BranchAccessService branchAccessService;
     private final RequestDeduplicationService requestDeduplicationService;
+    private final com.erp.cuahangtienloi.service.PriceResolutionService priceResolutionService;
+
+    @GetMapping("/resolve-price")
+    @PreAuthorize("hasAuthority('purchase:read')")
+    public ResponseEntity<?> resolvePrice(
+            @RequestParam("idNcc") UUID idNcc,
+            @RequestParam("idSanPham") UUID idSanPham,
+            @RequestParam(value = "idHopDong", required = false) UUID idHopDong) {
+        return ResponseEntity.ok(priceResolutionService.resolvePurchasePrice(idNcc, idSanPham, idHopDong));
+    }
 
     @GetMapping
     @PreAuthorize("hasAuthority('purchase:read')")
@@ -104,8 +114,106 @@ public class PhieuNhapController {
         }
     }
 
+    @PutMapping("/{id}/approve")
+    @PreAuthorize("hasAuthority('purchase:approve') or hasAnyRole('ADMIN', 'KE_TOAN')")
+    public ResponseEntity<?> approve(@PathVariable UUID id, HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        try {
+            return phieuNhapService.approve(id, actor)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/reject")
+    @PreAuthorize("hasAuthority('purchase:approve') or hasAnyRole('ADMIN', 'KE_TOAN')")
+    public ResponseEntity<?> reject(@PathVariable UUID id, @RequestBody(required = false) String lyDo, HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        try {
+            return phieuNhapService.reject(id, lyDo, actor)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/start-receiving")
+    @PreAuthorize("hasAuthority('purchase:update') or hasAnyRole('ADMIN', 'THU_KHO')")
+    public ResponseEntity<?> startReceiving(@PathVariable UUID id, HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        try {
+            return phieuNhapService.startReceiving(id, actor)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/cancel-receiving")
+    @PreAuthorize("hasAuthority('purchase:update') or hasAnyRole('ADMIN', 'THU_KHO')")
+    public ResponseEntity<?> cancelReceiving(@PathVariable UUID id, HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        try {
+            return phieuNhapService.cancelReceiving(id, actor)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/confirm-receiving")
+    @PreAuthorize("hasAuthority('purchase:update') or hasAnyRole('ADMIN', 'THU_KHO')")
+    public ResponseEntity<?> confirmReceiving(
+            @PathVariable UUID id,
+            @Valid @RequestBody com.erp.cuahangtienloi.dto.request.ConfirmReceivingRequestDTO request,
+            HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        try {
+            return phieuNhapService.confirmReceiving(id, request, actor)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/cancel")
+    @PreAuthorize("hasAuthority('purchase:update') or hasAnyRole('ADMIN', 'THU_KHO')")
+    public ResponseEntity<?> cancel(@PathVariable UUID id, HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        try {
+            return phieuNhapService.cancel(id, actor)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/lines/{idChiTiet}/price")
+    @PreAuthorize("hasAuthority('purchase:approve') or hasAnyRole('ADMIN', 'KE_TOAN')")
+    public ResponseEntity<?> changePrice(
+            @PathVariable UUID id,
+            @PathVariable UUID idChiTiet,
+            @Valid @RequestBody com.erp.cuahangtienloi.dto.request.ChangePriceRequestDTO request,
+            HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        try {
+            return phieuNhapService.changePrice(id, idChiTiet, request, actor)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.err(e.getMessage()));
+        }
+    }
+
     @PutMapping("/{id}/pay")
-    @PreAuthorize("hasAuthority('purchase:approve')")
+    @PreAuthorize("hasAuthority('purchase:approve') or hasAnyRole('ADMIN', 'KE_TOAN')")
     public ResponseEntity<?> pay(@PathVariable UUID id,
                                  @RequestBody(required = false) PayRequestDTO request,
                                  HttpServletRequest httpRequest) {

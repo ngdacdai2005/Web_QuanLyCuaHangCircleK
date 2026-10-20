@@ -123,6 +123,16 @@ export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({hopDong, onCl
                                 ? formatVND(Number(hd.giaTriHopDong))
                                 : <Text type="secondary">—</Text>}
                         </Descriptions.Item>
+                        <Descriptions.Item label="Hạn mức tối đa">
+                            {hd.hanMucHopDong != null
+                                ? formatVND(Number(hd.hanMucHopDong))
+                                : <Text type="secondary">—</Text>}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Giá trị đã thực hiện">
+                            <Text strong type={hd.giaTriDaSuDung ? "success" : "secondary"}>
+                                {formatVND(Number(hd.giaTriDaSuDung ?? 0))}
+                            </Text>
+                        </Descriptions.Item>
                         <Descriptions.Item label="Điều khoản thanh toán" span={2}>
                             {hd.dieuKhoanThanhToan || <Text type="secondary">—</Text>}
                         </Descriptions.Item>
@@ -148,6 +158,49 @@ export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({hopDong, onCl
                                 : <Text type="secondary">—</Text>}
                         </Descriptions.Item>
                     </Descriptions>
+
+                    {hd.lines && hd.lines.length > 0 && (
+                        <div>
+                            <Text strong style={{ fontSize: 14, marginBottom: 8, display: 'block' }}>
+                                Danh mục mặt hàng cam kết ({hd.lines.length})
+                            </Text>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                <thead>
+                                    <tr style={{ background: '#fafafa', borderBottom: '1px solid #f0f0f0', textAlign: 'left' }}>
+                                        <th style={{ padding: '8px' }}>Sản phẩm</th>
+                                        <th style={{ padding: '8px', textAlign: 'right' }}>Đơn giá cam kết</th>
+                                        <th style={{ padding: '8px', textAlign: 'right' }}>SL cam kết</th>
+                                        <th style={{ padding: '8px', textAlign: 'right' }}>Đã nhập</th>
+                                        <th style={{ padding: '8px' }}>VAT</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {hd.lines.map((line, idx) => (
+                                        <tr key={line.id || idx} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                                            <td style={{ padding: '8px' }}>
+                                                <div><strong>{line.tenSanPham || line.idSanPham}</strong></div>
+                                                {line.sku && <Text type="secondary" style={{ fontSize: 12 }}>SKU: {line.sku}</Text>}
+                                            </td>
+                                            <td style={{ padding: '8px', textAlign: 'right', fontWeight: 600 }}>
+                                                {formatVND(Number(line.donGiaCamKet))}
+                                            </td>
+                                            <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                {line.soLuongCamKet || '—'}
+                                            </td>
+                                            <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                <Text type={line.soLuongDaNhap ? "success" : "secondary"}>
+                                                    {line.soLuongDaNhap ?? 0}
+                                                </Text>
+                                            </td>
+                                            <td style={{ padding: '8px' }}>
+                                                {line.vatPhantram ?? 8}%
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
                     {(hd.lyDoTuChoi || hd.ngayDuyet || (hd.soLanTrinh ?? 0) > 0) && (
                         <Descriptions bordered size="small" column={2}>

@@ -43,6 +43,12 @@ public class HopDong {
     @Column(name = "gia_tri_hop_dong")
     private BigDecimal giaTriHopDong;
 
+    @Column(name = "han_muc_hop_dong")
+    private BigDecimal hanMucHopDong;
+
+    @Column(name = "gia_tri_da_su_dung")
+    private BigDecimal giaTriDaSuDung;
+
     @Column(columnDefinition = "TEXT")
     private String dieuKhoanThanhToan;
 

@@ -20,6 +20,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchPurchaseOrders, type PurchaseDraftLine } from '@/store/slices/purchaseSlice';
 import { stockOf } from '@/store/slices/stockSlice';
 import { phieuNhapApi } from '@/api/phieuNhap';
+import { hopDongApi, type HopDongDTO } from '@/api/hopDongApi';
 import { sanPhamApi, type SuppliedProductDTO } from '@/api/sanPham';
 import { fetchBranches  } from '@/store/slices/branchSlice';
 import { fetchProducts } from '@/store/slices/productSlice';
@@ -36,6 +37,7 @@ const { Text, Paragraph } = Typography;
 
 interface PurchaseFormValues {
   supplierId: string;
+  contractId?: string;
   orderDate: Dayjs;
   note: string;
 }
@@ -108,6 +110,8 @@ export const PurchaseFormModal: FC<PurchaseFormModalProps> = ({ open, onClose })
   };
 
   const [supplierId, setSupplierId] = useState<string | null>(null);
+  const [contracts, setContracts] = useState<HopDongDTO[]>([]);
+  const [selectedContractId, setSelectedContractId] = useState<string | null>(null);
   const [suppliedProducts, setSuppliedProducts] = useState<SuppliedProductDTO[]>([]);
   const [branchId, setBranchId] = useState<string | null>(null);
   const [rows, setRows] = useState<DraftRow[]>([emptyRow()]);
@@ -144,6 +148,8 @@ export const PurchaseFormModal: FC<PurchaseFormModalProps> = ({ open, onClose })
   const handleAfterClose = (): void => {
     form.resetFields();
     setSupplierId(null);
+    setContracts([]);
+    setSelectedContractId(null);
     setSuppliedProducts([]);
     setBranchId(null);
     setRows([emptyRow()]);
@@ -219,6 +225,11 @@ export const PurchaseFormModal: FC<PurchaseFormModalProps> = ({ open, onClose })
   const handleSupplierChange = (value: string): void => {
     setSupplierId(value);
     setRows([emptyRow()]);
+    setSelectedContractId(null);
+    form.setFieldValue('contractId', undefined);
+    hopDongApi.list({ idNcc: value, trangThai: 'ACTIVE' })
+      .then(setContracts)
+      .catch(() => setContracts([]));
   };
 
   const handleSubmit = async (): Promise<void> => {
@@ -253,6 +264,7 @@ export const PurchaseFormModal: FC<PurchaseFormModalProps> = ({ open, onClose })
       const createdOrder = await phieuNhapApi.createWithLines({
         idChiNhanh: branchId,
         idNcc: values.supplierId,
+        idHopDong: selectedContractId || null,
         ngayDatHang: values.orderDate.format('YYYY-MM-DD'),
         ghiChu: values.note?.trim() ?? '',
         lines: validRows.map((row) => ({
@@ -294,18 +306,28 @@ export const PurchaseFormModal: FC<PurchaseFormModalProps> = ({ open, onClose })
           disabled={supplierId === null}
           showSearch
           optionFilterProp="label"
-          onChange={(productId: string) => {
+          onChange={async (productId: string) => {
             const product = sellableProducts.find((item) => item.id === productId);
             const supplied = suppliedMap.get(productId);
-            const unitCost = supplied && supplied.giaNhapNcc > 0
+            let unitCost = supplied && supplied.giaNhapNcc > 0
               ? supplied.giaNhapNcc
               : (product?.costPrice ?? 0);
+            let vatPercent = product?.vatPercent ?? 8;
 
-            // Điền sẵn giá nhập riêng theo NCC (hoặc giá vốn mặc định) để Thủ kho chỉ sửa khi có biến động
+            if (supplierId) {
+              try {
+                const resolved = await phieuNhapApi.resolvePrice(supplierId, productId, selectedContractId || undefined);
+                if (resolved && resolved.donGiaDeXuat > 0) {
+                  unitCost = resolved.donGiaDeXuat;
+                  vatPercent = resolved.vatPhantram;
+                }
+              } catch {}
+            }
+
             updateRow(row.key, {
               productId,
               unitCost,
-              vatPercent: product?.vatPercent ?? 8,
+              vatPercent,
             });
           }}
           options={supplierProducts.map((product) => {
@@ -465,6 +487,38 @@ export const PurchaseFormModal: FC<PurchaseFormModalProps> = ({ open, onClose })
                   value: supplier.id,
                   label: `${supplier.code} — ${supplier.name}`,
                 }))}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="contractId"
+            label="Hợp đồng tham chiếu"
+            style={{ minWidth: 260 }}
+          >
+            <Select
+              placeholder="Chọn hợp đồng (nếu có)"
+              allowClear
+              disabled={supplierId === null}
+              value={selectedContractId ?? undefined}
+              onChange={(val) => {
+                setSelectedContractId(val ?? null);
+                if (supplierId) {
+                  rows.forEach(async (r) => {
+                    if (r.productId) {
+                      try {
+                        const res = await phieuNhapApi.resolvePrice(supplierId, r.productId, val);
+                        if (res && res.donGiaDeXuat > 0) {
+                          updateRow(r.key, { unitCost: res.donGiaDeXuat, vatPercent: res.vatPhantram });
+                        }
+                      } catch {}
+                    }
+                  });
+                }
+              }}
+              options={contracts.map((c) => ({
+                value: c.id,
+                label: `${c.maHopDong} — ${c.tenHopDong}`,
+              }))}
             />
           </Form.Item>
 

@@ -1,6 +1,7 @@
 import type { VND } from '@/types/commonTypes';
 
 export const HOP_DONG_LOAI = {
+    NGUYEN_TAC: 'NGUYEN_TAC',
     MUA_HANG: 'MUA_HANG',
     DICH_VU: 'DICH_VU',
     VAN_CHUYEN: 'VAN_CHUYEN',
@@ -9,7 +10,8 @@ export const HOP_DONG_LOAI = {
 export type HopDongLoai = (typeof HOP_DONG_LOAI)[keyof typeof HOP_DONG_LOAI];
 
 export const HOP_DONG_LOAI_LABEL: Record<HopDongLoai, string> = {
-    MUA_HANG: 'Mua bán hàng hóa',
+    NGUYEN_TAC: 'Hợp đồng nguyên tắc',
+    MUA_HANG: 'Mua bán hàng hóa (Có bảng giá)',
     DICH_VU: 'Dịch vụ',
     VAN_CHUYEN: 'Vận chuyển',
     KHAC: 'Khác',
@@ -43,6 +45,22 @@ export const HOP_DONG_STATUS_COLOR: Record<HopDongStatus, string> = {
     CANCELLED: 'default',
 };
 
+export interface HopDongChiTiet {
+    id?: string;
+    idHopDong?: string;
+    idSanPham: string;
+    tenSanPham?: string;
+    sku?: string;
+    donVi?: string;
+    donGiaCamKet: VND;
+    soLuongCamKet?: number;
+    soLuongDaNhap?: number;
+    vatPhantram?: number;
+    ngayHieuLucTu?: string;
+    ngayHetHan?: string;
+    ghiChu?: string;
+}
+
 export interface HopDong {
     id: string;
     maHopDong: string;
@@ -55,9 +73,12 @@ export interface HopDong {
     ngayHieuLuc: string;
     ngayHetHan?: string | null;
     giaTriHopDong?: VND | null;
+    hanMucHopDong?: VND | null;
+    giaTriDaSuDung?: VND;
     dieuKhoanThanhToan?: string;
     soNgayDuocNo?: number;
     noiDung?: string;
+    lines?: HopDongChiTiet[];
     fileTenGoc?: string;
     fileCo: boolean;
     trangThai: HopDongStatus;
@@ -77,9 +98,11 @@ export type HopDongFormValues = {
     ngayHieuLuc: string;
     ngayHetHan?: string;
     giaTriHopDong?: string;
+    hanMucHopDong?: string;
     dieuKhoanThanhToan?: string;
     soNgayDuocNo?: string;
     noiDung?: string;
+    lines?: HopDongChiTiet[];
 };
 
 export interface HopDongFilter {

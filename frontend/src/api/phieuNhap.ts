@@ -25,6 +25,10 @@ export interface PhieuNhapDTO {
   tenChiNhanh?: string;
   tenNcc?: string;
 
+  idHopDong?: string;
+  maHopDong?: string;
+  tenHopDong?: string;
+
   idNguoiDuyet?: string;
   ngayDuyet?: string;
   lyDoTuChoi?: string;
@@ -53,6 +57,7 @@ export interface PurchaseLineDTO {
 export interface CreatePurchaseWithLinesDTO {
   idChiNhanh?: string | null;
   idNcc: string;
+  idHopDong?: string | null;
   ngayDatHang?: string;
   ngayDuKienGiao?: string;
   ngayNhanThucTe?: string;
@@ -359,6 +364,28 @@ export const phieuNhapApi = {
       throw await parseApiError(response, 'Lỗi cập nhật giá nhập');
     }
 
+    return response.json();
+  },
+
+  resolvePrice: async (idNcc: string, idSanPham: string, idHopDong?: string): Promise<{
+    idSanPham: string;
+    idNcc: string;
+    idHopDong?: string;
+    donGiaDeXuat: number;
+    vatPhantram: number;
+    nguonGia: string;
+    maHopDong?: string;
+    tenHopDong?: string;
+    ghiChu?: string;
+  }> => {
+    const params = new URLSearchParams({ idNcc, idSanPham });
+    if (idHopDong) params.set('idHopDong', idHopDong);
+    const response = await fetch(`${API_BASE_URL}/api/phieu-nhap/resolve-price?${params.toString()}`, {
+      headers: getHeaders(),
+    });
+    if (!response.ok) {
+      throw await parseApiError(response, 'Lỗi lấy giá đề xuất');
+    }
     return response.json();
   },
 };

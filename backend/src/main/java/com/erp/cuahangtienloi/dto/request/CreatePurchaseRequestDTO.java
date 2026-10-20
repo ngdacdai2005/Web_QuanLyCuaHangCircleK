@@ -19,6 +19,8 @@ public class CreatePurchaseRequestDTO {
     @NotNull(message = "Nhà cung cấp bắt buộc chọn")
     private UUID idNcc;
 
+    private UUID idHopDong;
+
     private LocalDate ngayDatHang;
     private LocalDate ngayDuKienGiao;
     private LocalDate ngayNhanThucTe;

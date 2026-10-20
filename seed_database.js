@@ -49,6 +49,7 @@ const sqlFiles = [
 
     'nha_cung_cap.sql',
     'migration_nha_cung_cap_quan_ly.sql',
+    'migration_hop_dong_ncc.sql',
 
     'ton_kho.sql',
     'migration_ton_kho_on_conflict.sql',
@@ -64,6 +65,7 @@ const sqlFiles = [
     'migration_phieu_nhap_approval_workflow.sql',
     'migration_phieu_nhap_price_after_completed.sql',
     'migration_phieu_nhap_supplier_debt.sql',
+    'migration_hop_dong_chi_tiet_va_gia_ncc.sql',
 
     'phieu_xuat_kho.sql',
     'migration_phieu_xuat_kho_add_shipped.sql',

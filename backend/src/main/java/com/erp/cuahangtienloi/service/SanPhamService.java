@@ -27,6 +27,7 @@ public class SanPhamService {
     private final SanPhamRepository sanPhamRepository;
     private final DanhMucRepository danhMucRepository;
     private final NhaCungCapRepository nhaCungCapRepository;
+    private final com.erp.cuahangtienloi.repository.SanPhamNhaCungCapRepository sanPhamNhaCungCapRepository;
     private final BranchProductStatusService branchProductStatusService;
     private final SanPhamMapper sanPhamMapper;
 
@@ -121,6 +122,21 @@ public class SanPhamService {
         sp.setNgayCapNhat(LocalDateTime.now());
 
         SanPham saved = sanPhamRepository.save(sp);
+        if (saved.getIdNhaCungCap() != null && sanPhamNhaCungCapRepository != null) {
+            sanPhamNhaCungCapRepository.findByIdSanPhamAndIdNhaCungCap(saved.getId(), saved.getIdNhaCungCap())
+                    .orElseGet(() -> sanPhamNhaCungCapRepository.save(
+                            com.erp.cuahangtienloi.entity.SanPhamNhaCungCap.builder()
+                                    .id(UUID.randomUUID())
+                                    .idSanPham(saved.getId())
+                                    .idNhaCungCap(saved.getIdNhaCungCap())
+                                    .giaNhap(saved.getGiaVon() != null ? saved.getGiaVon() : BigDecimal.ZERO)
+                                    .laNccChinh(true)
+                                    .ghiChu("Đồng bộ NCC chính khi tạo sản phẩm")
+                                    .ngayTao(LocalDateTime.now())
+                                    .ngayCapNhat(LocalDateTime.now())
+                                    .build()
+                    ));
+        }
         return sanPhamMapper.toResponse(saved);
     }
 
@@ -177,6 +193,21 @@ public class SanPhamService {
                     sp.setNgayCapNhat(LocalDateTime.now());
 
                     SanPham saved = sanPhamRepository.save(sp);
+                    if (saved.getIdNhaCungCap() != null && sanPhamNhaCungCapRepository != null) {
+                        sanPhamNhaCungCapRepository.findByIdSanPhamAndIdNhaCungCap(saved.getId(), saved.getIdNhaCungCap())
+                                .orElseGet(() -> sanPhamNhaCungCapRepository.save(
+                                        com.erp.cuahangtienloi.entity.SanPhamNhaCungCap.builder()
+                                                .id(UUID.randomUUID())
+                                                .idSanPham(saved.getId())
+                                                .idNhaCungCap(saved.getIdNhaCungCap())
+                                                .giaNhap(saved.getGiaVon() != null ? saved.getGiaVon() : BigDecimal.ZERO)
+                                                .laNccChinh(true)
+                                                .ghiChu("Đồng bộ NCC chính khi cập nhật sản phẩm")
+                                                .ngayTao(LocalDateTime.now())
+                                                .ngayCapNhat(LocalDateTime.now())
+                                                .build()
+                                ));
+                    }
                     return sanPhamMapper.toResponse(saved);
                 });
     }

@@ -5,16 +5,34 @@ import {
 } from './http';
 import type { HopDongFilter, HopDongFormValues } from '@/types';
 
+export interface HopDongChiTietDTO {
+    id?: string;
+    idHopDong?: string;
+    idSanPham: string;
+    tenSanPham?: string;
+    sku?: string;
+    donVi?: string;
+    donGiaCamKet: number;
+    soLuongCamKet?: number;
+    soLuongDaNhap?: number;
+    vatPhantram?: number;
+    ngayHieuLucTu?: string;
+    ngayHetHan?: string;
+    ghiChu?: string;
+}
+
 export interface HopDongDTO {
     id: string; maHopDong: string; tenHopDong: string;
     loaiHopDong: string; idNcc: string; maNcc?: string; tenNcc?: string;
     ngayKy?: string; ngayHieuLuc?: string; ngayHetHan?: string | null;
-    giaTriHopDong?: number | null; dieuKhoanThanhToan?: string;
+    giaTriHopDong?: number | null; hanMucHopDong?: number | null; giaTriDaSuDung?: number;
+    dieuKhoanThanhToan?: string;
     soNgayDuocNo?: number; noiDung?: string;
     fileTenGoc?: string; fileCo?: boolean;
     trangThai: string; lyDoTuChoi?: string; idNguoiDuyet?: string;
     ngayDuyet?: string; soLanTrinh?: number;
     ngayTao?: string; ngayCapNhat?: string; nguoiTao?: string; nguoiCapNhat?: string;
+    lines?: HopDongChiTietDTO[];
 }
 
 export interface HopDongCountDTO {

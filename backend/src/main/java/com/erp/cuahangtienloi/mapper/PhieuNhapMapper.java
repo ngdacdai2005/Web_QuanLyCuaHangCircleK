@@ -16,6 +16,7 @@ public class PhieuNhapMapper {
     private final ChiNhanhRepository chiNhanhRepository;
     private final NhaCungCapRepository nhaCungCapRepository;
     private final NhanVienRepository nhanVienRepository;
+    private final com.erp.cuahangtienloi.repository.HopDongRepository hopDongRepository;
 
     public PhieuNhapResponseDTO toResponse(PhieuNhap pn) {
         PhieuNhapResponseDTO dto = new PhieuNhapResponseDTO();
@@ -24,6 +25,7 @@ public class PhieuNhapMapper {
         dto.setMaPhieu(pn.getMaPhieu());
         dto.setIdChiNhanh(pn.getIdChiNhanh());
         dto.setIdNcc(pn.getIdNcc());
+        dto.setIdHopDong(pn.getIdHopDong());
         dto.setIdNguoiNhap(pn.getIdNguoiNhap());
         dto.setNgayDatHang(pn.getNgayDatHang());
         dto.setNgayDuKienGiao(pn.getNgayDuKienGiao());
@@ -45,6 +47,14 @@ public class PhieuNhapMapper {
         if (pn.getIdNcc() != null) {
             nhaCungCapRepository.findById(pn.getIdNcc())
                     .ifPresent(ncc -> dto.setTenNcc(ncc.getTenNcc()));
+        }
+
+        if (pn.getIdHopDong() != null) {
+            hopDongRepository.findById(pn.getIdHopDong())
+                    .ifPresent(hd -> {
+                        dto.setMaHopDong(hd.getMaHopDong());
+                        dto.setTenHopDong(hd.getTenHopDong());
+                    });
         }
 
         if (pn.getIdNguoiNhap() != null) {

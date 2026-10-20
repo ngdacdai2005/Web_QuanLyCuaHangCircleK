@@ -37,9 +37,16 @@ public class HopDongDTO {
 
     private LocalDate ngayHetHan;
     private BigDecimal giaTriHopDong;
+    private BigDecimal hanMucHopDong;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private BigDecimal giaTriDaSuDung;
+
     private String dieuKhoanThanhToan;
     private Integer soNgayDuocNo;
     private String noiDung;
+
+    private java.util.List<HopDongChiTietDTO> lines;
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String fileTenGoc;

@@ -61,4 +61,12 @@ public class SanPhamNhaCungCapController {
     public ResponseEntity<List<Map<String, Object>>> getProductsSuppliedBy(@PathVariable UUID nccId) {
         return ResponseEntity.ok(sanPhamNccService.getProductsSuppliedBy(nccId));
     }
+
+    @GetMapping("/products/{productId}/suppliers/{nccId}/price-history")
+    @PreAuthorize("hasAuthority('purchase:read') or hasAuthority('product:read') or hasAnyRole('ADMIN', 'QUAN_LY', 'THU_KHO', 'KE_TOAN')")
+    public ResponseEntity<List<com.erp.cuahangtienloi.entity.GiaNhapNcc>> getPriceHistory(
+            @PathVariable UUID productId,
+            @PathVariable UUID nccId) {
+        return ResponseEntity.ok(sanPhamNccService.getPriceHistory(productId, nccId));
+    }
 }

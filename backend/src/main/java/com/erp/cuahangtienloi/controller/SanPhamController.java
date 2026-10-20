@@ -48,6 +48,7 @@ public class SanPhamController {
                         sanPhamRepository,
                         danhMucRepository,
                         nhaCungCapRepository,
+                        null,
                         branchProductStatusService,
                         new SanPhamMapper(danhMucRepository, nhaCungCapRepository)),
                 branchAccessService);    }

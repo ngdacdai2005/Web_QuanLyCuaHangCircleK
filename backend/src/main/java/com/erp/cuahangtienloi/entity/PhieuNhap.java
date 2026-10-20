@@ -27,6 +27,9 @@ public class PhieuNhap {
     @Column(name = "id_ncc")
     private UUID idNcc;
 
+    @Column(name = "id_hop_dong")
+    private UUID idHopDong;
+
     @Column(name = "id_nguoi_nhap")
     private UUID idNguoiNhap;
 

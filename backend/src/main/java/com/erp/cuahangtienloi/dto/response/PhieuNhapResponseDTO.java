@@ -18,6 +18,10 @@ public class PhieuNhapResponseDTO {
     private UUID idNcc;
     private String tenNcc;
 
+    private UUID idHopDong;
+    private String maHopDong;
+    private String tenHopDong;
+
     private UUID idNguoiNhap;
     private String tenNguoiNhap;
 

@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -36,6 +37,10 @@ public class HopDongService {
     private final HopDongRepository hopDongRepository;
     private final NhaCungCapRepository nhaCungCapRepository;
     private final FileStorageService fileStorageService;
+    private final com.erp.cuahangtienloi.repository.HopDongChiTietRepository hopDongChiTietRepository;
+    private final com.erp.cuahangtienloi.repository.GiaNhapNccRepository giaNhapNccRepository;
+    private final com.erp.cuahangtienloi.repository.SanPhamRepository sanPhamRepository;
+    private final com.erp.cuahangtienloi.repository.SanPhamNhaCungCapRepository sanPhamNhaCungCapRepository;
 
     @Transactional(readOnly = true)
     public List<HopDongDTO> list(UUID idNcc, String trangThai) {
@@ -69,6 +74,8 @@ public class HopDongService {
         h.setNgayHieuLuc(req.getNgayHieuLuc());
         h.setNgayHetHan(req.getNgayHetHan());
         h.setGiaTriHopDong(req.getGiaTriHopDong());
+        h.setHanMucHopDong(req.getHanMucHopDong());
+        h.setGiaTriDaSuDung(BigDecimal.ZERO);
         h.setDieuKhoanThanhToan(req.getDieuKhoanThanhToan());
         h.setSoNgayDuocNo(req.getSoNgayDuocNo() != null ? Math.max(0, req.getSoNgayDuocNo()) : 0);
         h.setNoiDung(req.getNoiDung());
@@ -79,7 +86,9 @@ public class HopDongService {
         h.setNguoiTao(actorId);
         h.setNguoiCapNhat(actorId);
         applyFile(h, file);
-        return toDTO(hopDongRepository.save(h));
+        HopDong saved = hopDongRepository.save(h);
+        saveContractLines(saved, req.getLines());
+        return toDTO(saved);
     }
 
     @Transactional
@@ -94,13 +103,18 @@ public class HopDongService {
             h.setNgayHieuLuc(req.getNgayHieuLuc());
             h.setNgayHetHan(req.getNgayHetHan());
             h.setGiaTriHopDong(req.getGiaTriHopDong());
+            h.setHanMucHopDong(req.getHanMucHopDong());
             h.setDieuKhoanThanhToan(req.getDieuKhoanThanhToan());
             h.setSoNgayDuocNo(req.getSoNgayDuocNo() != null ? Math.max(0, req.getSoNgayDuocNo()) : 0);
             h.setNoiDung(req.getNoiDung());
             replaceFile(h, file);
             h.setNgayCapNhat(LocalDateTime.now());
             h.setNguoiCapNhat(actorId);
-            return toDTO(hopDongRepository.save(h));
+            HopDong saved = hopDongRepository.save(h);
+            if (req.getLines() != null) {
+                saveContractLines(saved, req.getLines());
+            }
+            return toDTO(saved);
         });
     }
 
@@ -130,7 +144,50 @@ public class HopDongService {
             h.setNgayDuyet(LocalDateTime.now());
             h.setNgayCapNhat(LocalDateTime.now());
             h.setNguoiCapNhat(actorId);
-            return toDTO(hopDongRepository.save(h));
+            HopDong saved = hopDongRepository.save(h);
+
+            // Tự động kích hoạt bảng giá hiệu lực cho các mặt hàng trong hợp đồng
+            List<com.erp.cuahangtienloi.entity.HopDongChiTiet> lines = hopDongChiTietRepository.findByIdHopDong(h.getId());
+            for (com.erp.cuahangtienloi.entity.HopDongChiTiet ct : lines) {
+                com.erp.cuahangtienloi.entity.GiaNhapNcc giaNcc = com.erp.cuahangtienloi.entity.GiaNhapNcc.builder()
+                        .id(UUID.randomUUID())
+                        .idSanPham(ct.getIdSanPham())
+                        .idNhaCungCap(h.getIdNcc())
+                        .idHopDongChiTiet(ct.getId())
+                        .giaNhap(ct.getDonGiaCamKet())
+                        .ngayHieuLucTu(ct.getNgayHieuLucTu() != null ? ct.getNgayHieuLucTu() : h.getNgayHieuLuc())
+                        .ngayHieuLucDen(ct.getNgayHetHan() != null ? ct.getNgayHetHan() : h.getNgayHetHan())
+                        .dangApDung(true)
+                        .ghiChu("Giá cam kết theo hợp đồng đã duyệt " + h.getMaHopDong())
+                        .nguoiTao(actorId)
+                        .ngayTao(LocalDateTime.now())
+                        .ngayCapNhat(LocalDateTime.now())
+                        .build();
+                giaNhapNccRepository.save(giaNcc);
+
+                Optional<com.erp.cuahangtienloi.entity.SanPhamNhaCungCap> spNccOpt =
+                        sanPhamNhaCungCapRepository.findByIdSanPhamAndIdNhaCungCap(ct.getIdSanPham(), h.getIdNcc());
+                if (spNccOpt.isPresent()) {
+                    com.erp.cuahangtienloi.entity.SanPhamNhaCungCap spncc = spNccOpt.get();
+                    spncc.setGiaNhap(ct.getDonGiaCamKet());
+                    spncc.setNgayCapNhat(LocalDateTime.now());
+                    sanPhamNhaCungCapRepository.save(spncc);
+                } else {
+                    com.erp.cuahangtienloi.entity.SanPhamNhaCungCap spncc = com.erp.cuahangtienloi.entity.SanPhamNhaCungCap.builder()
+                            .id(UUID.randomUUID())
+                            .idSanPham(ct.getIdSanPham())
+                            .idNhaCungCap(h.getIdNcc())
+                            .giaNhap(ct.getDonGiaCamKet())
+                            .laNccChinh(false)
+                            .ghiChu("Tự động liên kết từ hợp đồng " + h.getMaHopDong())
+                            .ngayTao(LocalDateTime.now())
+                            .ngayCapNhat(LocalDateTime.now())
+                            .build();
+                    sanPhamNhaCungCapRepository.save(spncc);
+                }
+            }
+
+            return toDTO(saved);
         });
     }
 
@@ -165,6 +222,7 @@ public class HopDongService {
     public boolean delete(UUID id) {
         return hopDongRepository.findById(id).map(h -> {
             requireStatus(h, DELETEABLE, "xóa");
+            hopDongChiTietRepository.deleteByIdHopDong(h.getId());
             fileStorageService.delete(h.getFileDuongDan());
             hopDongRepository.delete(h);
             return true;
@@ -180,6 +238,32 @@ public class HopDongService {
                     if (r == null) return Optional.empty();
                     return Optional.of(new FilePayload(r, h.getFileLoai(), h.getFileTenGoc()));
                 });
+    }
+
+    private void saveContractLines(HopDong h, List<com.erp.cuahangtienloi.dto.HopDongChiTietDTO> lines) {
+        if (lines == null) return;
+        hopDongChiTietRepository.deleteByIdHopDong(h.getId());
+        for (com.erp.cuahangtienloi.dto.HopDongChiTietDTO line : lines) {
+            if (line.getIdSanPham() == null) continue;
+            if (!sanPhamRepository.existsById(line.getIdSanPham())) {
+                throw new IllegalArgumentException("Sản phẩm ID " + line.getIdSanPham() + " không tồn tại");
+            }
+            com.erp.cuahangtienloi.entity.HopDongChiTiet ct = com.erp.cuahangtienloi.entity.HopDongChiTiet.builder()
+                    .id(UUID.randomUUID())
+                    .idHopDong(h.getId())
+                    .idSanPham(line.getIdSanPham())
+                    .donGiaCamKet(line.getDonGiaCamKet() != null ? line.getDonGiaCamKet() : BigDecimal.ZERO)
+                    .soLuongCamKet(line.getSoLuongCamKet() != null ? line.getSoLuongCamKet() : 0)
+                    .soLuongDaNhap(0)
+                    .vatPhantram(line.getVatPhantram() != null ? line.getVatPhantram() : 8)
+                    .ngayHieuLucTu(line.getNgayHieuLucTu() != null ? line.getNgayHieuLucTu() : h.getNgayHieuLuc())
+                    .ngayHetHan(line.getNgayHetHan() != null ? line.getNgayHetHan() : h.getNgayHetHan())
+                    .ghiChu(line.getGhiChu())
+                    .ngayTao(LocalDateTime.now())
+                    .ngayCapNhat(LocalDateTime.now())
+                    .build();
+            hopDongChiTietRepository.save(ct);
+        }
     }
 
     private void applyFile(HopDong h, MultipartFile file) {
@@ -210,6 +294,8 @@ public class HopDongService {
             throw new IllegalArgumentException("Ngày hết hạn phải sau hoặc bằng ngày hiệu lực");
         if (req.getGiaTriHopDong() != null && req.getGiaTriHopDong().signum() < 0)
             throw new IllegalArgumentException("Giá trị hợp đồng không được âm");
+        if (req.getHanMucHopDong() != null && req.getHanMucHopDong().signum() < 0)
+            throw new IllegalArgumentException("Hạn mức hợp đồng không được âm");
 
         // NCC phải đang hoạt động, trừ khi hợp đồng giữ nguyên NCC hiện tại (khi sửa)
         boolean keepingCurrentNcc = req.getIdNcc().equals(currentIdNcc);
@@ -268,6 +354,8 @@ public class HopDongService {
         d.setNgayHieuLuc(h.getNgayHieuLuc());
         d.setNgayHetHan(h.getNgayHetHan());
         d.setGiaTriHopDong(h.getGiaTriHopDong());
+        d.setHanMucHopDong(h.getHanMucHopDong());
+        d.setGiaTriDaSuDung(h.getGiaTriDaSuDung() != null ? h.getGiaTriDaSuDung() : BigDecimal.ZERO);
         d.setDieuKhoanThanhToan(h.getDieuKhoanThanhToan());
         d.setSoNgayDuocNo(h.getSoNgayDuocNo());
         d.setNoiDung(h.getNoiDung());
@@ -286,6 +374,29 @@ public class HopDongService {
             d.setMaNcc(ncc.getMaNcc());
             d.setTenNcc(ncc.getTenNcc());
         });
+
+        List<com.erp.cuahangtienloi.dto.HopDongChiTietDTO> lines =
+                hopDongChiTietRepository.findByIdHopDong(h.getId()).stream().map(ct -> {
+                    com.erp.cuahangtienloi.dto.HopDongChiTietDTO lineDto = new com.erp.cuahangtienloi.dto.HopDongChiTietDTO();
+                    lineDto.setId(ct.getId());
+                    lineDto.setIdHopDong(ct.getIdHopDong());
+                    lineDto.setIdSanPham(ct.getIdSanPham());
+                    lineDto.setDonGiaCamKet(ct.getDonGiaCamKet());
+                    lineDto.setSoLuongCamKet(ct.getSoLuongCamKet());
+                    lineDto.setSoLuongDaNhap(ct.getSoLuongDaNhap());
+                    lineDto.setVatPhantram(ct.getVatPhantram());
+                    lineDto.setNgayHieuLucTu(ct.getNgayHieuLucTu());
+                    lineDto.setNgayHetHan(ct.getNgayHetHan());
+                    lineDto.setGhiChu(ct.getGhiChu());
+                    sanPhamRepository.findById(ct.getIdSanPham()).ifPresent(sp -> {
+                        lineDto.setTenSanPham(sp.getTenSanPham());
+                        lineDto.setSku(sp.getSku());
+                        lineDto.setDonVi(sp.getDonVi());
+                    });
+                    return lineDto;
+                }).toList();
+        d.setLines(lines);
+
         return d;
     }
 

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,6 +25,7 @@ public class SanPhamNhaCungCapService {
     private final SanPhamNhaCungCapRepository sanPhamNccRepository;
     private final SanPhamRepository sanPhamRepository;
     private final NhaCungCapRepository nhaCungCapRepository;
+    private final com.erp.cuahangtienloi.repository.GiaNhapNccRepository giaNhapNccRepository;
 
     @Transactional(readOnly = true)
     public List<SanPhamNhaCungCapDTO> getSuppliersOfProduct(UUID productId) {
@@ -76,13 +78,32 @@ public class SanPhamNhaCungCapService {
                         .idNhaCungCap(request.getIdNhaCungCap())
                         .build());
 
+        BigDecimal oldPrice = entity.getGiaNhap();
+        BigDecimal newPrice = request.getGiaNhap() != null ? request.getGiaNhap() : BigDecimal.ZERO;
+        boolean priceChanged = oldPrice == null || oldPrice.compareTo(newPrice) != 0;
+
         entity.setMaSanPhamNcc(request.getMaSanPhamNcc());
-        entity.setGiaNhap(request.getGiaNhap() != null ? request.getGiaNhap() : BigDecimal.ZERO);
+        entity.setGiaNhap(newPrice);
         entity.setLaNccChinh(makePrimary);
         entity.setGhiChu(request.getGhiChu());
         entity.setNgayCapNhat(LocalDateTime.now());
 
         SanPhamNhaCungCap saved = sanPhamNccRepository.save(entity);
+
+        if (priceChanged && newPrice.signum() > 0) {
+            com.erp.cuahangtienloi.entity.GiaNhapNcc priceLog = com.erp.cuahangtienloi.entity.GiaNhapNcc.builder()
+                    .id(UUID.randomUUID())
+                    .idSanPham(productId)
+                    .idNhaCungCap(request.getIdNhaCungCap())
+                    .giaNhap(newPrice)
+                    .ngayHieuLucTu(LocalDate.now())
+                    .dangApDung(true)
+                    .ghiChu("Cập nhật giá từ màn hình thiết lập nguồn cung")
+                    .ngayTao(LocalDateTime.now())
+                    .ngayCapNhat(LocalDateTime.now())
+                    .build();
+            giaNhapNccRepository.save(priceLog);
+        }
 
         return SanPhamNhaCungCapDTO.builder()
                 .id(saved.getId())
@@ -148,13 +169,18 @@ public class SanPhamNhaCungCapService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getProductsSuppliedBy(UUID nccId) {
         List<SanPhamNhaCungCap> links = sanPhamNccRepository.findByIdNhaCungCap(nccId);
-        if (links.isEmpty()) {
+        Set<UUID> linkedProductIds = links.stream().map(SanPhamNhaCungCap::getIdSanPham).collect(Collectors.toSet());
+
+        List<SanPham> primaryProducts = sanPhamRepository.findAll().stream()
+                .filter(p -> nccId.equals(p.getIdNhaCungCap()) && !linkedProductIds.contains(p.getId()))
+                .collect(Collectors.toList());
+
+        if (links.isEmpty() && primaryProducts.isEmpty()) {
             return Collections.emptyList();
         }
 
-        Map<UUID, SanPham> productMap = sanPhamRepository.findAllById(
-                links.stream().map(SanPhamNhaCungCap::getIdSanPham).collect(Collectors.toSet())
-        ).stream().collect(Collectors.toMap(SanPham::getId, p -> p));
+        Map<UUID, SanPham> productMap = sanPhamRepository.findAllById(linkedProductIds)
+                .stream().collect(Collectors.toMap(SanPham::getId, p -> p));
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (SanPhamNhaCungCap link : links) {
@@ -175,6 +201,28 @@ public class SanPhamNhaCungCapService {
             item.put("laNccChinh", link.getLaNccChinh());
             result.add(item);
         }
+
+        for (SanPham p : primaryProducts) {
+            if (!Boolean.TRUE.equals(p.getDangHoatDong())) continue;
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", p.getId());
+            item.put("sku", p.getSku());
+            item.put("maVach", p.getMaVach());
+            item.put("tenSanPham", p.getTenSanPham());
+            item.put("donVi", p.getDonVi());
+            item.put("vatPhantram", p.getVatPhantram());
+            item.put("imageUrl", p.getImageUrl());
+            item.put("giaNhapNcc", p.getGiaVon());
+            item.put("maSanPhamNcc", null);
+            item.put("laNccChinh", true);
+            result.add(item);
+        }
+
         return result;
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.erp.cuahangtienloi.entity.GiaNhapNcc> getPriceHistory(UUID productId, UUID nccId) {
+        return giaNhapNccRepository.findByIdSanPhamAndIdNhaCungCapOrderByNgayHieuLucTuDesc(productId, nccId);
     }
 }

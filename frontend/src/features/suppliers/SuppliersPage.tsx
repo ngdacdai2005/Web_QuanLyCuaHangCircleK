@@ -8,16 +8,19 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   AuditOutlined,
   DeleteOutlined,
-  EditOutlined, FileTextOutlined,
+  EditOutlined,
+  FileTextOutlined,
   MailOutlined,
   PhoneOutlined,
   PlusOutlined,
+  ShopOutlined,
 } from '@ant-design/icons';
 import { PageHeader } from '@/components/PageHeader';
 import { SummaryStrip, type SummaryItem } from '@/components/SummaryStrip';
@@ -25,6 +28,7 @@ import { TableToolbar, type ToolbarFilter } from '@/components/TableToolbar';
 import { BRAND } from '@/config/brand';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchHopDongCounts } from '@/store/slices/hopDongSlice';
+import { fetchProducts } from '@/store/slices/productSlice';
 import {
   deleteSupplierThunk,
   fetchSuppliers,
@@ -41,6 +45,7 @@ import { exportToExcel } from '@/utils/exportUtils';
 import { SupplierFormModal } from './components/SupplierFormModal';
 import { InactiveSuppliersModal } from './components/InactiveSuppliersModal';
 import SupplierContractsDrawer from './components/SupplierContractsDrawer';
+import { SupplierProductsDrawer } from './components/SupplierProductsDrawer';
 import './SuppliersPage.css';
 
 const { Text } = Typography;
@@ -68,6 +73,7 @@ export const SuppliersPage: FC = () => {
   const counts = useAppSelector((state) => state.hopDong.counts);
   const [reportOpen, setReportOpen] = useState(false);
   const [contractsFor, setContractsFor] = useState<Supplier | null>(null);
+  const [productsFor, setProductsFor] = useState<Supplier | null>(null);
 
   useEffect(() => {
     dispatch(fetchSuppliers());
@@ -227,9 +233,16 @@ export const SuppliersPage: FC = () => {
       align: 'center',
       width: 90,
       render: (_, row) => (
-        <Text strong className="numeric-cell">
-          {skuCountMap.get(row.id) ?? 0}
-        </Text>
+        <Tooltip title="Xem & gán sản phẩm cung ứng">
+          <Button
+            type="link"
+            size="small"
+            style={{ fontWeight: 600, padding: 0 }}
+            onClick={() => setProductsFor(row)}
+          >
+            {skuCountMap.get(row.id) ?? 0}
+          </Button>
+        </Tooltip>
       ),
     },
     {
@@ -357,21 +370,31 @@ export const SuppliersPage: FC = () => {
       title: '',
       key: 'actions',
       align: 'center',
-      width: 130,
+      width: 160,
       fixed: 'right',
       render: (_, row) => (
         <Space size={0}>
-          <Button
+          <Tooltip title="Sản phẩm cung ứng">
+            <Button
+              type="text"
+              icon={<ShopOutlined />}
+              onClick={() => setProductsFor(row)}
+            />
+          </Tooltip>
+          <Tooltip title="Xem hợp đồng của NCC">
+            <Button
               type="text"
               icon={<FileTextOutlined />}
               onClick={() => setContractsFor(row)}
-              title="Xem hợp đồng của NCC"
-          />
-          <Button
-            type="text"
-            icon={<EditOutlined className="action-edit-icon" />}
-            onClick={() => handleEdit(row)}
-          />
+            />
+          </Tooltip>
+          <Tooltip title="Chỉnh sửa NCC">
+            <Button
+              type="text"
+              icon={<EditOutlined className="action-edit-icon" />}
+              onClick={() => handleEdit(row)}
+            />
+          </Tooltip>
           <Popconfirm
             title="Xoá nhà cung cấp?"
             description={`Xoá "${row.name}" khỏi danh sách đối tác?`}
@@ -484,6 +507,16 @@ export const SuppliersPage: FC = () => {
       <SupplierContractsDrawer
           supplier={contractsFor}
           onClose={() => setContractsFor(null)}
+      />
+
+      <SupplierProductsDrawer
+          supplier={productsFor}
+          open={productsFor !== null}
+          onClose={() => setProductsFor(null)}
+          onUpdated={() => {
+              dispatch(fetchSuppliers());
+              dispatch(fetchProducts());
+          }}
       />
     </>
   );
