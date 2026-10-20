@@ -66,7 +66,7 @@ public class ChiNhanhService {
     @Transactional
     public ChiNhanhResponseDTO create(ChiNhanhRequestDTO request) {
         if (request.getMaChiNhanh() == null || request.getMaChiNhanh().trim().isEmpty()) {
-            request.setMaChiNhanh(generateNextMaChiNhanh());
+            request.setMaChiNhanh(generateNextMaChiNhanh(request.getLoai(), request.getVungMien()));
         } else {
             request.setMaChiNhanh(requireText(request.getMaChiNhanh(), "Mã chi nhánh", 1, 50));
         }
@@ -206,14 +206,32 @@ public class ChiNhanhService {
     }
 
     public String generateNextMaChiNhanh() {
+        return generateNextMaChiNhanh("CUA_HANG_BAN_LE", "SOUTH");
+    }
+
+    public String generateNextMaChiNhanh(String loai, String vungMien) {
+        boolean isDC = "KHO_TONG".equalsIgnoreCase(loai) || "DISTRIBUTION_CENTER".equalsIgnoreCase(loai);
+        String kindPrefix = isDC ? "DC" : "CK";
+
+        String regionPrefix = "MN";
+        if (vungMien != null) {
+            String upper = vungMien.toUpperCase();
+            if (upper.contains("NORTH") || upper.contains("BAC") || upper.contains("BẮC")) {
+                regionPrefix = "MB";
+            } else if (upper.contains("CENTRAL") || upper.contains("TRUNG")) {
+                regionPrefix = "MT";
+            }
+        }
+
+        String prefix = kindPrefix + "-" + regionPrefix;
         List<ChiNhanh> all = chiNhanhRepository.findAll();
-        int max = 100;
+        int max = 0;
         for (ChiNhanh cn : all) {
             String code = cn.getMaChiNhanh();
             if (code != null) {
                 String trimmed = code.trim().toUpperCase();
-                if (trimmed.startsWith("CK-")) {
-                    String sub = trimmed.substring(3);
+                if (trimmed.startsWith(prefix + "-")) {
+                    String sub = trimmed.substring((prefix + "-").length());
                     try {
                         int val = Integer.parseInt(sub);
                         if (val > max) max = val;
@@ -222,10 +240,10 @@ public class ChiNhanhService {
             }
         }
         int nextVal = max + 1;
-        String nextCode = String.format("CK-%04d", nextVal);
+        String nextCode = String.format("%s-%02d", prefix, nextVal);
         while (chiNhanhRepository.findByMaChiNhanh(nextCode).isPresent()) {
             nextVal++;
-            nextCode = String.format("CK-%04d", nextVal);
+            nextCode = String.format("%s-%02d", prefix, nextVal);
         }
         return nextCode;
     }

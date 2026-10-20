@@ -27,6 +27,7 @@ import {
   type BranchFormValues,
 } from '@/types';
 import { COMMON_PATTERNS } from '@/utils/apiError';
+import { generateNextBranchCode } from '@/utils/branchUtils';
 import './BranchFormModal.css';
 
 const KIND_OPTIONS = Object.values(BRANCH_KIND).map((kind) => ({
@@ -46,27 +47,6 @@ const STATUS_OPTIONS = [
 
 type BranchEditorValues = BranchFormValues & { managerId?: string };
 
-const generateNextBranchCode = (branches: Array<{ code: string }>): string => {
-  let maxNum = 100;
-  for (const b of branches) {
-    if (!b.code) continue;
-    const match = b.code.trim().match(/^CK-(\d+)$/i);
-    if (match) {
-      const num = parseInt(match[1], 10);
-      if (!isNaN(num) && num > maxNum) {
-        maxNum = num;
-      }
-    }
-  }
-  let nextNum = maxNum + 1;
-  let candidate = `CK-${String(nextNum).padStart(4, '0')}`;
-  while (branches.some((b) => b.code?.toUpperCase() === candidate)) {
-    nextNum += 1;
-    candidate = `CK-${String(nextNum).padStart(4, '0')}`;
-  }
-  return candidate;
-};
-
 export const BranchFormModal: FC = () => {
   const [form] = Form.useForm<BranchEditorValues>();
   const dispatch = useAppDispatch();
@@ -79,6 +59,7 @@ export const BranchFormModal: FC = () => {
   const employees = useAppSelector((state) => state.employee.employees);
   const branches = useAppSelector((state) => state.branch.branches);
   const selectedKind = Form.useWatch('kind', form);
+  const selectedRegion = Form.useWatch('region', form);
   const selectedStatus = Form.useWatch('status', form);
 
   useEffect(() => {
@@ -89,16 +70,27 @@ export const BranchFormModal: FC = () => {
       return;
     }
     form.resetFields();
-    
-    const autoCode = generateNextBranchCode(branches);
-    
+
+    const initialKind = BRANCH_KIND.Store;
+    const initialRegion = REGION.South;
+    const autoCode = generateNextBranchCode(initialKind, initialRegion, branches);
+
     form.setFieldsValue({
       code: autoCode,
-      kind: BRANCH_KIND.Store,
+      kind: initialKind,
       status: RECORD_STATUS.Active,
-      region: REGION.South,
+      region: initialRegion,
     });
   }, [isModalOpen, selectedBranch, branches, form]);
+
+  // Tự động sinh lại mã chi nhánh khi đổi Loại điểm hoặc Vùng miền (khi tạo mới)
+  useEffect(() => {
+    if (!isModalOpen || isEditing) return;
+    if (selectedKind && selectedRegion) {
+      const nextCode = generateNextBranchCode(selectedKind, selectedRegion, branches);
+      form.setFieldValue('code', nextCode);
+    }
+  }, [selectedKind, selectedRegion, isModalOpen, isEditing, branches, form]);
 
   const handleSubmit = async (): Promise<void> => {
     try {
@@ -144,27 +136,6 @@ export const BranchFormModal: FC = () => {
         <Row gutter={16}>
           <Col xs={24} md={12}>
             <Form.Item
-              name="code"
-              label="Mã chi nhánh"
-              rules={[{ required: true, message: 'Vui lòng nhập mã chi nhánh.' }]}
-            >
-              <Input placeholder="VD: CK-0101" disabled />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item
-              name="name"
-              label="Tên điểm bán"
-              rules={[{ required: true, message: 'Vui lòng nhập tên.' }]}
-            >
-              <Input placeholder="Tên chi nhánh" />
-            </Form.Item>
-          </Col>
-        </Row>
-
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Form.Item
               name="kind"
               label="Loại điểm"
               rules={[{ required: true, message: 'Chọn loại điểm.' }]}
@@ -179,6 +150,28 @@ export const BranchFormModal: FC = () => {
               rules={[{ required: true, message: 'Chọn vùng miền.' }]}
             >
               <Select options={REGION_OPTIONS} />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="code"
+              label="Mã chi nhánh"
+              extra="Tự động sinh theo Loại điểm & Vùng miền (VD: CK-MB-01, DC-MN-01)"
+              rules={[{ required: true, message: 'Vui lòng nhập mã chi nhánh.' }]}
+            >
+              <Input placeholder="VD: CK-MN-01" disabled />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="name"
+              label="Tên điểm bán"
+              rules={[{ required: true, message: 'Vui lòng nhập tên.' }]}
+            >
+              <Input placeholder="Tên chi nhánh" />
             </Form.Item>
           </Col>
         </Row>
