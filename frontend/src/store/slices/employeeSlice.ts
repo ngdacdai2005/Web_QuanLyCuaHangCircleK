@@ -130,6 +130,10 @@ export const updateEmployeeThunk = createAsyncThunk(
       soTaiKhoan: values.bankAccount,
       tenNganHang: values.bankName,
       ngayVaoLam: values.joinedAt,
+      // Account fields
+      taoTaiKhoan: values.createAccount,
+      tenDangNhap: values.username,
+      matKhau: values.initialPassword,
     };
     const data = await nhanVienApi.update(id, dto);
     return mapDtoToEmployee(data);

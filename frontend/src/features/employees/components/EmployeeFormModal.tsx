@@ -13,6 +13,7 @@ import {
   Select,
   Space,
   Switch,
+  Tag,
   Typography,
 } from 'antd';
 import {
@@ -154,9 +155,16 @@ export const EmployeeFormModal: FC = () => {
     }
   }, [watchPosition, form]);
 
+  // Tải chi nhánh nếu chưa có khi mở modal
+  useEffect(() => {
+    if (isModalOpen && branches.length === 0) {
+      dispatch(fetchBranches());
+    }
+  }, [isModalOpen, branches.length, dispatch]);
+
+  // Khởi tạo dữ liệu form CHỈ khi modal mở hoặc selectedEmployee thay đổi
   useEffect(() => {
     if (!isModalOpen) return;
-    dispatch(fetchBranches());
     setCurrentStep(0);
 
     if (selectedEmployee !== null) {
@@ -165,8 +173,9 @@ export const EmployeeFormModal: FC = () => {
         dateOfBirth: selectedEmployee.dateOfBirth ? (dayjs(selectedEmployee.dateOfBirth) as any) : undefined,
         joinedAt: selectedEmployee.joinedAt ? (dayjs(selectedEmployee.joinedAt) as any) : undefined,
         citizenIdDate: selectedEmployee.citizenIdDate ? (dayjs(selectedEmployee.citizenIdDate) as any) : undefined,
-        createAccount: false,
+        createAccount: selectedEmployee.hasAccount,
         username: selectedEmployee.accountUsername || '',
+        initialPassword: '',
       });
       return;
     }
@@ -192,7 +201,8 @@ export const EmployeeFormModal: FC = () => {
       username: autoCode.toLowerCase(),
       initialPassword: '',
     });
-  }, [isModalOpen, selectedEmployee, employees, branches, isManager, user, form, dispatch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isModalOpen, selectedEmployee]);
 
   const handlePositionChange = (position: string) => {
     const role = POSITION_ROLE_MAP[position] || USER_ROLE.Cashier;
@@ -225,7 +235,7 @@ export const EmployeeFormModal: FC = () => {
       } else if (currentStep === 1) {
         await form.validateFields(['code', 'position', 'employmentType', 'branchId', 'joinedAt', 'defaultShift']);
       } else if (currentStep === 2) {
-        if (createAccount) {
+        if (createAccount || (isEditing && selectedEmployee?.hasAccount)) {
           await form.validateFields(['username']);
         }
       } else if (currentStep === 3) {
@@ -244,6 +254,28 @@ export const EmployeeFormModal: FC = () => {
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
+
+      // Xác thực dữ liệu trước khi gửi
+      try {
+        await form.validateFields();
+      } catch (validationErr: any) {
+        if (validationErr?.errorFields?.length > 0) {
+          const fieldName = validationErr.errorFields[0].name[0];
+          if (['fullName', 'phone', 'email', 'citizenId', 'gender'].includes(fieldName)) {
+            setCurrentStep(0);
+          } else if (['code', 'position', 'employmentType', 'branchId', 'joinedAt', 'defaultShift', 'baseSalary', 'hourlyWage'].includes(fieldName)) {
+            setCurrentStep(1);
+          } else if (['username', 'initialPassword'].includes(fieldName)) {
+            setCurrentStep(2);
+          } else if (['status'].includes(fieldName)) {
+            setCurrentStep(3);
+          }
+          message.warning(`Vui lòng kiểm tra: ${validationErr.errorFields[0].errors[0]}`);
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const rawValues = form.getFieldsValue(true);
       const formattedValues: any = {
         ...rawValues,
@@ -292,13 +324,21 @@ export const EmployeeFormModal: FC = () => {
           {WIZARD_STEPS.map((s) => {
             const isCompleted = currentStep > s.step;
             const isActive = currentStep === s.step;
+            const canClick = currentStep > s.step; // Chỉ cho phép quay lại bước đã hoàn thành
             return (
               <div
                 key={s.step}
-                className={`wizard-step-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}
+                className={`wizard-step-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''} ${!canClick && !isActive ? 'disabled' : ''}`}
                 onClick={() => {
-                  if (currentStep > s.step) setCurrentStep(s.step);
+                  if (canClick) setCurrentStep(s.step);
                 }}
+                title={
+                  canClick
+                    ? `Quay lại ${s.title}`
+                    : isActive
+                      ? s.title
+                      : 'Hoàn thành bước hiện tại và nhấn "Tiếp tục >" để mở khóa'
+                }
               >
                 <div className="wizard-step-badge">
                   {isCompleted ? <CheckOutlined /> : s.step + 1}
@@ -318,125 +358,123 @@ export const EmployeeFormModal: FC = () => {
             </Form.Item>
 
             {/* BƯỚC 1: Thông tin cá nhân */}
-            {currentStep === 0 && (
-              <div>
-                <div className="wizard-step-header">
-                  <h3 className="wizard-step-title">Thông tin cá nhân</h3>
-                  <div className="wizard-step-desc">Điền đầy đủ họ tên, thông tin liên hệ và định danh cá nhân</div>
-                </div>
-
-                {/* Avatar preview & input URL */}
-                <div className="avatar-upload-section">
-                  <div className="avatar-preview-box">
-                    {watchAvatarUrl ? (
-                      <img src={watchAvatarUrl} alt="Avatar preview" />
-                    ) : (
-                      watchFullName?.charAt(0)?.toUpperCase() || <UserOutlined />
-                    )}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <Form.Item name="avatarUrl" label="Link ảnh đại diện (URL)" style={{ marginBottom: 0 }}>
-                      <Input placeholder="https://example.com/avatar.jpg" />
-                    </Form.Item>
-                  </div>
-                </div>
-
-                <Row gutter={16}>
-                  <Col span={14}>
-                    <Form.Item
-                      name="fullName"
-                      label="Họ và tên"
-                      rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}
-                    >
-                      <Input placeholder="VD: Nguyễn Văn A" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={10}>
-                    <Form.Item name="gender" label="Giới tính">
-                      <Select options={GENDER_OPTIONS} />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="phone"
-                      label="Số điện thoại"
-                      rules={[{ required: true, message: 'Vui lòng nhập SĐT' }]}
-                    >
-                      <Input placeholder="VD: 0912345678" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="email"
-                      label="Email"
-                      rules={[
-                        { required: true, message: 'Vui lòng nhập email' },
-                        { type: 'email', message: 'Email không hợp lệ' },
-                      ]}
-                    >
-                      <Input placeholder="VD: annguyen@circlek.vn" onBlur={handleEmailBlur} />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={16}>
-                  <Col span={8}>
-                    <Form.Item name="citizenId" label="Số CCCD (12 số)">
-                      <Input placeholder="Nhập 12 số CCCD" maxLength={12} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item name="citizenIdDate" label="Ngày cấp">
-                      <DatePicker style={{ width: '100%' }} placeholder="dd/mm/yyyy" format="DD/MM/YYYY" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item name="citizenIdPlace" label="Nơi cấp">
-                      <Input placeholder="VD: Cục CS QLHC..." />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item name="permanentAddress" label="Địa chỉ thường trú">
-                      <Input placeholder="Nhập địa chỉ thường trú" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item name="currentAddress" label="Địa chỉ hiện tại">
-                      <Input placeholder="Nhập địa chỉ hiện tại" />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item name="note" label="Ghi chú">
-                  <Input.TextArea rows={2} placeholder="Nhập ghi chú thêm (nếu có)..." />
-                </Form.Item>
+            <div style={{ display: currentStep === 0 ? 'block' : 'none' }}>
+              <div className="wizard-step-header">
+                <h3 className="wizard-step-title">Thông tin cá nhân</h3>
+                <div className="wizard-step-desc">Điền đầy đủ họ tên, thông tin liên hệ và định danh cá nhân</div>
               </div>
-            )}
+
+              {/* Avatar preview & input URL */}
+              <div className="avatar-upload-section">
+                <div className="avatar-preview-box">
+                  {watchAvatarUrl ? (
+                    <img src={watchAvatarUrl} alt="Avatar preview" />
+                  ) : (
+                    watchFullName?.charAt(0)?.toUpperCase() || <UserOutlined />
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <Form.Item name="avatarUrl" label="Link ảnh đại diện (URL)" style={{ marginBottom: 0 }}>
+                    <Input placeholder="https://example.com/avatar.jpg" />
+                  </Form.Item>
+                </div>
+              </div>
+
+              <Row gutter={16}>
+                <Col span={14}>
+                  <Form.Item
+                    name="fullName"
+                    label="Họ và tên"
+                    rules={[{ required: true, message: 'Vui lòng nhập họ và tên' }]}
+                  >
+                    <Input placeholder="VD: Nguyễn Văn A" />
+                  </Form.Item>
+                </Col>
+                <Col span={10}>
+                  <Form.Item name="gender" label="Giới tính">
+                    <Select options={GENDER_OPTIONS} />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="phone"
+                    label="Số điện thoại"
+                    rules={[{ required: true, message: 'Vui lòng nhập SĐT' }]}
+                  >
+                    <Input placeholder="VD: 0912345678" />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    name="email"
+                    label="Email"
+                    rules={[
+                      { required: true, message: 'Vui lòng nhập email' },
+                      { type: 'email', message: 'Email không hợp lệ' },
+                    ]}
+                  >
+                    <Input placeholder="VD: annguyen@circlek.vn" onBlur={handleEmailBlur} />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Form.Item name="citizenId" label="Số CCCD (12 số)">
+                    <Input placeholder="Nhập 12 số CCCD" maxLength={12} />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item name="citizenIdDate" label="Ngày cấp">
+                    <DatePicker style={{ width: '100%' }} placeholder="dd/mm/yyyy" format="DD/MM/YYYY" />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item name="citizenIdPlace" label="Nơi cấp">
+                    <Input placeholder="VD: Cục CS QLHC..." />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item name="permanentAddress" label="Địa chỉ thường trú">
+                    <Input placeholder="Nhập địa chỉ thường trú" />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="currentAddress" label="Địa chỉ hiện tại">
+                    <Input placeholder="Nhập địa chỉ hiện tại" />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Form.Item name="note" label="Ghi chú">
+                <Input.TextArea rows={2} placeholder="Nhập ghi chú thêm (nếu có)..." />
+              </Form.Item>
+            </div>
 
             {/* BƯỚC 2: Thông tin công việc */}
-            {currentStep === 1 && (
-              <div>
-                <div className="wizard-step-header">
-                  <h3 className="wizard-step-title">Thông tin công việc</h3>
-                  <div className="wizard-step-desc">Thiết lập chi nhánh, chức vụ, hợp đồng và chế độ đãi ngộ</div>
-                </div>
+            <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>
+              <div className="wizard-step-header">
+                <h3 className="wizard-step-title">Thông tin công việc</h3>
+                <div className="wizard-step-desc">Thiết lập chi nhánh, chức vụ, hợp đồng và chế độ đãi ngộ</div>
+              </div>
 
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="code"
-                      label="Mã nhân viên"
-                      rules={[{ required: true, message: 'Vui lòng nhập mã NV' }]}
-                    >
-                      <Input placeholder="VD: NV-0001" disabled />
-                    </Form.Item>
-                  </Col>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    name="code"
+                    label="Mã nhân viên"
+                    tooltip="Mã nhân viên tự động sinh theo mẫu NV-XXXX. Bạn có thể chỉnh sửa nếu có mã riêng."
+                    rules={[{ required: true, message: 'Vui lòng nhập mã NV' }]}
+                  >
+                    <Input placeholder="VD: NV-0001" />
+                  </Form.Item>
+                </Col>
                   <Col span={12}>
                     <Form.Item
                       name="employmentType"
@@ -558,30 +596,40 @@ export const EmployeeFormModal: FC = () => {
                     </Form.Item>
                   </Col>
                 </Row>
-              </div>
-            )}
+            </div>
 
             {/* BƯỚC 3: Thông tin tài khoản */}
-            {currentStep === 2 && (
-              <div>
-                <div className="wizard-step-header">
-                  <h3 className="wizard-step-title">Thông tin tài khoản</h3>
-                  <div className="wizard-step-desc">Thiết lập tài khoản đăng nhập và phân quyền hệ thống cho nhân viên</div>
+            <div style={{ display: currentStep === 2 ? 'block' : 'none' }}>
+              <div className="wizard-step-header">
+                <h3 className="wizard-step-title">Thông tin tài khoản</h3>
+                <div className="wizard-step-desc">Thiết lập tài khoản đăng nhập và phân quyền hệ thống cho nhân viên</div>
+              </div>
+
+              {(!isEditing || !selectedEmployee?.hasAccount) && (
+                <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Form.Item name="createAccount" valuePropName="checked" noStyle>
+                    <Switch />
+                  </Form.Item>
+                  <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                    {isEditing ? 'Cấp tài khoản đăng nhập cho nhân viên này' : 'Cấp tài khoản đăng nhập cho nhân viên này ngay bây giờ'}
+                  </span>
                 </div>
+              )}
 
-                {!isEditing && (
-                  <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <Form.Item name="createAccount" valuePropName="checked" noStyle>
-                      <Switch />
-                    </Form.Item>
-                    <span style={{ fontWeight: 600, color: '#0f172a' }}>
-                      Cấp tài khoản đăng nhập cho nhân viên này ngay bây giờ
-                    </span>
-                  </div>
-                )}
+              {isEditing && selectedEmployee?.hasAccount && (
+                <div style={{ marginBottom: 16 }}>
+                  <Space align="center" size={8}>
+                    <Text strong>Trạng thái tài khoản:</Text>
+                    <Tag color={selectedEmployee.accountStatus === 'ACTIVE' ? 'green' : 'error'}>
+                      {selectedEmployee.accountStatus === 'ACTIVE' ? 'Đang hoạt động' : 'Đã khóa'}
+                    </Tag>
+                  </Space>
+                </div>
+              )}
 
-                {createAccount || isEditing ? (
-                  <>
+              {createAccount || (isEditing && selectedEmployee?.hasAccount) ? (
+                <>
+                  {!isEditing && (
                     <Alert
                       className="account-init-alert"
                       icon={<KeyOutlined style={{ color: '#d97706', fontSize: 18 }} />}
@@ -589,193 +637,192 @@ export const EmployeeFormModal: FC = () => {
                       message="Mật khẩu khởi tạo"
                       description="Có thể để trống để hệ thống cấp mật khẩu mặc định: ChangeMe@123"
                     />
+                  )}
 
-                    <Form.Item
-                      name="username"
-                      label="Tên đăng nhập"
-                      rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập' }]}
-                    >
-                      <Input
-                        prefix={<UserOutlined style={{ color: '#94a3b8' }} />}
-                        placeholder="VD: annguyen hoặc nv-0001"
-                      />
-                    </Form.Item>
+                  <Form.Item
+                    name="username"
+                    label="Tên đăng nhập"
+                    rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập' }]}
+                  >
+                    <Input
+                      prefix={<UserOutlined style={{ color: '#94a3b8' }} />}
+                      placeholder="VD: annguyen hoặc nv-0001"
+                    />
+                  </Form.Item>
 
-                    {!isEditing && (
-                      <Form.Item
-                        name="initialPassword"
-                        label="Mật khẩu khởi tạo (tùy chọn)"
-                      >
-                        <Input.Password
-                          prefix={<LockOutlined style={{ color: '#94a3b8' }} />}
-                          placeholder="Mặc định: ChangeMe@123 (ít nhất 8 ký tự nếu nhập)"
-                        />
-                      </Form.Item>
-                    )}
+                  <Form.Item
+                    name="initialPassword"
+                    label={isEditing ? 'Mật khẩu mới (để trống nếu giữ nguyên)' : 'Mật khẩu khởi tạo (tùy chọn)'}
+                    extra={isEditing ? 'Để trống nếu không muốn đổi mật khẩu. Nhập tối thiểu 6 ký tự nếu muốn cấp lại.' : 'Mặc định: ChangeMe@123 nếu để trống'}
+                  >
+                    <Input.Password
+                      prefix={<LockOutlined style={{ color: '#94a3b8' }} />}
+                      placeholder={isEditing ? 'Nhập mật khẩu mới...' : 'Mặc định: ChangeMe@123'}
+                    />
+                  </Form.Item>
 
-                    <Form.Item label="Vai trò / Quyền hạn được cấp">
-                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                        <Button type="primary" ghost size="middle">
-                          {USER_ROLE_LABEL[effectiveRole] || effectiveRole} ({effectiveRole})
-                        </Button>
-                      </div>
-                      <Text type="secondary" style={{ fontSize: 12, marginTop: 6, display: 'block' }}>
-                        * Vai trò được tự động phân quyền theo chức danh công việc ở Bước 2.
-                      </Text>
-                    </Form.Item>
-                  </>
-                ) : (
-                  <Alert
-                    type="info"
-                    message="Không tạo tài khoản"
-                    description="Nhân viên này sẽ chỉ được lưu hồ sơ nhân sự mà không thể đăng nhập vào hệ thống ERP. Bạn có thể cấp tài khoản bổ sung sau."
-                    showIcon
-                  />
-                )}
-              </div>
-            )}
+                  <Form.Item label="Vai trò / Quyền hạn được cấp">
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <Tag color="blue" style={{ fontSize: 13, padding: '4px 12px', fontWeight: 600 }}>
+                        {USER_ROLE_LABEL[effectiveRole] || effectiveRole} ({effectiveRole})
+                      </Tag>
+                    </div>
+                    <Text type="secondary" style={{ fontSize: 12, marginTop: 6, display: 'block' }}>
+                      * Vai trò được tự động phân quyền theo chức danh công việc ở Bước 2.
+                    </Text>
+                  </Form.Item>
+                </>
+              ) : (
+                <Alert
+                  type="info"
+                  message="Không cấp tài khoản đăng nhập"
+                  description="Nhân viên này sẽ chỉ được lưu hồ sơ nhân sự mà không thể đăng nhập vào hệ thống ERP. Bạn có thể bật công tắc phía trên để cấp tài khoản bất cứ lúc nào."
+                  showIcon
+                />
+              )}
+            </div>
 
             {/* BƯỚC 4: Thông tin khác */}
-            {currentStep === 3 && (
-              <div>
-                <div className="wizard-step-header">
-                  <h3 className="wizard-step-title">Thông tin khác</h3>
-                  <div className="wizard-step-desc">Thiết lập tài khoản ngân hàng nhận lương và trạng thái làm việc</div>
-                </div>
-
-                <Form.Item
-                  name="status"
-                  label="Trạng thái làm việc"
-                  rules={[{ required: true, message: 'Chọn trạng thái' }]}
-                >
-                  <Select options={STATUS_OPTIONS} />
-                </Form.Item>
-
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item name="bankName" label="Tên Ngân hàng">
-                      <Input placeholder="VD: Vietcombank, MB Bank, Techcombank..." />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item name="bankAccount" label="Số tài khoản">
-                      <Input placeholder="Số tài khoản nhận lương" />
-                    </Form.Item>
-                  </Col>
-                </Row>
+            <div style={{ display: currentStep === 3 ? 'block' : 'none' }}>
+              <div className="wizard-step-header">
+                <h3 className="wizard-step-title">Thông tin khác</h3>
+                <div className="wizard-step-desc">Thiết lập tài khoản ngân hàng nhận lương và trạng thái làm việc</div>
               </div>
-            )}
+
+              <Form.Item
+                name="status"
+                label="Trạng thái làm việc"
+                rules={[{ required: true, message: 'Chọn trạng thái' }]}
+              >
+                <Select options={STATUS_OPTIONS} />
+              </Form.Item>
+
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item name="bankName" label="Tên Ngân hàng">
+                    <Input placeholder="VD: Vietcombank, MB Bank, Techcombank..." />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="bankAccount" label="Số tài khoản">
+                    <Input placeholder="Số tài khoản nhận lương" />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </div>
 
             {/* BƯỚC 5: Xác nhận thông tin */}
-            {currentStep === 4 && (
-              <div>
-                <div className="confirm-header-box">
-                  <CheckCircleFilled className="confirm-success-icon" />
-                  <div className="confirm-title">Xác nhận thông tin</div>
-                  <div className="confirm-subtitle">Vui lòng kiểm tra lại toàn bộ thông tin trước khi lưu hồ sơ</div>
+            <div style={{ display: currentStep === 4 ? 'block' : 'none' }}>
+              <div className="confirm-header-box">
+                <CheckCircleFilled className="confirm-success-icon" />
+                <div className="confirm-title">Xác nhận thông tin</div>
+                <div className="confirm-subtitle">Vui lòng kiểm tra lại toàn bộ thông tin trước khi lưu hồ sơ</div>
+              </div>
+
+              <div className="confirm-grid">
+                <div className="confirm-card">
+                  <div className="confirm-card-title">Thông tin cơ bản</div>
+                  <div className="confirm-card-row">
+                    <span className="confirm-card-label">Họ và tên:</span>
+                    <span className="confirm-card-value">{currentValues.fullName || '—'}</span>
+                  </div>
+                  <div className="confirm-card-row">
+                    <span className="confirm-card-label">Giới tính:</span>
+                    <span className="confirm-card-value">{currentValues.gender || '—'}</span>
+                  </div>
+                  <div className="confirm-card-row">
+                    <span className="confirm-card-label">SĐT:</span>
+                    <span className="confirm-card-value">{currentValues.phone || '—'}</span>
+                  </div>
+                  <div className="confirm-card-row">
+                    <span className="confirm-card-label">Email:</span>
+                    <span className="confirm-card-value">{currentValues.email || '—'}</span>
+                  </div>
+                  <div className="confirm-card-row">
+                    <span className="confirm-card-label">Số CCCD:</span>
+                    <span className="confirm-card-value">{currentValues.citizenId || '—'}</span>
+                  </div>
                 </div>
 
-                <div className="confirm-grid">
-                  <div className="confirm-card">
-                    <div className="confirm-card-title">Thông tin cơ bản</div>
-                    <div className="confirm-card-row">
-                      <span className="confirm-card-label">Họ và tên:</span>
-                      <span className="confirm-card-value">{currentValues.fullName || '—'}</span>
-                    </div>
-                    <div className="confirm-card-row">
-                      <span className="confirm-card-label">Giới tính:</span>
-                      <span className="confirm-card-value">{currentValues.gender || '—'}</span>
-                    </div>
-                    <div className="confirm-card-row">
-                      <span className="confirm-card-label">SĐT:</span>
-                      <span className="confirm-card-value">{currentValues.phone || '—'}</span>
-                    </div>
-                    <div className="confirm-card-row">
-                      <span className="confirm-card-label">Email:</span>
-                      <span className="confirm-card-value">{currentValues.email || '—'}</span>
-                    </div>
-                    <div className="confirm-card-row">
-                      <span className="confirm-card-label">Số CCCD:</span>
-                      <span className="confirm-card-value">{currentValues.citizenId || '—'}</span>
-                    </div>
+                <div className="confirm-card">
+                  <div className="confirm-card-title">Công việc & Tổ chức</div>
+                  <div className="confirm-card-row">
+                    <span className="confirm-card-label">Mã NV:</span>
+                    <span className="confirm-card-value" style={{ color: '#dc2626' }}>
+                      {currentValues.code || '—'}
+                    </span>
                   </div>
-
-                  <div className="confirm-card">
-                    <div className="confirm-card-title">Công việc & Tổ chức</div>
-                    <div className="confirm-card-row">
-                      <span className="confirm-card-label">Mã NV:</span>
-                      <span className="confirm-card-value" style={{ color: '#dc2626' }}>
-                        {currentValues.code || '—'}
-                      </span>
-                    </div>
-                    <div className="confirm-card-row">
-                      <span className="confirm-card-label">Loại HĐ:</span>
-                      <span className="confirm-card-value">
-                        {currentValues.employmentType === EMPLOYMENT_TYPE.FullTime ? 'Chính thức' : 'Bán thời gian'}
-                      </span>
-                    </div>
-                    <div className="confirm-card-row">
-                      <span className="confirm-card-label">Chi nhánh:</span>
-                      <span className="confirm-card-value">{selectedBranchObj?.name || 'Trụ sở chính'}</span>
-                    </div>
-                    <div className="confirm-card-row">
-                      <span className="confirm-card-label">Chức vụ:</span>
-                      <span className="confirm-card-value">{watchPosition || currentValues.position || '—'}</span>
-                    </div>
-                    <div className="confirm-card-row">
-                      <span className="confirm-card-label">Vai trò:</span>
-                      <span className="confirm-card-value">
-                        {USER_ROLE_LABEL[effectiveRole] || effectiveRole} ({effectiveRole})
-                      </span>
-                    </div>
+                  <div className="confirm-card-row">
+                    <span className="confirm-card-label">Loại HĐ:</span>
+                    <span className="confirm-card-value">
+                      {currentValues.employmentType === EMPLOYMENT_TYPE.FullTime ? 'Chính thức' : 'Bán thời gian'}
+                    </span>
                   </div>
-
-                  <div className="confirm-card">
-                    <div className="confirm-card-title">Tài khoản đăng nhập</div>
-                    <div className="confirm-card-row">
-                      <span className="confirm-card-label">Cấp tài khoản:</span>
-                      <span className="confirm-card-value">
-                        {currentValues.createAccount || isEditing ? 'Có' : 'Không'}
-                      </span>
-                    </div>
-                    {(currentValues.createAccount || isEditing) && (
-                      <>
-                        <div className="confirm-card-row">
-                          <span className="confirm-card-label">Tên đăng nhập:</span>
-                          <span className="confirm-card-value" style={{ fontFamily: 'monospace' }}>
-                            {currentValues.username || '—'}
-                          </span>
-                        </div>
-                        <div className="confirm-card-row">
-                          <span className="confirm-card-label">Mật khẩu:</span>
-                          <span className="confirm-card-value">
-                            {currentValues.initialPassword ? '******' : 'ChangeMe@123 (Mặc định)'}
-                          </span>
-                        </div>
-                      </>
-                    )}
+                  <div className="confirm-card-row">
+                    <span className="confirm-card-label">Chi nhánh:</span>
+                    <span className="confirm-card-value">{selectedBranchObj?.name || 'Trụ sở chính'}</span>
                   </div>
+                  <div className="confirm-card-row">
+                    <span className="confirm-card-label">Chức vụ:</span>
+                    <span className="confirm-card-value">{watchPosition || currentValues.position || '—'}</span>
+                  </div>
+                  <div className="confirm-card-row">
+                    <span className="confirm-card-label">Vai trò:</span>
+                    <span className="confirm-card-value">
+                      {USER_ROLE_LABEL[effectiveRole] || effectiveRole} ({effectiveRole})
+                    </span>
+                  </div>
+                </div>
 
-                  <div className="confirm-card">
-                    <div className="confirm-card-title">Ngân hàng & Trạng thái</div>
-                    <div className="confirm-card-row">
-                      <span className="confirm-card-label">Trạng thái:</span>
-                      <span className="confirm-card-value" style={{ color: currentValues.status === 'Active' ? '#10b981' : '#ef4444' }}>
-                        {currentValues.status === 'Active' ? 'Đang hoạt động' : 'Ngừng hoạt động'}
-                      </span>
-                    </div>
-                    <div className="confirm-card-row">
-                      <span className="confirm-card-label">Ngân hàng:</span>
-                      <span className="confirm-card-value">{currentValues.bankName || '—'}</span>
-                    </div>
-                    <div className="confirm-card-row">
-                      <span className="confirm-card-label">Số tài khoản:</span>
-                      <span className="confirm-card-value">{currentValues.bankAccount || '—'}</span>
-                    </div>
+                <div className="confirm-card">
+                  <div className="confirm-card-title">Tài khoản đăng nhập</div>
+                  <div className="confirm-card-row">
+                    <span className="confirm-card-label">Tài khoản ERP:</span>
+                    <span className="confirm-card-value">
+                      {currentValues.createAccount || (isEditing && selectedEmployee?.hasAccount) ? 'Đã cấp / Có' : 'Chưa cấp'}
+                    </span>
+                  </div>
+                  {(currentValues.createAccount || (isEditing && selectedEmployee?.hasAccount)) && (
+                    <>
+                      <div className="confirm-card-row">
+                        <span className="confirm-card-label">Tên đăng nhập:</span>
+                        <span className="confirm-card-value" style={{ fontFamily: 'monospace' }}>
+                          {currentValues.username || '—'}
+                        </span>
+                      </div>
+                      <div className="confirm-card-row">
+                        <span className="confirm-card-label">Mật khẩu:</span>
+                        <span className="confirm-card-value">
+                          {currentValues.initialPassword
+                            ? '****** (Đổi mới)'
+                            : isEditing
+                            ? 'Giữ nguyên không đổi'
+                            : 'ChangeMe@123 (Mặc định)'}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="confirm-card">
+                  <div className="confirm-card-title">Ngân hàng & Trạng thái</div>
+                  <div className="confirm-card-row">
+                    <span className="confirm-card-label">Trạng thái:</span>
+                    <span className="confirm-card-value" style={{ color: currentValues.status === 'Active' ? '#10b981' : '#ef4444' }}>
+                      {currentValues.status === 'Active' ? 'Đang hoạt động' : 'Ngừng hoạt động'}
+                    </span>
+                  </div>
+                  <div className="confirm-card-row">
+                    <span className="confirm-card-label">Ngân hàng:</span>
+                    <span className="confirm-card-value">{currentValues.bankName || '—'}</span>
+                  </div>
+                  <div className="confirm-card-row">
+                    <span className="confirm-card-label">Số tài khoản:</span>
+                    <span className="confirm-card-value">{currentValues.bankAccount || '—'}</span>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
           </Form>
 
           {/* Action buttons chân modal */}

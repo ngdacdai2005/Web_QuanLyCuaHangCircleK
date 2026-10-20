@@ -317,6 +317,17 @@ public class NhanVienService {
             }
             nv.setIdChiNhanh(effectiveBranchId);
             if (request.getTrangThai() != null) nv.setTrangThai(request.getTrangThai());
+            if (request.getMaNhanVien() != null && !request.getMaNhanVien().isBlank()) {
+                String newCode = request.getMaNhanVien().trim();
+                if (!newCode.equalsIgnoreCase(nv.getMaNhanVien())) {
+                    NhanVien dupCode = nhanVienRepository.findByMaNhanVien(newCode).orElse(null);
+                    if (dupCode != null && !dupCode.getId().equals(id)) {
+                        throw new IllegalArgumentException("Mã nhân viên đã tồn tại");
+                    }
+                    nv.setMaNhanVien(newCode);
+                }
+            }
+
             if (request.getAnhDaiDien() != null) nv.setAnhDaiDien(request.getAnhDaiDien());
             if (request.getGioiTinh() != null) nv.setGioiTinh(request.getGioiTinh());
             if (request.getNgaySinh() != null) nv.setNgaySinh(request.getNgaySinh());
@@ -330,15 +341,73 @@ public class NhanVienService {
             if (request.getTenNganHang() != null) nv.setTenNganHang(request.getTenNganHang());
             if (request.getNgayVaoLam() != null) nv.setNgayVaoLam(request.getNgayVaoLam());
 
-            if (request.getTrangThai() != null) {
-                taiKhoanRepository.findByIdNhanVien(nv.getId()).ifPresent(tk -> {
-                    tk.setTrangThai(request.getTrangThai());
-                    taiKhoanRepository.save(tk);
-                });
+            // Đồng bộ hoặc cấp tài khoản đăng nhập
+            String newUsername = request.getTenDangNhap();
+            if (newUsername != null) {
+                newUsername = newUsername.trim().toLowerCase();
             }
 
-            NhanVienResponseDTO resp = nhanVienMapper.toResponse(nv);
-            taiKhoanRepository.findByIdNhanVien(nv.getId()).ifPresent(tk -> {
+            Optional<TaiKhoan> existingTkOpt = taiKhoanRepository.findByIdNhanVien(nv.getId());
+            if (existingTkOpt.isPresent()) {
+                TaiKhoan tk = existingTkOpt.get();
+                if (newUsername != null && !newUsername.isBlank() && !newUsername.equals(tk.getTenDangNhap())) {
+                    Optional<TaiKhoan> dup = taiKhoanRepository.findByTenDangNhap(newUsername);
+                    if (dup.isPresent() && !dup.get().getId().equals(tk.getId())) {
+                        throw new IllegalArgumentException("Tên đăng nhập đã tồn tại trong hệ thống");
+                    }
+                    tk.setTenDangNhap(newUsername);
+                    nv.setTenDangNhap(newUsername);
+                }
+                if (request.getMatKhau() != null && !request.getMatKhau().trim().isEmpty()) {
+                    String rawPassword = request.getMatKhau().trim();
+                    if (rawPassword.length() < 6) {
+                        throw new IllegalArgumentException("Mật khẩu phải từ 6 ký tự trở lên");
+                    }
+                    String hash = passwordEncoder.encode(rawPassword);
+                    tk.setMatKhauHash(hash);
+                    nv.setMatKhau(hash);
+                }
+                if (request.getTrangThai() != null) {
+                    tk.setTrangThai(request.getTrangThai());
+                }
+                taiKhoanRepository.save(tk);
+            } else if (Boolean.TRUE.equals(request.getTaoTaiKhoan()) || (newUsername != null && !newUsername.isBlank())) {
+                String accUsername = newUsername;
+                if (accUsername == null || accUsername.isBlank()) {
+                    if (request.getEmail() != null && !request.getEmail().isBlank()) {
+                        accUsername = request.getEmail().split("@")[0];
+                    } else {
+                        accUsername = nv.getMaNhanVien().toLowerCase();
+                    }
+                }
+                accUsername = accUsername.trim().toLowerCase();
+                if (taiKhoanRepository.findByTenDangNhap(accUsername).isPresent()) {
+                    throw new IllegalArgumentException("Tên đăng nhập đã tồn tại trong hệ thống");
+                }
+
+                String rawPassword = request.getMatKhau();
+                if (rawPassword == null || rawPassword.trim().isEmpty()) {
+                    rawPassword = "ChangeMe@123";
+                }
+
+                TaiKhoan tk = new TaiKhoan();
+                tk.setId(UUID.randomUUID());
+                tk.setIdNhanVien(nv.getId());
+                tk.setTenDangNhap(accUsername);
+                tk.setMatKhauHash(passwordEncoder.encode(rawPassword.trim()));
+                tk.setTrangThai(request.getTrangThai() != null ? request.getTrangThai() : "ACTIVE");
+                tk.setNgayTao(LocalDateTime.now());
+                taiKhoanRepository.save(tk);
+
+                nv.setTenDangNhap(accUsername);
+                nv.setMatKhau(tk.getMatKhauHash());
+            }
+
+            nv.setNgayCapNhat(LocalDateTime.now());
+            NhanVien savedNv = nhanVienRepository.save(nv);
+
+            NhanVienResponseDTO resp = nhanVienMapper.toResponse(savedNv);
+            taiKhoanRepository.findByIdNhanVien(savedNv.getId()).ifPresent(tk -> {
                 resp.setHasTaiKhoan(true);
                 resp.setTenDangNhap(tk.getTenDangNhap());
                 resp.setTaiKhoanTrangThai(tk.getTrangThai());
