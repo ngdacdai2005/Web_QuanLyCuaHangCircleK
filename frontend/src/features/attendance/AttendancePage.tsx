@@ -13,16 +13,15 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
+  CalendarOutlined,
   CheckCircleOutlined,
   DollarOutlined,
   LoginOutlined,
   LogoutOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
-import { PageHeader } from '@/components/PageHeader';
-import { SummaryStrip, type SummaryItem } from '@/components/SummaryStrip';
 import type { ToolbarFilter } from '@/components/TableToolbar';
 import { AttendanceStatusTag } from '@/components/StatusTag';
-import { BRAND } from '@/config/brand';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   canApprovePayment,
@@ -60,6 +59,13 @@ import { exportToExcel } from '@/utils/exportUtils';
 import { HourAdjustModal } from './components/HourAdjustModal';
 import { AttendanceRegisterTab } from './components/AttendanceRegisterTab';
 import { PayrollTab } from './components/PayrollTab';
+import { AttendanceWelcomeBanner } from './components/AttendanceWelcomeBanner';
+import { AttendanceKpiStrip } from './components/AttendanceKpiStrip';
+import { AttendanceMonthCalendar } from './components/AttendanceMonthCalendar';
+import { AttendanceSidebarWidgets } from './components/AttendanceSidebarWidgets';
+import { LeaveRequestModal } from './components/LeaveRequestModal';
+import { ShiftSwapModal } from './components/ShiftSwapModal';
+import { ShiftActionModal } from './components/ShiftActionModal';
 import './AttendancePage.css';
 
 /** Kỳ lương hiện tại theo tháng thực (MM-YYYY). */
@@ -100,9 +106,24 @@ export const AttendancePage: FC = () => {
   const [payrollStatusFilter, setPayrollStatusFilter] = useState<string | null>(null);
   const [payrollPeriod, setPayrollPeriod] = useState(CURRENT_PAYROLL_PERIOD);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState('my-shifts');
+  const [currentMonth, setCurrentMonth] = useState<Dayjs>(dayjs());
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+  const [swapModalOpen, setSwapModalOpen] = useState(false);
+  const [swapModalType, setSwapModalType] = useState<'SWAP' | 'OT'>('SWAP');
+  const [shiftActionOpen, setShiftActionOpen] = useState(false);
+  const [selectedDateStr, setSelectedDateStr] = useState<string>('');
+  const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
+  const [modalDefaultDate, setModalDefaultDate] = useState<Dayjs | null>(null);
+  const [modalDefaultShift, setModalDefaultShift] = useState<ShiftCode | undefined>(undefined);
+  const [activeTab, setActiveTab] = useState('overview');
   const isSelfServiceRole = user?.role === USER_ROLE.Cashier
     || user?.role === USER_ROLE.WarehouseKeeper;
+
+  const handleSelectDay = (dateStr: string, record: AttendanceRecord | null) => {
+    setSelectedDateStr(dateStr);
+    setSelectedRecord(record);
+    setShiftActionOpen(true);
+  };
 
   const handleClockIn = async (id: string): Promise<void> => {
     try {
@@ -138,6 +159,15 @@ export const AttendancePage: FC = () => {
       to: attendanceRange[1].format('YYYY-MM-DD'),
     }));
   }, [dispatch, attendanceRange]);
+
+  useEffect(() => {
+    const monthStart = currentMonth.startOf('month').subtract(7, 'day').format('YYYY-MM-DD');
+    const monthEnd = currentMonth.endOf('month').add(7, 'day').format('YYYY-MM-DD');
+    void dispatch(fetchAttendance({
+      from: monthStart,
+      to: monthEnd,
+    }));
+  }, [dispatch, currentMonth]);
 
   useEffect(() => {
     void dispatch(fetchPayroll({
@@ -202,48 +232,40 @@ export const AttendancePage: FC = () => {
     [payrollRows, search, branchFilter, payrollStatusFilter],
   );
 
-  const summary = useMemo<SummaryItem[]>(() => {
-    const todayRecs = attendanceRecords.filter((r) => r.workDate === today());
-    const scheduled = todayRecs.length;
-    const present = todayRecs.filter((r) => r.status === ATTENDANCE_STATUS.Present).length;
-    const late = todayRecs.filter((r) => r.status === ATTENDANCE_STATUS.Late).length;
-    const pendingHours = payrollRows.filter(
-      (r) => r.status === PAYROLL_STATUS.PendingConfirm,
-    ).length;
-    const pendingPayment = payrollRows.filter(
-      (r) => r.status === PAYROLL_STATUS.Confirmed,
-    ).length;
-
-    return [
-      {
-        key: 'scheduled',
-        title: 'Ca hôm nay',
-        value: `${scheduled} ca`,
-        hint: `${present} đã vào ca`,
-      },
-      {
-        key: 'presentRate',
-        title: 'Đúng giờ',
-        value: `${present}/${scheduled}`,
-        color: BRAND.success,
-      },
-      {
-        key: 'late',
-        title: 'Đi muộn hôm nay',
-        value: `${late} ca`,
-        color: late > 0 ? BRAND.warning : undefined,
-      },
-      {
-        key: 'pendingPayment',
-        title: 'Chờ thanh toán',
-        value: `${pendingPayment} bảng`,
-        color: pendingPayment > 0 ? BRAND.primaryRed : undefined,
-        hint: `${pendingHours} chờ xác nhận giờ`,
-      },
-    ];
-  }, [attendanceRecords, payrollRows]);
-
   const branches = useAppSelector((state) => state.branch.branches);
+
+  const monthPrefix = currentMonth.format('YYYY-MM');
+  const myMonthRecords = useMemo(() => {
+    const myId = user?.idNhanVien ?? user?.id;
+    return attendanceRecords.filter(
+      (record) => record.employeeId === myId && record.workDate.startsWith(monthPrefix),
+    );
+  }, [attendanceRecords, user?.idNhanVien, user?.id, monthPrefix]);
+
+  const completedCount = useMemo(
+    () =>
+      myMonthRecords.filter(
+        (r) => r.status === ATTENDANCE_STATUS.Present || Boolean(r.clockInAt || r.checkInAt),
+      ).length,
+    [myMonthRecords],
+  );
+
+  const monthOtHours = useMemo(
+    () => myMonthRecords.reduce((acc, cur) => acc + (cur.overtimeHours || 0), 0),
+    [myMonthRecords],
+  );
+
+  const todayShift = useMemo(() => {
+    const todayStr = today();
+    const myId = user?.idNhanVien ?? user?.id;
+    return attendanceRecords.find((r) => r.employeeId === myId && r.workDate === todayStr);
+  }, [attendanceRecords, user?.idNhanVien, user?.id]);
+
+  const activeBranchName = useMemo(() => {
+    if (!activeBranchId) return 'Toàn chuỗi Circle K';
+    const b = branches.find((item) => item.id === activeBranchId);
+    return b ? `${b.code} - ${b.name}` : 'Chi nhánh làm việc';
+  }, [branches, activeBranchId]);
   const attendanceFilters: ToolbarFilter[] = [
     {
       key: 'branch',
@@ -854,16 +876,8 @@ export const AttendancePage: FC = () => {
   );
 
   return (
-    <>
-      <PageHeader
-        eyebrow="TÀI CHÍNH & BÁO CÁO / MODULE 11"
-        title="Chấm công & bảng lương"
-        description={`Theo dõi chấm công 30 ngày gần nhất, lịch 7 ngày tới và bảng lương ${formatPeriod(payrollPeriod)}.`}
-      />
-
-      <SummaryStrip items={summary} />
-
-      <Card styles={{ body: { padding: '8px 18px 8px' } }}>
+    <div className="attendance-page-container">
+      <Card styles={{ body: { padding: '12px 20px' } }} className="attendance-card-wrapper">
         {attendanceError !== null && (
           <Alert
             type="error"
@@ -917,8 +931,80 @@ export const AttendancePage: FC = () => {
           onChange={setActiveTab}
           items={[
             {
+              key: 'overview',
+              label: (
+                <span>
+                  <CalendarOutlined style={{ marginRight: 6 }} />
+                  Lịch công &amp; Tổng quan cá nhân
+                </span>
+              ),
+              children: (
+                <div className="attendance-overview-tab">
+                  {/* Banner chào mừng & chọn tháng */}
+                  <AttendanceWelcomeBanner
+                    userName={user?.fullName || 'Nhân viên Circle K'}
+                    currentMonth={currentMonth}
+                    onMonthChange={setCurrentMonth}
+                    todayShift={todayShift}
+                    onClockIn={handleClockIn}
+                    onClockOut={handleClockOut}
+                    loading={attendanceLoading}
+                  />
+
+                  {/* Dải 5 thẻ KPI màu sắc */}
+                  <AttendanceKpiStrip
+                    totalTargetDays={24}
+                    completedDays={completedCount}
+                    actualWorkedDays={completedCount}
+                    overtimeHours={monthOtHours}
+                    totalShifts={myMonthRecords.length}
+                    branchName={activeBranchName}
+                    leaveDaysTaken={0}
+                    remainingLeaveDays={12}
+                  />
+
+                  {/* Bố cục 2 cột: Cột trái 70% Lịch làm việc tháng, Cột phải 30% Widget trạng thái */}
+                  <div className="attendance-main-split">
+                    <div className="attendance-split-left">
+                      <AttendanceMonthCalendar
+                        currentMonth={currentMonth}
+                        attendanceRecords={myMonthRecords}
+                        onOpenLeaveModal={() => {
+                          setModalDefaultDate(null);
+                          setLeaveModalOpen(true);
+                        }}
+                        onOpenSwapModal={() => {
+                          setModalDefaultDate(null);
+                          setModalDefaultShift(undefined);
+                          setSwapModalType('SWAP');
+                          setSwapModalOpen(true);
+                        }}
+                        onSelectDay={handleSelectDay}
+                      />
+                    </div>
+                    <div className="attendance-split-right">
+                      <AttendanceSidebarWidgets
+                        onOpenLeaveModal={() => setLeaveModalOpen(true)}
+                        onOpenSwapModal={() => {
+                          setSwapModalType('SWAP');
+                          setSwapModalOpen(true);
+                        }}
+                        onOpenOtModal={() => {
+                          setSwapModalType('OT');
+                          setSwapModalOpen(true);
+                        }}
+                        todayShift={todayShift}
+                        onClockIn={handleClockIn}
+                        onClockOut={handleClockOut}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ),
+            },
+            {
               key: 'my-shifts',
-              label: `Ca của tôi (${myAttendance.length})`,
+              label: `Danh sách ca (${myAttendance.length})`,
               children: (
                 <AttendanceRegisterTab
                   search={search}
@@ -940,7 +1026,12 @@ export const AttendancePage: FC = () => {
               ? [
                   {
                     key: 'register',
-                    label: `Bảng chấm công (${attendanceRegister.length})`,
+                    label: (
+                      <span>
+                        <UnorderedListOutlined style={{ marginRight: 6 }} />
+                        Bảng chấm công chi nhánh ({attendanceRegister.length})
+                      </span>
+                    ),
                     children: (
                       <AttendanceRegisterTab
                         search={search}
@@ -967,9 +1058,14 @@ export const AttendancePage: FC = () => {
               : []),
             {
               key: 'payroll',
-              label: isSelfServiceRole
-                ? `Lương của tôi ${formatPeriod(payrollPeriod)}`
-                : `Bảng lương ${formatPeriod(payrollPeriod)}`,
+              label: (
+                <span>
+                  <DollarOutlined style={{ marginRight: 6 }} />
+                  {isSelfServiceRole
+                    ? `Lương của tôi ${formatPeriod(payrollPeriod)}`
+                    : `Bảng lương ${formatPeriod(payrollPeriod)}`}
+                </span>
+              ),
               children: (
                 <PayrollTab
                   search={search}
@@ -1004,6 +1100,45 @@ export const AttendancePage: FC = () => {
       </Card>
 
       <HourAdjustModal />
-    </>
+      <LeaveRequestModal
+        open={leaveModalOpen}
+        defaultDate={modalDefaultDate}
+        onClose={() => {
+          setLeaveModalOpen(false);
+          setModalDefaultDate(null);
+        }}
+      />
+      <ShiftSwapModal
+        open={swapModalOpen}
+        type={swapModalType}
+        defaultDate={modalDefaultDate}
+        defaultShift={modalDefaultShift}
+        onClose={() => {
+          setSwapModalOpen(false);
+          setModalDefaultDate(null);
+          setModalDefaultShift(undefined);
+        }}
+      />
+      <ShiftActionModal
+        open={shiftActionOpen}
+        onClose={() => setShiftActionOpen(false)}
+        dateStr={selectedDateStr}
+        record={selectedRecord}
+        onClockIn={handleClockIn}
+        onClockOut={handleClockOut}
+        onOpenLeaveWithDate={(date) => {
+          setModalDefaultDate(date);
+          setLeaveModalOpen(true);
+        }}
+        onOpenSwapWithDate={(date, shift) => {
+          setModalDefaultDate(date);
+          setModalDefaultShift(shift);
+          setSwapModalType('SWAP');
+          setSwapModalOpen(true);
+        }}
+        branchName={activeBranchName}
+        loading={attendanceLoading}
+      />
+    </div>
   );
 };

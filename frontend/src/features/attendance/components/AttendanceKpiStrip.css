@@ -1,0 +1,141 @@
+/* AttendanceKpiStrip.css — Dải 5 thẻ KPI màu sắc thanh lịch */
+
+.attendance-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1200px) {
+  .attendance-kpi-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .attendance-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kpi-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f1f5f9;
+  border-left-width: 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 125px;
+  transition: all 0.25s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.kpi-purple {
+  border-left-color: #6366f1;
+}
+
+.kpi-green {
+  border-left-color: #10b981;
+}
+
+.kpi-orange {
+  border-left-color: #f59e0b;
+}
+
+.kpi-amber {
+  border-left-color: #ea580c;
+}
+
+.kpi-red {
+  border-left-color: #ef4444;
+}
+
+.kpi-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.kpi-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.kpi-icon-pill {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+
+.pill-purple {
+  background: #eef2ff;
+  color: #6366f1;
+}
+
+.pill-green {
+  background: #ecfdf5;
+  color: #10b981;
+}
+
+.pill-orange {
+  background: #fffbeb;
+  color: #f59e0b;
+}
+
+.pill-amber {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.pill-red {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.kpi-main-val {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.kpi-number {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1;
+}
+
+.kpi-unit {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.kpi-subtext {
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpi-subtext strong {
+  color: #334155;
+}

@@ -105,3 +105,45 @@
   font-size: 11px;
   font-style: italic;
 }
+
+/* ── Tab Lịch công & Tổng quan cá nhân ────────────────────────────── */
+
+.attendance-overview-tab {
+  padding: 8px 0 20px;
+}
+
+.attendance-main-split {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.attendance-split-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.attendance-split-right {
+  width: 340px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .attendance-main-split {
+    flex-direction: column;
+  }
+
+  .attendance-split-right {
+    width: 100%;
+  }
+}
+
+.attendance-page-container {
+  padding-top: 4px;
+}
+
+.attendance-card-wrapper {
+  border-radius: 16px;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
