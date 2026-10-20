@@ -46,6 +46,16 @@ public class HopDongDTO {
     private Integer soNgayDuocNo;
     private String noiDung;
 
+    private String soHopDongDoiTac;
+    private String nguoiDaiDienNcc;
+    private String chucVuNcc;
+    private String nguoiDaiDienBenMua;
+    private String diaDiemGiaoHang;
+    private String thoiGianGiaoHang;
+    private BigDecimal chietKhauPhantram;
+    private String chinhSachDoiTra;
+    private Boolean tuDongGiaHan;
+
     private java.util.List<HopDongChiTietDTO> lines;
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)

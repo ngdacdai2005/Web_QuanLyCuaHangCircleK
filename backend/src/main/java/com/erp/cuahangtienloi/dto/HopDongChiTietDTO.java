@@ -33,6 +33,7 @@ public class HopDongChiTietDTO {
     private Integer soLuongCamKet;
     private Integer soLuongDaNhap;
     private Integer vatPhantram;
+    private Integer moq;
     private LocalDate ngayHieuLucTu;
     private LocalDate ngayHetHan;
     private String ghiChu;

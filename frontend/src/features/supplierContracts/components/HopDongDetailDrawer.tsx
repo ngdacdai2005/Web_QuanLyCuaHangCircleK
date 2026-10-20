@@ -6,6 +6,7 @@ import {
     Descriptions,
     Drawer,
     Space,
+    Tag,
     Typography,
 } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
@@ -24,10 +25,9 @@ interface HopDongDetailDrawerProps {
 }
 
 /**
- * Drawer chi tiết hợp đồng NCC — thuần xem (read-only), mọi thao tác
- * sửa/trình/duyệt nằm ở cột actions của bảng.
+ * Drawer chi tiết hợp đồng NCC — hiển thị đầy đủ thông tin pháp lý, giao nhận và cam kết.
  */
-export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({hopDong, onClose,}) => {
+export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({ hopDong, onClose }) => {
     const { message } = AntdApp.useApp();
     const [downloading, setDownloading] = useState(false);
 
@@ -41,15 +41,9 @@ export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({hopDong, onCl
 
         try {
             const blob = await hopDongApi.download(hd.id);
-
-            downloadBlob(
-                blob,
-                hd.fileTenGoc || `hop-dong-${hd.maHopDong}`,
-            );
+            downloadBlob(blob, hd.fileTenGoc || `hop-dong-${hd.maHopDong}`);
         } catch (e: any) {
-            message.error(
-                e?.message || 'Không thể tải file scan.',
-            );
+            message.error(e?.message || 'Không thể tải file scan.');
         } finally {
             setDownloading(false);
         }
@@ -59,13 +53,14 @@ export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({hopDong, onCl
         <Drawer
             open={open}
             onClose={onClose}
-            width={640}
+            width={720}
             destroyOnHidden
             title={
                 hd !== null ? (
                     <Space size={10} wrap>
                         <Text strong className="mono-code">{hd.maHopDong}</Text>
                         <HopDongStatusTag hopDong={hd} />
+                        {hd.tuDongGiaHan && <Tag color="blue">Tự động gia hạn</Tag>}
                     </Space>
                 ) : (
                     'Chi tiết hợp đồng'
@@ -91,10 +86,14 @@ export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({hopDong, onCl
             }
         >
             {hd === null ? null : (
-                <Space direction="vertical" size={20} style={{ width: '100%' }}>
-                    <Descriptions bordered size="small" column={2}>
-                        <Descriptions.Item label="Mã hợp đồng" span={2}>
+                <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    {/* Phần 1: Thông tin chung & Thời hạn */}
+                    <Descriptions title="1. Thông tin hợp đồng & Giá trị" bordered size="small" column={2}>
+                        <Descriptions.Item label="Mã hợp đồng">
                             <Text className="mono-code">{hd.maHopDong}</Text>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Số HĐ đối tác">
+                            {hd.soHopDongDoiTac ? <Text strong>{hd.soHopDongDoiTac}</Text> : <Text type="secondary">—</Text>}
                         </Descriptions.Item>
                         <Descriptions.Item label="Tên hợp đồng" span={2}>
                             {hd.tenHopDong}
@@ -112,11 +111,8 @@ export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({hopDong, onCl
                         <Descriptions.Item label="Ngày ký">
                             {formatDate(hd.ngayKy)}
                         </Descriptions.Item>
-                        <Descriptions.Item label="Ngày hiệu lực">
-                            {formatDate(hd.ngayHieuLuc)}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Ngày hết hạn">
-                            {formatDate(hd.ngayHetHan ?? null)}
+                        <Descriptions.Item label="Thời hạn hiệu lực">
+                            {formatDate(hd.ngayHieuLuc)} — {formatDate(hd.ngayHetHan ?? null)}
                         </Descriptions.Item>
                         <Descriptions.Item label="Giá trị hợp đồng">
                             {hd.giaTriHopDong != null
@@ -128,15 +124,57 @@ export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({hopDong, onCl
                                 ? formatVND(Number(hd.hanMucHopDong))
                                 : <Text type="secondary">—</Text>}
                         </Descriptions.Item>
-                        <Descriptions.Item label="Giá trị đã thực hiện">
+                        <Descriptions.Item label="Giá trị đã thực hiện" span={2}>
                             <Text strong type={hd.giaTriDaSuDung ? "success" : "secondary"}>
                                 {formatVND(Number(hd.giaTriDaSuDung ?? 0))}
                             </Text>
+                            {hd.hanMucHopDong && Number(hd.hanMucHopDong) > 0 && (
+                                <Text type="secondary" style={{ marginLeft: 8 }}>
+                                    (Đạt {((Number(hd.giaTriDaSuDung ?? 0) / Number(hd.hanMucHopDong)) * 100).toFixed(1)}% hạn mức)
+                                </Text>
+                            )}
                         </Descriptions.Item>
                         <Descriptions.Item label="Điều khoản thanh toán" span={2}>
                             {hd.dieuKhoanThanhToan || <Text type="secondary">—</Text>}
                         </Descriptions.Item>
-                        <Descriptions.Item label="File đính kèm" span={2}>
+                    </Descriptions>
+
+                    {/* Phần 2: Đại diện pháp lý & Giao nhận logistics */}
+                    <Descriptions title="2. Đại diện pháp lý & Giao nhận" bordered size="small" column={2}>
+                        <Descriptions.Item label="Đại diện NCC">
+                            {hd.nguoiDaiDienNcc ? (
+                                <span>
+                                    <strong>{hd.nguoiDaiDienNcc}</strong>
+                                    {hd.chucVuNcc && <Text type="secondary"> ({hd.chucVuNcc})</Text>}
+                                </span>
+                            ) : (
+                                <Text type="secondary">—</Text>
+                            )}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Đại diện Circle K">
+                            {hd.nguoiDaiDienBenMua ? <strong>{hd.nguoiDaiDienBenMua}</strong> : <Text type="secondary">—</Text>}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Địa điểm giao hàng" span={2}>
+                            {hd.diaDiemGiaoHang || <Text type="secondary">—</Text>}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Thời gian giao cam kết" span={2}>
+                            {hd.thoiGianGiaoHang || <Text type="secondary">—</Text>}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Chiết khấu thương mại">
+                            {hd.chietKhauPhantram ? <Tag color="green">{hd.chietKhauPhantram}%</Tag> : <Text type="secondary">0%</Text>}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Tự động gia hạn">
+                            {hd.tuDongGiaHan ? <Tag color="blue">Có</Tag> : <Tag>Không</Tag>}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Chính sách đổi trả" span={2}>
+                            {hd.chinhSachDoiTra || <Text type="secondary">—</Text>}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Nội dung / Điều khoản khác" span={2}>
+                            {hd.noiDung
+                                ? <Text style={{ whiteSpace: 'pre-wrap' }}>{hd.noiDung}</Text>
+                                : <Text type="secondary">—</Text>}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="File đính kèm scan" span={2}>
                             {hd.fileCo ? (
                                 <Button
                                     type="link"
@@ -152,17 +190,13 @@ export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({hopDong, onCl
                                 <Text type="secondary">Chưa đính kèm file</Text>
                             )}
                         </Descriptions.Item>
-                        <Descriptions.Item label="Nội dung" span={2}>
-                            {hd.noiDung
-                                ? <Text style={{ whiteSpace: 'pre-wrap' }}>{hd.noiDung}</Text>
-                                : <Text type="secondary">—</Text>}
-                        </Descriptions.Item>
                     </Descriptions>
 
+                    {/* Phần 3: Danh mục mặt hàng cam kết */}
                     {hd.lines && hd.lines.length > 0 && (
                         <div>
                             <Text strong style={{ fontSize: 14, marginBottom: 8, display: 'block' }}>
-                                Danh mục mặt hàng cam kết ({hd.lines.length})
+                                3. Danh mục mặt hàng cam kết ({hd.lines.length} sản phẩm)
                             </Text>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                                 <thead>
@@ -170,8 +204,9 @@ export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({hopDong, onCl
                                         <th style={{ padding: '8px' }}>Sản phẩm</th>
                                         <th style={{ padding: '8px', textAlign: 'right' }}>Đơn giá cam kết</th>
                                         <th style={{ padding: '8px', textAlign: 'right' }}>SL cam kết</th>
+                                        <th style={{ padding: '8px', textAlign: 'right' }}>MOQ</th>
                                         <th style={{ padding: '8px', textAlign: 'right' }}>Đã nhập</th>
-                                        <th style={{ padding: '8px' }}>VAT</th>
+                                        <th style={{ padding: '8px', textAlign: 'center' }}>VAT</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -188,11 +223,14 @@ export const HopDongDetailDrawer: FC<HopDongDetailDrawerProps> = ({hopDong, onCl
                                                 {line.soLuongCamKet || '—'}
                                             </td>
                                             <td style={{ padding: '8px', textAlign: 'right' }}>
+                                                {line.moq ?? 1}
+                                            </td>
+                                            <td style={{ padding: '8px', textAlign: 'right' }}>
                                                 <Text type={line.soLuongDaNhap ? "success" : "secondary"}>
                                                     {line.soLuongDaNhap ?? 0}
                                                 </Text>
                                             </td>
-                                            <td style={{ padding: '8px' }}>
+                                            <td style={{ padding: '8px', textAlign: 'center' }}>
                                                 {line.vatPhantram ?? 8}%
                                             </td>
                                         </tr>

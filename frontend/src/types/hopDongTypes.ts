@@ -56,9 +56,25 @@ export interface HopDongChiTiet {
     soLuongCamKet?: number;
     soLuongDaNhap?: number;
     vatPhantram?: number;
+    moq?: number;
     ngayHieuLucTu?: string;
     ngayHetHan?: string;
     ghiChu?: string;
+}
+
+export interface ActiveContractLine {
+    idSanPham: string;
+    idHopDong: string;
+    maHopDong: string;
+    tenHopDong: string;
+    donGiaCamKet: VND;
+    soLuongCamKet?: number;
+    soLuongDaNhap?: number;
+    ngayHieuLuc: string;
+    ngayHetHan?: string;
+    moq?: number;
+    tenSanPham?: string;
+    sku?: string;
 }
 
 export interface HopDong {
@@ -78,6 +94,15 @@ export interface HopDong {
     dieuKhoanThanhToan?: string;
     soNgayDuocNo?: number;
     noiDung?: string;
+    soHopDongDoiTac?: string;
+    nguoiDaiDienNcc?: string;
+    chucVuNcc?: string;
+    nguoiDaiDienBenMua?: string;
+    diaDiemGiaoHang?: string;
+    thoiGianGiaoHang?: string;
+    chietKhauPhantram?: number;
+    chinhSachDoiTra?: string;
+    tuDongGiaHan?: boolean;
     lines?: HopDongChiTiet[];
     fileTenGoc?: string;
     fileCo: boolean;
@@ -102,6 +127,15 @@ export type HopDongFormValues = {
     dieuKhoanThanhToan?: string;
     soNgayDuocNo?: string;
     noiDung?: string;
+    soHopDongDoiTac?: string;
+    nguoiDaiDienNcc?: string;
+    chucVuNcc?: string;
+    nguoiDaiDienBenMua?: string;
+    diaDiemGiaoHang?: string;
+    thoiGianGiaoHang?: string;
+    chietKhauPhantram?: number;
+    chinhSachDoiTra?: string;
+    tuDongGiaHan?: boolean;
     lines?: HopDongChiTiet[];
 };
 

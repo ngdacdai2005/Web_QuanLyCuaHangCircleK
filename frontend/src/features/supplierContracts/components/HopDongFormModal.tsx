@@ -7,7 +7,6 @@ import {
     Button,
     Col,
     DatePicker,
-    Divider,
     Form,
     Input,
     InputNumber,
@@ -15,6 +14,7 @@ import {
     Row,
     Select,
     Space,
+    Steps,
     Switch,
     Table,
     Tag,
@@ -23,25 +23,36 @@ import {
     Upload,
 } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
-import { DeleteOutlined, PlusOutlined, UploadOutlined, CalculatorOutlined } from '@ant-design/icons';
+import {
+    DeleteOutlined,
+    PlusOutlined,
+    UploadOutlined,
+    CalculatorOutlined,
+    WarningOutlined,
+    FileTextOutlined,
+    SafetyCertificateOutlined,
+    ShoppingCartOutlined,
+} from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { createHopDong, updateHopDong } from '@/store/slices/hopDongSlice';
 import { fetchSuppliers } from '@/store/slices/supplierSlice';
 import { fetchProducts } from '@/store/slices/productSlice';
 import { sanPhamApi, type SuppliedProductDTO } from '@/api/sanPham';
+import { hopDongApi } from '@/api/hopDongApi';
 import {
     HOP_DONG_LOAI,
     HOP_DONG_LOAI_LABEL,
+    type ActiveContractLine,
     type HopDong,
     type HopDongChiTiet,
     type HopDongFormValues,
 } from '@/types';
-import { DATE_FORMAT_ISO } from '@/utils/dateUtils';
+import { DATE_FORMAT_ISO, formatDate } from '@/utils/dateUtils';
 import { formatVND } from '@/utils/formatters';
 
 const { Text } = Typography;
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB — khớp backend FileStorageService
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_EXT = ['.pdf', '.jpg', '.jpeg', '.png'];
 
 /** Dòng mặt hàng cam kết trên form */
@@ -51,6 +62,7 @@ interface ContractLineDraft {
     soLuongCamKet: number;
     donGiaCamKet: number;
     vatPhantram: number;
+    moq: number;
     ghiChu?: string;
 }
 
@@ -82,12 +94,15 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
     const products = useAppSelector((state) => state.product.products);
     const [fileList, setFileList] = useState<UploadFile[]>([]);
     const [lines, setLines] = useState<ContractLineDraft[]>([]);
+    const [currentStep, setCurrentStep] = useState(0);
+    const [submitting, setSubmitting] = useState(false);
 
-    // Theo dõi NCC đang được chọn trên form để tải danh mục sản phẩm của NCC
+    // Theo dõi NCC đang được chọn trên form để tải danh mục sản phẩm của NCC & kiểm tra HĐ hiệu lực
     const selectedNccId = Form.useWatch('idNcc', form);
     const [suppliedProducts, setSuppliedProducts] = useState<SuppliedProductDTO[]>([]);
     const [loadingSupplied, setLoadingSupplied] = useState(false);
     const [filterByNccOnly, setFilterByNccOnly] = useState(true);
+    const [activeContractLines, setActiveContractLines] = useState<ActiveContractLine[]>([]);
 
     // Tự nạp danh sách NCC & sản phẩm nếu chưa có dữ liệu.
     useEffect(() => {
@@ -97,36 +112,44 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
         }
     }, [open, suppliers.length, products.length, dispatch]);
 
-    // Tải danh mục sản phẩm của NCC được chọn
+    // Tải danh mục sản phẩm & các dòng hợp đồng đang hiệu lực của NCC được chọn
     useEffect(() => {
         if (!selectedNccId) {
             setSuppliedProducts([]);
+            setActiveContractLines([]);
             return;
         }
         let cancelled = false;
         setLoadingSupplied(true);
-        sanPhamApi
-            .getSuppliedProducts(selectedNccId)
-            .then((res) => {
+
+        Promise.all([
+            sanPhamApi.getSuppliedProducts(selectedNccId).catch(() => []),
+            hopDongApi.activeLines(selectedNccId).catch(() => []),
+        ])
+            .then(([supplied, active]) => {
                 if (!cancelled) {
-                    setSuppliedProducts(res);
-                    // Nếu NCC có sản phẩm thì mặc định lọc theo NCC; nếu chưa có thì tắt lọc để người dùng chọn sản phẩm toàn hệ thống
-                    setFilterByNccOnly(res.length > 0);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) {
-                    setSuppliedProducts([]);
-                    setFilterByNccOnly(false);
+                    setSuppliedProducts(supplied);
+                    setFilterByNccOnly(supplied.length > 0);
+                    // Lọc bỏ các dòng thuộc chính hợp đồng đang sửa (nếu có)
+                    const otherActive = editing ? active.filter((a) => a.idHopDong !== editing.id) : active;
+                    setActiveContractLines(otherActive);
                 }
             })
             .finally(() => {
                 if (!cancelled) setLoadingSupplied(false);
             });
+
         return () => {
             cancelled = true;
         };
-    }, [selectedNccId]);
+    }, [selectedNccId, editing]);
+
+    // Map nhanh ID sản phẩm -> HĐ hiệu lực cũ của NCC
+    const activeConflictMap = useMemo(() => {
+        const map = new Map<string, ActiveContractLine>();
+        activeContractLines.forEach((l) => map.set(l.idSanPham, l));
+        return map;
+    }, [activeContractLines]);
 
     // Map nhanh ID sản phẩm NCC đang cung cấp
     const suppliedMap = useMemo(() => {
@@ -138,34 +161,43 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
     // Danh sách sản phẩm khả dụng cho dropdown
     const productOptions = useMemo(() => {
         if (filterByNccOnly && suppliedProducts.length > 0) {
-            return suppliedProducts.map((p) => ({
-                value: p.id,
-                label: `${p.tenSanPham} (${p.sku || p.maVach || 'SP'}) — Giá nhập hiện tại: ${formatVND(p.giaNhapNcc)}`,
-                defaultPrice: p.giaNhapNcc,
-                defaultVat: p.vatPhantram,
-            }));
+            return suppliedProducts.map((p) => {
+                const conflict = activeConflictMap.get(p.id);
+                return {
+                    value: p.id,
+                    label: `${p.tenSanPham} (${p.sku || p.maVach || 'SP'}) — Giá hiện tại: ${formatVND(p.giaNhapNcc)}${conflict ? ` [⚠️ Đang có HĐ ${conflict.maHopDong}]` : ''}`,
+                    defaultPrice: p.giaNhapNcc,
+                    defaultVat: p.vatPhantram,
+                    conflict,
+                };
+            });
         }
 
         return products.map((p) => {
             const supplied = suppliedMap.get(p.id);
+            const conflict = activeConflictMap.get(p.id);
             return {
                 value: p.id,
-                label: `${p.name} (${p.sku || p.barcode || 'SP'})${supplied ? ` [NCC cung cấp - ${formatVND(supplied.giaNhapNcc)}]` : ''}`,
+                label: `${p.name} (${p.sku || p.barcode || 'SP'})${supplied ? ` [NCC cung cấp - ${formatVND(supplied.giaNhapNcc)}]` : ''}${conflict ? ` [⚠️ Đang có HĐ ${conflict.maHopDong}]` : ''}`,
                 defaultPrice: supplied ? supplied.giaNhapNcc : (p.costPrice || 0),
                 defaultVat: p.vatPercent ?? 8,
+                conflict,
             };
         });
-    }, [filterByNccOnly, suppliedProducts, products, suppliedMap]);
+    }, [filterByNccOnly, suppliedProducts, products, suppliedMap, activeConflictMap]);
 
-    // Nạp dữ liệu mỗi lần mở modal để không dùng lại giá trị lần trước.
+    // Nạp dữ liệu mỗi lần mở modal
     useEffect(() => {
         if (!open) return;
         setFileList([]);
+        setCurrentStep(0);
+
         if (editing !== null) {
             form.setFieldsValue({
                 tenHopDong: editing.tenHopDong,
                 loaiHopDong: editing.loaiHopDong,
                 idNcc: editing.idNcc,
+                soHopDongDoiTac: editing.soHopDongDoiTac,
                 ngayKy: dayjs(editing.ngayKy),
                 ngayHieuLuc: dayjs(editing.ngayHieuLuc),
                 ngayHetHan: editing.ngayHetHan ? dayjs(editing.ngayHetHan) : undefined,
@@ -174,6 +206,14 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
                 dieuKhoanThanhToan: editing.dieuKhoanThanhToan,
                 soNgayDuocNo: editing.soNgayDuocNo,
                 noiDung: editing.noiDung,
+                nguoiDaiDienNcc: editing.nguoiDaiDienNcc,
+                chucVuNcc: editing.chucVuNcc,
+                nguoiDaiDienBenMua: editing.nguoiDaiDienBenMua,
+                diaDiemGiaoHang: editing.diaDiemGiaoHang || 'Kho Tổng Phân Phối Circle K (DC)',
+                thoiGianGiaoHang: editing.thoiGianGiaoHang || 'Trong vòng 24 - 48 giờ sau khi xác nhận đơn đặt hàng (PO)',
+                chietKhauPhantram: editing.chietKhauPhantram != null ? Number(editing.chietKhauPhantram) : 0,
+                chinhSachDoiTra: editing.chinhSachDoiTra || 'Được đổi trả 100% đối với hàng lỗi do NCC, hàng cận date trước 30 ngày.',
+                tuDongGiaHan: Boolean(editing.tuDongGiaHan),
             });
 
             if (editing.lines && editing.lines.length > 0) {
@@ -184,6 +224,7 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
                         soLuongCamKet: l.soLuongCamKet ?? 0,
                         donGiaCamKet: Number(l.donGiaCamKet || 0),
                         vatPhantram: l.vatPhantram ?? 8,
+                        moq: l.moq ?? 1,
                         ghiChu: l.ghiChu || '',
                     }))
                 );
@@ -195,6 +236,11 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
             form.setFieldsValue({
                 loaiHopDong: HOP_DONG_LOAI.MUA_HANG,
                 soNgayDuocNo: 0,
+                diaDiemGiaoHang: 'Kho Tổng Phân Phối Circle K (DC)',
+                thoiGianGiaoHang: 'Trong vòng 24 - 48 giờ sau khi xác nhận đơn đặt hàng (PO)',
+                chietKhauPhantram: 0,
+                chinhSachDoiTra: 'Được đổi trả 100% đối với hàng lỗi do NCC, hàng cận date trước 30 ngày.',
+                tuDongGiaHan: false,
             });
             setLines([]);
         }
@@ -228,6 +274,7 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
                 soLuongCamKet: 0,
                 donGiaCamKet: 0,
                 vatPhantram: 8,
+                moq: 1,
                 ghiChu: '',
             },
         ]);
@@ -272,8 +319,58 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
         }
     };
 
+    // Chuyển sang bước tiếp theo với validation từng bước
+    const handleNext = async (): Promise<void> => {
+        try {
+            if (currentStep === 0) {
+                await form.validateFields([
+                    'tenHopDong',
+                    'loaiHopDong',
+                    'idNcc',
+                    'ngayKy',
+                    'ngayHieuLuc',
+                    'ngayHetHan',
+                ]);
+                setCurrentStep(1);
+            } else if (currentStep === 1) {
+                setCurrentStep(2);
+            }
+        } catch {
+            message.warning('Vui lòng hoàn thành các trường bắt buộc trước khi tiếp tục.');
+        }
+    };
+
+    const handlePrev = (): void => {
+        if (currentStep > 0) {
+            setCurrentStep((prev) => prev - 1);
+        }
+    };
+
+    const handleStepClick = async (step: number): Promise<void> => {
+        if (step < currentStep) {
+            setCurrentStep(step);
+        } else if (step > currentStep) {
+            try {
+                if (currentStep === 0) {
+                    await form.validateFields([
+                        'tenHopDong',
+                        'loaiHopDong',
+                        'idNcc',
+                        'ngayKy',
+                        'ngayHieuLuc',
+                        'ngayHetHan',
+                    ]);
+                }
+                setCurrentStep(step);
+            } catch {
+                message.warning('Vui lòng hoàn thành các trường bắt buộc ở bước hiện tại.');
+            }
+        }
+    };
+
     const handleSubmit = async (): Promise<void> => {
         try {
+            setSubmitting(true);
             const values = await form.validateFields();
 
             const validLines: HopDongChiTiet[] = lines
@@ -283,6 +380,7 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
                     soLuongCamKet: l.soLuongCamKet || 0,
                     donGiaCamKet: l.donGiaCamKet || 0,
                     vatPhantram: l.vatPhantram ?? 8,
+                    moq: l.moq != null ? Math.max(1, l.moq) : 1,
                     ghiChu: l.ghiChu,
                 }));
 
@@ -294,6 +392,8 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
                 giaTriHopDong: values.giaTriHopDong != null ? String(values.giaTriHopDong) : undefined,
                 hanMucHopDong: values.hanMucHopDong != null ? String(values.hanMucHopDong) : undefined,
                 soNgayDuocNo: values.soNgayDuocNo != null ? String(values.soNgayDuocNo) : undefined,
+                chietKhauPhantram: values.chietKhauPhantram != null ? Number(values.chietKhauPhantram) : 0,
+                tuDongGiaHan: Boolean(values.tuDongGiaHan),
                 lines: validLines,
             };
             const file = fileList[0]?.originFileObj as File | undefined;
@@ -308,6 +408,8 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
             onClose();
         } catch (error: any) {
             message.error(error?.message || 'Có lỗi xảy ra');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -315,143 +417,280 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
         <Modal
             open={open}
             title={editing !== null ? `Chỉnh sửa hợp đồng ${editing.maHopDong}` : 'Tạo hợp đồng nhà cung cấp'}
-            okText={editing !== null ? 'Lưu thay đổi' : 'Tạo hợp đồng'}
-            cancelText="Huỷ"
-            width={960}
-            onOk={handleSubmit}
+            width={980}
             onCancel={onClose}
             destroyOnHidden
+            footer={
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                        {currentStep > 0 ? (
+                            <Button onClick={handlePrev}>
+                                ← Quay lại
+                            </Button>
+                        ) : (
+                            <Button onClick={onClose}>
+                                Huỷ
+                            </Button>
+                        )}
+                    </div>
+                    <Space size={12}>
+                        <Text type="secondary" style={{ fontSize: 13 }}>
+                            Bước {currentStep + 1} / 3
+                        </Text>
+                        {currentStep < 2 ? (
+                            <Button type="primary" onClick={handleNext}>
+                                {currentStep === 0 ? 'Tiếp theo: Điều khoản & Pháp lý ➜' : 'Tiếp theo: Mặt hàng cam kết ➜'}
+                            </Button>
+                        ) : (
+                            <Button type="primary" onClick={handleSubmit} loading={submitting}>
+                                {editing !== null ? 'Lưu thay đổi hợp đồng' : 'Tạo hợp đồng'}
+                            </Button>
+                        )}
+                    </Space>
+                </div>
+            }
         >
             <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
-                <Row gutter={16}>
-                    <Col xs={24} md={16}>
-                        <Form.Item
-                            name="tenHopDong"
-                            label="Tên hợp đồng"
-                            rules={[
-                                { required: true, message: 'Vui lòng nhập tên hợp đồng.' },
-                                { max: 200, message: 'Tên hợp đồng tối đa 200 ký tự.' },
-                            ]}
-                        >
-                            <Input placeholder="VD: Hợp đồng cung cấp nước giải khát Q4/2026" />
-                        </Form.Item>
-                    </Col>
-                    <Col xs={24} md={8}>
-                        <Form.Item
-                            name="loaiHopDong"
-                            label="Loại hợp đồng"
-                            rules={[{ required: true, message: 'Chọn loại hợp đồng.' }]}
-                        >
-                            <Select options={Object.entries(HOP_DONG_LOAI_LABEL).map(([value, label]) => ({ value, label }))} />
-                        </Form.Item>
-                    </Col>
-                </Row>
+                {/* Thanh tiến trình Steps */}
+                <Steps
+                    current={currentStep}
+                    onChange={handleStepClick}
+                    style={{ marginBottom: 20, paddingTop: 4 }}
+                    items={[
+                        {
+                            title: 'Thông tin chung',
+                            description: 'Thời hạn & Giá trị',
+                            icon: <FileTextOutlined />,
+                        },
+                        {
+                            title: 'Điều khoản & Pháp lý',
+                            description: 'Đại diện & Giao nhận',
+                            icon: <SafetyCertificateOutlined />,
+                        },
+                        {
+                            title: 'Mặt hàng cam kết',
+                            description: `${lines.filter((l) => Boolean(l.idSanPham)).length} sản phẩm`,
+                            icon: <ShoppingCartOutlined />,
+                        },
+                    ]}
+                />
 
-                <Form.Item
-                    name="idNcc"
-                    label="Nhà cung cấp"
-                    rules={[{ required: true, message: 'Chọn nhà cung cấp.' }]}
-                >
-                    <Select
-                        showSearch
-                        optionFilterProp="label"
-                        placeholder="Chọn nhà cung cấp đang hợp tác"
-                        options={nccOptions}
-                        onChange={() => {
-                            // Khi đổi NCC, nếu đã có các dòng mặt hàng, thông báo cho người dùng
-                            if (lines.some((l) => Boolean(l.idSanPham))) {
-                                message.warning('Bạn vừa đổi Nhà cung cấp. Hãy kiểm tra lại danh sách mặt hàng cam kết bên dưới.');
-                            }
-                        }}
-                    />
-                </Form.Item>
+                {/* BƯỚC 1: Thông tin chung & Thời hạn */}
+                <div style={{ display: currentStep === 0 ? 'block' : 'none' }}>
+                    <Row gutter={16}>
+                        <Col xs={24} md={12}>
+                            <Form.Item
+                                name="tenHopDong"
+                                label="Tên hợp đồng"
+                                rules={[
+                                    { required: true, message: 'Vui lòng nhập tên hợp đồng.' },
+                                    { max: 200, message: 'Tên hợp đồng tối đa 200 ký tự.' },
+                                ]}
+                            >
+                                <Input placeholder="VD: Hợp đồng nguyên tắc cung ứng nước giải khát Q4/2026" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={6}>
+                            <Form.Item
+                                name="loaiHopDong"
+                                label="Loại hợp đồng"
+                                rules={[{ required: true, message: 'Chọn loại hợp đồng.' }]}
+                            >
+                                <Select options={Object.entries(HOP_DONG_LOAI_LABEL).map(([value, label]) => ({ value, label }))} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={6}>
+                            <Form.Item name="soHopDongDoiTac" label="Số HĐ đối tác (nếu có)">
+                                <Input placeholder="VD: HD-COCA-2026" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
-                <Row gutter={16}>
-                    <Col xs={24} md={8}>
-                        <Form.Item name="ngayKy" label="Ngày ký" rules={[{ required: true, message: 'Chọn ngày ký.' }]}>
-                            <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} placeholder="Chọn ngày" />
-                        </Form.Item>
-                    </Col>
-                    <Col xs={24} md={8}>
-                        <Form.Item name="ngayHieuLuc" label="Ngày hiệu lực" rules={[{ required: true, message: 'Chọn ngày hiệu lực.' }]}>
-                            <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} placeholder="Chọn ngày" />
-                        </Form.Item>
-                    </Col>
-                    <Col xs={24} md={8}>
-                        <Form.Item
-                            name="ngayHetHan"
-                            label="Ngày hết hạn"
-                            dependencies={['ngayHieuLuc']}
-                            rules={[
-                                { required: true, message: 'Chọn ngày hết hạn.' },
-                                {
-                                    validator: (_, value: Dayjs | undefined) => {
-                                        const start: Dayjs | undefined = form.getFieldValue('ngayHieuLuc');
-                                        if (start && value && value.isBefore(start, 'day')) {
-                                            return Promise.reject(new Error('Ngày hết hạn phải sau hoặc bằng ngày hiệu lực.'));
-                                        }
-                                        return Promise.resolve();
+                    <Form.Item
+                        name="idNcc"
+                        label="Nhà cung cấp"
+                        rules={[{ required: true, message: 'Chọn nhà cung cấp.' }]}
+                    >
+                        <Select
+                            showSearch
+                            optionFilterProp="label"
+                            placeholder="Chọn nhà cung cấp đang hợp tác"
+                            options={nccOptions}
+                            onChange={() => {
+                                if (lines.some((l) => Boolean(l.idSanPham))) {
+                                    message.warning('Bạn vừa đổi Nhà cung cấp. Hãy kiểm tra lại danh sách mặt hàng cam kết ở bước 3.');
+                                }
+                            }}
+                        />
+                    </Form.Item>
+
+                    <Row gutter={16}>
+                        <Col xs={24} md={6}>
+                            <Form.Item name="ngayKy" label="Ngày ký" rules={[{ required: true, message: 'Chọn ngày ký.' }]}>
+                                <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} placeholder="Chọn ngày" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={6}>
+                            <Form.Item name="ngayHieuLuc" label="Ngày hiệu lực" rules={[{ required: true, message: 'Chọn ngày hiệu lực.' }]}>
+                                <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} placeholder="Chọn ngày" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={6}>
+                            <Form.Item
+                                name="ngayHetHan"
+                                label="Ngày hết hạn"
+                                dependencies={['ngayHieuLuc']}
+                                rules={[
+                                    { required: true, message: 'Chọn ngày hết hạn.' },
+                                    {
+                                        validator: (_, value: Dayjs | undefined) => {
+                                            const start: Dayjs | undefined = form.getFieldValue('ngayHieuLuc');
+                                            if (start && value && value.isBefore(start, 'day')) {
+                                                return Promise.reject(new Error('Ngày hết hạn phải sau hoặc bằng ngày hiệu lực.'));
+                                            }
+                                            return Promise.resolve();
+                                        },
                                     },
-                                },
-                            ]}
+                                ]}
+                            >
+                                <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} placeholder="Chọn ngày" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={6}>
+                            <Form.Item name="tuDongGiaHan" valuePropName="checked" label="Tự động gia hạn">
+                                <Switch checkedChildren="Có" unCheckedChildren="Không" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Row gutter={16}>
+                        <Col xs={24} md={6}>
+                            <Form.Item name="giaTriHopDong" label="Giá trị hợp đồng (VND)">
+                                <InputNumber<number>
+                                    min={0}
+                                    step={100_000}
+                                    style={{ width: '100%' }}
+                                    placeholder="Tùy chọn"
+                                    formatter={(value) => `${value ?? 0}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+                                    parser={(value) => Number((value ?? '0').replace(/\./g, ''))}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={6}>
+                            <Form.Item
+                                name="hanMucHopDong"
+                                label={
+                                    <Space size={4}>
+                                        <span>Hạn mức tối đa (VND)</span>
+                                        <Tooltip title="Hạn mức tối đa ngân sách được phép nhập theo hợp đồng này. Khi các phiếu nhập đạt hạn mức sẽ cảnh báo hoặc chặn.">
+                                            <Text type="secondary" style={{ cursor: 'pointer', fontSize: 12 }}>(?)</Text>
+                                        </Tooltip>
+                                    </Space>
+                                }
+                            >
+                                <InputNumber<number>
+                                    min={0}
+                                    step={1_000_000}
+                                    style={{ width: '100%' }}
+                                    placeholder="Hạn mức ngân sách"
+                                    formatter={(value) => `${value ?? 0}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+                                    parser={(value) => Number((value ?? '0').replace(/\./g, ''))}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={4}>
+                            <Form.Item name="soNgayDuocNo" label="Số ngày nợ">
+                                <InputNumber min={0} step={1} style={{ width: '100%' }} addonAfter="ngày" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={8}>
+                            <Form.Item name="dieuKhoanThanhToan" label="Điều khoản thanh toán">
+                                <Input placeholder="VD: Chuyển khoản trong vòng 30 ngày kể từ ngày nhận đủ hóa đơn" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Form.Item label="File scan hợp đồng" style={{ marginBottom: 0 }}>
+                        <Upload
+                            beforeUpload={handleBeforeUpload}
+                            maxCount={1}
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            fileList={fileList}
+                            onChange={({ fileList: list }) => setFileList(list.slice(-1))}
                         >
-                            <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} placeholder="Chọn ngày" />
-                        </Form.Item>
-                    </Col>
-                </Row>
+                            <Button icon={<UploadOutlined />} style={{ width: '100%' }}>
+                                Chọn file PDF / ảnh (tối đa 10MB)
+                            </Button>
+                        </Upload>
+                        <Space direction="vertical" size={0} style={{ marginTop: 4 }}>
+                            {editing !== null && editing.fileCo && (
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                    File hiện tại: {editing.fileTenGoc}
+                                </Text>
+                            )}
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                {editing !== null
+                                    ? 'Tải lên khi sửa: nếu để trống sẽ giữ file cũ. File sẽ bắt buộc khi trình duyệt.'
+                                    : 'Có thể để trống khi tạo nháp. File sẽ bắt buộc khi trình duyệt.'}
+                            </Text>
+                        </Space>
+                    </Form.Item>
+                </div>
 
-                <Row gutter={16}>
-                    <Col xs={24} md={6}>
-                        <Form.Item name="giaTriHopDong" label="Giá trị hợp đồng (VND)">
-                            <InputNumber<number>
-                                min={0}
-                                step={100_000}
-                                style={{ width: '100%' }}
-                                placeholder="Tùy chọn"
-                                formatter={(value) => `${value ?? 0}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
-                                parser={(value) => Number((value ?? '0').replace(/\./g, ''))}
-                            />
-                        </Form.Item>
-                    </Col>
-                    <Col xs={24} md={6}>
-                        <Form.Item
-                            name="hanMucHopDong"
-                            label={
-                                <Space size={4}>
-                                    <span>Hạn mức tối đa (VND)</span>
-                                    <Tooltip title="Hạn mức tối đa ngân sách được phép nhập theo hợp đồng này. Khi các phiếu nhập đạt hạn mức sẽ cảnh báo hoặc chặn.">
-                                        <Text type="secondary" style={{ cursor: 'pointer', fontSize: 12 }}>(?)</Text>
-                                    </Tooltip>
-                                </Space>
-                            }
-                        >
-                            <InputNumber<number>
-                                min={0}
-                                step={1_000_000}
-                                style={{ width: '100%' }}
-                                placeholder="Hạn mức ngân sách"
-                                formatter={(value) => `${value ?? 0}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
-                                parser={(value) => Number((value ?? '0').replace(/\./g, ''))}
-                            />
-                        </Form.Item>
-                    </Col>
-                    <Col xs={24} md={4}>
-                        <Form.Item name="soNgayDuocNo" label="Số ngày nợ">
-                            <InputNumber min={0} step={1} style={{ width: '100%' }} addonAfter="ngày" />
-                        </Form.Item>
-                    </Col>
-                    <Col xs={24} md={8}>
-                        <Form.Item name="dieuKhoanThanhToan" label="Điều khoản thanh toán">
-                            <Input placeholder="VD: Thanh toán sau 30 ngày kể từ ngày giao hàng" />
-                        </Form.Item>
-                    </Col>
-                </Row>
+                {/* BƯỚC 2: Điều khoản & Pháp lý */}
+                <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>
+                    <Row gutter={16}>
+                        <Col xs={24} md={8}>
+                            <Form.Item name="nguoiDaiDienNcc" label="Đại diện phía NCC">
+                                <Input placeholder="Họ tên người ký đại diện NCC" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={8}>
+                            <Form.Item name="chucVuNcc" label="Chức vụ đại diện NCC">
+                                <Input placeholder="VD: Giám đốc / Trưởng phòng Kinh doanh" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={8}>
+                            <Form.Item name="nguoiDaiDienBenMua" label="Đại diện Circle K">
+                                <Input placeholder="Họ tên người ký đại diện bên mua" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
-                <Divider style={{ margin: '12px 0' }} />
+                    <Row gutter={16}>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="diaDiemGiaoHang" label="Địa điểm giao hàng">
+                                <Input placeholder="VD: Kho Tổng Phân Phối Circle K (DC) / Giao trực tiếp Cửa hàng" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="thoiGianGiaoHang" label="Thời gian giao hàng cam kết">
+                                <Input placeholder="VD: Trong vòng 24 - 48 giờ sau khi nhận đơn đặt hàng (PO)" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
-                {/* Phần chi tiết từng mặt hàng cam kết hop_dong_chi_tiet */}
-                <div style={{ marginBottom: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+                    <Row gutter={16}>
+                        <Col xs={24} md={6}>
+                            <Form.Item name="chietKhauPhantram" label="Chiết khấu thương mại (%)">
+                                <InputNumber min={0} max={100} step={0.5} style={{ width: '100%' }} addonAfter="%" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={18}>
+                            <Form.Item name="chinhSachDoiTra" label="Chính sách đổi trả hàng (Hạn sử dụng / Hàng lỗi)">
+                                <Input placeholder="VD: Đổi trả 100% đối với hàng hỏng do NCC, hàng cận date trước 30 ngày" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Form.Item name="noiDung" label="Tóm tắt điều khoản khác">
+                        <Input.TextArea rows={4} maxLength={2000} placeholder="Tóm tắt các điều khoản phạt vi phạm, cam kết chất lượng, bảo mật..." />
+                    </Form.Item>
+                </div>
+
+                {/* BƯỚC 3: Mặt hàng cam kết */}
+                <div style={{ display: currentStep === 2 ? 'block' : 'none' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                         <Space direction="vertical" size={2}>
                             <Text strong style={{ fontSize: 14 }}>
                                 Chi tiết mặt hàng cam kết (hop_dong_chi_tiet)
@@ -459,7 +698,7 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
                             {selectedNccId && (
                                 <Space size={8} wrap>
                                     <Tag color={suppliedProducts.length > 0 ? 'blue' : 'orange'}>
-                                        NCC đang có {suppliedProducts.length} sản phẩm cung ứng
+                                        NCC có {suppliedProducts.length} sản phẩm cung ứng
                                     </Tag>
                                     <Switch
                                         size="small"
@@ -501,8 +740,8 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
                         <Alert
                             type="info"
                             showIcon
-                            style={{ marginBottom: 8, fontSize: 13 }}
-                            message="Vui lòng chọn Nhà cung cấp ở trên để hệ thống tự động liên kết danh mục sản phẩm của NCC đó."
+                            style={{ marginBottom: 12, fontSize: 13 }}
+                            message="Vui lòng quay lại Bước 1 để chọn Nhà cung cấp trước khi thêm mặt hàng cam kết."
                         />
                     )}
 
@@ -510,17 +749,23 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
                         <Alert
                             type="warning"
                             showIcon
-                            style={{ marginBottom: 8, fontSize: 12 }}
-                            message="Nhà cung cấp này chưa có sản phẩm nào được gắn trước đó. Bạn có thể chọn bất kỳ sản phẩm nào bên dưới, hệ thống sẽ tự động liên kết sản phẩm đó cho NCC khi hợp đồng được duyệt."
+                            style={{ marginBottom: 12, fontSize: 12 }}
+                            message="Nhà cung cấp này chưa có sản phẩm nào được gắn trước đó. Các sản phẩm bạn thêm vào hợp đồng sẽ tự động được liên kết vào danh mục NCC sau khi hợp đồng được duyệt."
                         />
                     )}
 
-                    {selectedNccId && !filterByNccOnly && suppliedProducts.length > 0 && (
+                    {selectedNccId && activeContractLines.length > 0 && (
                         <Alert
-                            type="info"
+                            type="warning"
                             showIcon
-                            style={{ marginBottom: 8, fontSize: 12 }}
-                            message="Đang xem tất cả sản phẩm hệ thống. Nếu chọn mặt hàng mới ngoài danh mục của NCC, hệ thống sẽ tự động liên kết sản phẩm đó vào NCC sau khi duyệt hợp đồng."
+                            style={{ marginBottom: 12, fontSize: 12 }}
+                            message={
+                                <span>
+                                    <strong>Lưu ý xung đột hợp đồng:</strong> Nhà cung cấp này đang có{' '}
+                                    <strong>{activeContractLines.length}</strong> mặt hàng thuộc hợp đồng còn hiệu lực. Các dòng có nhãn{' '}
+                                    <Tag color="gold" icon={<WarningOutlined />}>Đang có HĐ hiệu lực</Tag> nên ký ngày hiệu lực nối tiếp hoặc sẽ cập nhật lại bảng giá khi duyệt.
+                                </span>
+                            }
                         />
                     )}
 
@@ -531,31 +776,47 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
                         dataSource={lines}
                         locale={{
                             emptyText: selectedNccId
-                                ? 'Chưa có mặt hàng cam kết. Bấm "+ Thêm mặt hàng" để chọn sản phẩm của NCC.'
-                                : 'Vui lòng chọn NCC trước khi thêm mặt hàng cam kết.',
+                                ? 'Chưa có mặt hàng cam kết. Bấm "+ Thêm mặt hàng" để chọn sản phẩm.'
+                                : 'Vui lòng chọn NCC trước khi thêm mặt hàng.',
                         }}
                         columns={[
                             {
                                 title: 'Sản phẩm (*)',
                                 dataIndex: 'idSanPham',
-                                width: '38%',
-                                render: (value: string, record: ContractLineDraft) => (
-                                    <Select
-                                        style={{ width: '100%' }}
-                                        showSearch
-                                        placeholder={filterByNccOnly ? 'Chọn sản phẩm của NCC' : 'Chọn sản phẩm'}
-                                        optionFilterProp="label"
-                                        value={value || undefined}
-                                        onChange={(val) => handleSelectProduct(record.key, val)}
-                                        options={productOptions}
-                                        disabled={!selectedNccId}
-                                    />
-                                ),
+                                width: '34%',
+                                render: (value: string, record: ContractLineDraft) => {
+                                    const conflict = activeConflictMap.get(value);
+                                    return (
+                                        <div>
+                                            <Select
+                                                style={{ width: '100%' }}
+                                                showSearch
+                                                placeholder={filterByNccOnly ? 'Chọn sản phẩm của NCC' : 'Chọn sản phẩm'}
+                                                optionFilterProp="label"
+                                                value={value || undefined}
+                                                onChange={(val) => handleSelectProduct(record.key, val)}
+                                                options={productOptions}
+                                                disabled={!selectedNccId}
+                                            />
+                                            {conflict && (
+                                                <div style={{ marginTop: 4 }}>
+                                                    <Tooltip
+                                                        title={`Sản phẩm đang thuộc HĐ ${conflict.maHopDong} (Hiệu lực: ${formatDate(conflict.ngayHieuLuc)} - ${formatDate(conflict.ngayHetHan ?? null)}, Giá: ${formatVND(conflict.donGiaCamKet)}).`}
+                                                    >
+                                                        <Tag color="gold" icon={<WarningOutlined />} style={{ fontSize: 11 }}>
+                                                            Đang trong HĐ {conflict.maHopDong} ({formatVND(conflict.donGiaCamKet)})
+                                                        </Tag>
+                                                    </Tooltip>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                },
                             },
                             {
                                 title: 'Đơn giá cam kết (*)',
                                 dataIndex: 'donGiaCamKet',
-                                width: '22%',
+                                width: '20%',
                                 render: (value: number, record: ContractLineDraft) => (
                                     <InputNumber<number>
                                         style={{ width: '100%' }}
@@ -572,7 +833,7 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
                             {
                                 title: 'SL cam kết',
                                 dataIndex: 'soLuongCamKet',
-                                width: '16%',
+                                width: '14%',
                                 render: (value: number, record: ContractLineDraft) => (
                                     <InputNumber<number>
                                         style={{ width: '100%' }}
@@ -584,9 +845,27 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
                                 ),
                             },
                             {
+                                title: (
+                                    <Tooltip title="Số lượng đặt hàng tối thiểu mỗi lần nhập (Minimum Order Quantity)">
+                                        <span>MOQ (?)</span>
+                                    </Tooltip>
+                                ),
+                                dataIndex: 'moq',
+                                width: '12%',
+                                render: (value: number, record: ContractLineDraft) => (
+                                    <InputNumber<number>
+                                        style={{ width: '100%' }}
+                                        min={1}
+                                        value={value ?? 1}
+                                        onChange={(val) => handleUpdateLine(record.key, 'moq', val ?? 1)}
+                                        placeholder="MOQ"
+                                    />
+                                ),
+                            },
+                            {
                                 title: 'VAT (%)',
                                 dataIndex: 'vatPhantram',
-                                width: '14%',
+                                width: '12%',
                                 render: (value: number, record: ContractLineDraft) => (
                                     <Select
                                         style={{ width: '100%' }}
@@ -604,7 +883,7 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
                             {
                                 title: '',
                                 key: 'action',
-                                width: '10%',
+                                width: '8%',
                                 align: 'center',
                                 render: (_: any, record: ContractLineDraft) => (
                                     <Button
@@ -619,36 +898,6 @@ export const HopDongFormModal: FC<HopDongFormModalProps> = ({ open, editing, onC
                         ]}
                     />
                 </div>
-
-                <Form.Item name="noiDung" label="Nội dung hợp đồng">
-                    <Input.TextArea rows={3} maxLength={2000} placeholder="Tóm tắt điều khoản chính, phạm vi công việc..." />
-                </Form.Item>
-
-                <Form.Item label="File scan hợp đồng" style={{ marginBottom: 0 }}>
-                    <Upload
-                        beforeUpload={handleBeforeUpload}
-                        maxCount={1}
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        fileList={fileList}
-                        onChange={({ fileList: list }) => setFileList(list.slice(-1))}
-                    >
-                        <Button icon={<UploadOutlined />} style={{ width: '100%' }}>
-                            Chọn file PDF / ảnh (tối đa 10MB)
-                        </Button>
-                    </Upload>
-                    <Space direction="vertical" size={0} style={{ marginTop: 4 }}>
-                        {editing !== null && editing.fileCo && (
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                File hiện tại: {editing.fileTenGoc}
-                            </Text>
-                        )}
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            {editing !== null
-                                ? 'Tải lên khi sửa: nếu để trống sẽ giữ file cũ. File sẽ bắt buộc khi trình duyệt.'
-                                : 'Có thể để trống khi tạo nháp. File sẽ bắt buộc khi trình duyệt.'}
-                        </Text>
-                    </Space>
-                </Form.Item>
             </Form>
         </Modal>
     );

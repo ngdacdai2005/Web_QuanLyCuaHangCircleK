@@ -44,6 +44,10 @@ public class HopDongChiTiet {
     @Column(name = "vat_phantram", nullable = false)
     private Integer vatPhantram = 8;
 
+    @Builder.Default
+    @Column(name = "moq")
+    private Integer moq = 1;
+
     @Column(name = "ngay_hieu_luc_tu")
     private LocalDate ngayHieuLucTu;
 

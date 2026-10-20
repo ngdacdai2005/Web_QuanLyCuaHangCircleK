@@ -79,6 +79,15 @@ public class HopDongService {
         h.setDieuKhoanThanhToan(req.getDieuKhoanThanhToan());
         h.setSoNgayDuocNo(req.getSoNgayDuocNo() != null ? Math.max(0, req.getSoNgayDuocNo()) : 0);
         h.setNoiDung(req.getNoiDung());
+        h.setSoHopDongDoiTac(req.getSoHopDongDoiTac());
+        h.setNguoiDaiDienNcc(req.getNguoiDaiDienNcc());
+        h.setChucVuNcc(req.getChucVuNcc());
+        h.setNguoiDaiDienBenMua(req.getNguoiDaiDienBenMua());
+        h.setDiaDiemGiaoHang(req.getDiaDiemGiaoHang());
+        h.setThoiGianGiaoHang(req.getThoiGianGiaoHang());
+        h.setChietKhauPhantram(req.getChietKhauPhantram() != null ? req.getChietKhauPhantram() : BigDecimal.ZERO);
+        h.setChinhSachDoiTra(req.getChinhSachDoiTra());
+        h.setTuDongGiaHan(Boolean.TRUE.equals(req.getTuDongGiaHan()));
         h.setTrangThai(ST_DRAFT);
         h.setSoLanTrinh(0);
         h.setNgayTao(LocalDateTime.now());
@@ -107,6 +116,15 @@ public class HopDongService {
             h.setDieuKhoanThanhToan(req.getDieuKhoanThanhToan());
             h.setSoNgayDuocNo(req.getSoNgayDuocNo() != null ? Math.max(0, req.getSoNgayDuocNo()) : 0);
             h.setNoiDung(req.getNoiDung());
+            h.setSoHopDongDoiTac(req.getSoHopDongDoiTac());
+            h.setNguoiDaiDienNcc(req.getNguoiDaiDienNcc());
+            h.setChucVuNcc(req.getChucVuNcc());
+            h.setNguoiDaiDienBenMua(req.getNguoiDaiDienBenMua());
+            h.setDiaDiemGiaoHang(req.getDiaDiemGiaoHang());
+            h.setThoiGianGiaoHang(req.getThoiGianGiaoHang());
+            h.setChietKhauPhantram(req.getChietKhauPhantram() != null ? req.getChietKhauPhantram() : BigDecimal.ZERO);
+            h.setChinhSachDoiTra(req.getChinhSachDoiTra());
+            h.setTuDongGiaHan(Boolean.TRUE.equals(req.getTuDongGiaHan()));
             replaceFile(h, file);
             h.setNgayCapNhat(LocalDateTime.now());
             h.setNguoiCapNhat(actorId);
@@ -256,6 +274,7 @@ public class HopDongService {
                     .soLuongCamKet(line.getSoLuongCamKet() != null ? line.getSoLuongCamKet() : 0)
                     .soLuongDaNhap(0)
                     .vatPhantram(line.getVatPhantram() != null ? line.getVatPhantram() : 8)
+                    .moq(line.getMoq() != null ? Math.max(1, line.getMoq()) : 1)
                     .ngayHieuLucTu(line.getNgayHieuLucTu() != null ? line.getNgayHieuLucTu() : h.getNgayHieuLuc())
                     .ngayHetHan(line.getNgayHetHan() != null ? line.getNgayHetHan() : h.getNgayHetHan())
                     .ghiChu(line.getGhiChu())
@@ -359,6 +378,15 @@ public class HopDongService {
         d.setDieuKhoanThanhToan(h.getDieuKhoanThanhToan());
         d.setSoNgayDuocNo(h.getSoNgayDuocNo());
         d.setNoiDung(h.getNoiDung());
+        d.setSoHopDongDoiTac(h.getSoHopDongDoiTac());
+        d.setNguoiDaiDienNcc(h.getNguoiDaiDienNcc());
+        d.setChucVuNcc(h.getChucVuNcc());
+        d.setNguoiDaiDienBenMua(h.getNguoiDaiDienBenMua());
+        d.setDiaDiemGiaoHang(h.getDiaDiemGiaoHang());
+        d.setThoiGianGiaoHang(h.getThoiGianGiaoHang());
+        d.setChietKhauPhantram(h.getChietKhauPhantram() != null ? h.getChietKhauPhantram() : BigDecimal.ZERO);
+        d.setChinhSachDoiTra(h.getChinhSachDoiTra());
+        d.setTuDongGiaHan(Boolean.TRUE.equals(h.getTuDongGiaHan()));
         d.setFileTenGoc(h.getFileTenGoc());
         d.setFileCo(h.getFileDuongDan() != null && !h.getFileDuongDan().isBlank());
         d.setTrangThai(effectiveStatus(h));
@@ -385,6 +413,7 @@ public class HopDongService {
                     lineDto.setSoLuongCamKet(ct.getSoLuongCamKet());
                     lineDto.setSoLuongDaNhap(ct.getSoLuongDaNhap());
                     lineDto.setVatPhantram(ct.getVatPhantram());
+                    lineDto.setMoq(ct.getMoq() != null ? ct.getMoq() : 1);
                     lineDto.setNgayHieuLucTu(ct.getNgayHieuLucTu());
                     lineDto.setNgayHetHan(ct.getNgayHetHan());
                     lineDto.setGhiChu(ct.getGhiChu());
@@ -398,6 +427,38 @@ public class HopDongService {
         d.setLines(lines);
 
         return d;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getActiveContractLines(UUID idNcc) {
+        LocalDate today = LocalDate.now();
+        List<HopDong> activeContracts = hopDongRepository.filter(idNcc, ST_ACTIVE).stream()
+                .filter(h -> h.getNgayHetHan() == null || !h.getNgayHetHan().isBefore(today))
+                .toList();
+
+        List<Map<String, Object>> results = new ArrayList<>();
+        for (HopDong h : activeContracts) {
+            List<com.erp.cuahangtienloi.entity.HopDongChiTiet> lines = hopDongChiTietRepository.findByIdHopDong(h.getId());
+            for (com.erp.cuahangtienloi.entity.HopDongChiTiet line : lines) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("idSanPham", line.getIdSanPham());
+                map.put("idHopDong", h.getId());
+                map.put("maHopDong", h.getMaHopDong());
+                map.put("tenHopDong", h.getTenHopDong());
+                map.put("donGiaCamKet", line.getDonGiaCamKet());
+                map.put("soLuongCamKet", line.getSoLuongCamKet());
+                map.put("soLuongDaNhap", line.getSoLuongDaNhap());
+                map.put("ngayHieuLuc", h.getNgayHieuLuc());
+                map.put("ngayHetHan", h.getNgayHetHan());
+                map.put("moq", line.getMoq() != null ? line.getMoq() : 1);
+                sanPhamRepository.findById(line.getIdSanPham()).ifPresent(sp -> {
+                    map.put("tenSanPham", sp.getTenSanPham());
+                    map.put("sku", sp.getSku());
+                });
+                results.add(map);
+            }
+        }
+        return results;
     }
 
     public record FilePayload(Resource resource, String contentType, String fileName) {}

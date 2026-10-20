@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -54,6 +55,12 @@ public class HopDongController {
     @PreAuthorize(VIEW)
     public ResponseEntity<List<HopDongCountDTO>> counts() {
         return ResponseEntity.ok(hopDongService.countByNcc());
+    }
+
+    @GetMapping("/active-lines")
+    @PreAuthorize(VIEW)
+    public ResponseEntity<List<Map<String, Object>>> getActiveLines(@RequestParam UUID idNcc) {
+        return ResponseEntity.ok(hopDongService.getActiveContractLines(idNcc));
     }
 
     @GetMapping("/{id}")

@@ -58,6 +58,33 @@ public class HopDong {
     @Column(columnDefinition = "TEXT")
     private String noiDung;
 
+    @Column(name = "so_hop_dong_doi_tac")
+    private String soHopDongDoiTac;
+
+    @Column(name = "nguoi_dai_dien_ncc")
+    private String nguoiDaiDienNcc;
+
+    @Column(name = "chuc_vu_ncc")
+    private String chucVuNcc;
+
+    @Column(name = "nguoi_dai_dien_ben_mua")
+    private String nguoiDaiDienBenMua;
+
+    @Column(name = "dia_diem_giao_hang")
+    private String diaDiemGiaoHang;
+
+    @Column(name = "thoi_gian_giao_hang")
+    private String thoiGianGiaoHang;
+
+    @Column(name = "chiet_khau_phantram")
+    private BigDecimal chietKhauPhantram;
+
+    @Column(name = "chinh_sach_doi_tra", columnDefinition = "TEXT")
+    private String chinhSachDoiTra;
+
+    @Column(name = "tu_dong_gia_han")
+    private Boolean tuDongGiaHan;
+
     @Column(name = "file_ten_goc")
     private String fileTenGoc;
 

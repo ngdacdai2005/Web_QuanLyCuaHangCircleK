@@ -3,7 +3,7 @@ import {
     apiFetch,
     getAuthHeaders,
 } from './http';
-import type { HopDongFilter, HopDongFormValues } from '@/types';
+import type { ActiveContractLine, HopDongFilter, HopDongFormValues } from '@/types';
 
 export interface HopDongChiTietDTO {
     id?: string;
@@ -75,6 +75,11 @@ export const hopDongApi = {
     counts: async (): Promise<HopDongCountDTO[]> => {
         const res = await fetch(`${API_BASE_URL}/api/hop-dong/counts`, { headers: headers() });
         if (!res.ok) throw await parseError(res, 'Lỗi tải thống kê hợp đồng');
+        return res.json();
+    },
+    activeLines: async (idNcc: string): Promise<ActiveContractLine[]> => {
+        const res = await fetch(`${API_BASE_URL}/api/hop-dong/active-lines?idNcc=${idNcc}`, { headers: headers() });
+        if (!res.ok) throw await parseError(res, 'Lỗi tải danh mục hợp đồng hiệu lực');
         return res.json();
     },
     detail: async (id: string): Promise<HopDongDTO> => {
