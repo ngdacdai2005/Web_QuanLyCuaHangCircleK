@@ -16,6 +16,7 @@ public class DanhMucResponseDTO {
     private String mauHex;
     private Integer thuTuHienThi;
     private Integer productCount;
+    private String skuPrefix;
     private Boolean dangHoatDong;
     private LocalDateTime ngayTao;
     private LocalDateTime ngayCapNhat;

@@ -41,6 +41,7 @@ public class HopDongService {
     private final com.erp.cuahangtienloi.repository.GiaNhapNccRepository giaNhapNccRepository;
     private final com.erp.cuahangtienloi.repository.SanPhamRepository sanPhamRepository;
     private final com.erp.cuahangtienloi.repository.SanPhamNhaCungCapRepository sanPhamNhaCungCapRepository;
+    private final NotificationHelper notificationHelper;
 
     @Transactional(readOnly = true)
     public List<HopDongDTO> list(UUID idNcc, String trangThai) {
@@ -147,7 +148,9 @@ public class HopDongService {
             h.setLyDoTuChoi(null);
             h.setNgayCapNhat(LocalDateTime.now());
             h.setNguoiCapNhat(actorId);
-            return toDTO(hopDongRepository.save(h));
+            HopDong saved = hopDongRepository.save(h);
+            notificationHelper.notifyContractSubmitted(saved, actorId);
+            return toDTO(saved);
         });
     }
 
@@ -205,6 +208,7 @@ public class HopDongService {
                 }
             }
 
+            notificationHelper.notifyContractApproved(saved, actorId);
             return toDTO(saved);
         });
     }
@@ -221,7 +225,9 @@ public class HopDongService {
             h.setNgayDuyet(LocalDateTime.now());
             h.setNgayCapNhat(LocalDateTime.now());
             h.setNguoiCapNhat(actorId);
-            return toDTO(hopDongRepository.save(h));
+            HopDong saved = hopDongRepository.save(h);
+            notificationHelper.notifyContractRejected(saved, lyDo, actorId);
+            return toDTO(saved);
         });
     }
 

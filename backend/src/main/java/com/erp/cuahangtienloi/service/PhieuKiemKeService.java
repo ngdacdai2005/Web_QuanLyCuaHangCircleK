@@ -42,6 +42,7 @@ public class PhieuKiemKeService {
     private final JdbcTemplate jdbcTemplate;
     private final PhieuKiemKeMapper phieuKiemKeMapper;
     private final ChiTietKiemKeMapper chiTietKiemKeMapper;
+    private final NotificationHelper notificationHelper;
 
     public static class CreateStocktakeRequest extends com.erp.cuahangtienloi.dto.request.CreateStocktakeRequestDTO {}
     public static class CreateStocktakeLineRequest extends com.erp.cuahangtienloi.dto.request.CreateStocktakeLineDTO {}
@@ -216,8 +217,9 @@ public class PhieuKiemKeService {
         }
         pkk.setTrangThai("CHO_DUYET");
         pkk.setNgayCapNhat(LocalDateTime.now());
-        phieuKiemKeRepository.save(pkk);
-        return phieuKiemKeMapper.toResponse(pkk);
+        PhieuKiemKe saved = phieuKiemKeRepository.save(pkk);
+        notificationHelper.notifyStocktakeSubmitted(saved, actor != null ? actor.getHoTen() : "Hệ thống");
+        return phieuKiemKeMapper.toResponse(saved);
     }
 
     @Transactional
@@ -247,6 +249,7 @@ public class PhieuKiemKeService {
                         org.springframework.http.HttpStatus.NOT_FOUND,
                         "Không tìm thấy phiếu kiểm kê sau khi cân bằng"));
 
+        notificationHelper.notifyStocktakeBalanced(updated, actor != null ? actor.getHoTen() : "Hệ thống");
         return phieuKiemKeMapper.toResponse(updated);
     }
 

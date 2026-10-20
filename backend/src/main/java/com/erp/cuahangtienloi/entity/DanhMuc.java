@@ -43,6 +43,9 @@ public class DanhMuc {
     @Column(name = "product_count")
     private Integer productCount;
 
+    @Column(name = "sku_prefix", length = 50)
+    private String skuPrefix;
+
     @Column(name = "dang_hoat_dong")
     private Boolean dangHoatDong;
 

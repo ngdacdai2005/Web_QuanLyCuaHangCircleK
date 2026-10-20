@@ -42,6 +42,7 @@ import {
 import { formatNumber, matchKeyword } from '@/utils/formatters';
 import { formatDateShort } from '@/utils/dateUtils';
 import { exportToExcel } from '@/utils/exportUtils';
+import { getCategorySkuPrefix } from '@/utils/skuUtils';
 import { CategoryFormModal } from './components/CategoryFormModal';
 import './CategoriesPage.css';
 
@@ -234,7 +235,7 @@ export const CategoriesPage: FC = () => {
     {
       title: 'Mã',
       dataIndex: 'code',
-      width: 110,
+      width: 95,
       fixed: 'left',
       sorter: (a, b) => (a.code ?? '').localeCompare(b.code ?? ''),
       render: (code: string) => <span className="mono-code">{code}</span>,
@@ -242,7 +243,7 @@ export const CategoriesPage: FC = () => {
     {
       title: 'Danh mục',
       dataIndex: 'name',
-      width: 250,
+      width: 210,
       fixed: 'left',
       render: (name: string, row) => {
         // Map từ iconEmoji/colorHex (từ DB) - fallback về icon/color (mock cũ)
@@ -274,18 +275,41 @@ export const CategoriesPage: FC = () => {
     {
       title: 'Mô tả',
       dataIndex: 'description',
+      width: 260,
       render: (value: string) =>
-        value === '' ? (
+        !value ? (
           <Text type="secondary">—</Text>
         ) : (
-          <Text className="cat-desc">{value}</Text>
+          <Tooltip title={value} placement="topLeft">
+            <div className="cat-desc">{value}</div>
+          </Tooltip>
         ),
+    },
+    {
+      title: 'Tiền tố SKU',
+      dataIndex: 'skuPrefix',
+      width: 115,
+      align: 'center',
+      render: (skuPrefix: string, row: Category) => {
+        const prefix =
+          skuPrefix ||
+          row.skuPrefix ||
+          (row as any).sku_prefix ||
+          getCategorySkuPrefix(row.name, row.code);
+        return prefix ? (
+          <Tag color="blue" style={{ fontFamily: 'monospace', fontWeight: 600, letterSpacing: '0.5px' }}>
+            {prefix}
+          </Tag>
+        ) : (
+          <Text type="secondary">—</Text>
+        );
+      },
     },
     {
       title: 'Số SKU',
       key: 'skuCount',
       align: 'center',
-      width: 100,
+      width: 85,
       render: (_, row) => {
         const count = actualProductCount.get(row.id) ?? 0;
         return (
@@ -302,7 +326,7 @@ export const CategoriesPage: FC = () => {
       title: 'Thứ tự',
       dataIndex: 'displayOrder',
       align: 'center',
-      width: 80,
+      width: 75,
       render: (order: number) => (
         <Text strong className="numeric-cell">{order}</Text>
       ),
@@ -310,7 +334,7 @@ export const CategoriesPage: FC = () => {
     {
       title: 'Ngày cập nhật',
       dataIndex: 'updatedAt',
-      width: 120,
+      width: 110,
       align: 'center',
       sorter: (a, b) => (a.updatedAt ?? a.createdAt ?? '').localeCompare(b.updatedAt ?? b.createdAt ?? ''),
       render: (_: unknown, row: Category) => (
@@ -321,7 +345,7 @@ export const CategoriesPage: FC = () => {
       title: 'Trạng thái',
       dataIndex: 'status',
       align: 'center',
-      width: 140,
+      width: 130,
       render: (status: Category['status']) => <RecordStatusTag status={status} />,
     },
     ...(isAdmin
@@ -330,7 +354,7 @@ export const CategoriesPage: FC = () => {
             title: 'Sắp xếp',
             key: 'order_actions',
             align: 'center' as const,
-            width: 90,
+            width: 85,
             render: (_: unknown, row: Category) => (
               <Space size={0}>
                 <Button
@@ -358,7 +382,7 @@ export const CategoriesPage: FC = () => {
             title: 'Thao tác',
             key: 'actions',
             align: 'center' as const,
-            width: isAdmin ? 110 : 80,
+            width: isAdmin ? 100 : 80,
             fixed: 'right' as const,
             render: (_: unknown, row: Category) => (
               <Space size={0}>
@@ -479,7 +503,7 @@ export const CategoriesPage: FC = () => {
               rowKey="id"
               size="middle"
               pagination={false}
-              scroll={{ x: 900 }}
+              scroll={{ x: 1200 }}
             />
           </Col>
         </Row>

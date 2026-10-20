@@ -54,6 +54,7 @@ public class PhieuNhapService {
     private final com.erp.cuahangtienloi.repository.HopDongChiTietRepository hopDongChiTietRepository;
     private final SanPhamNhaCungCapRepository sanPhamNhaCungCapRepository;
     private final PriceResolutionService priceResolutionService;
+    private final NotificationHelper notificationHelper;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -257,7 +258,9 @@ public class PhieuNhapService {
         chiTietPhieuNhapRepository.flush();
 
         entityManager.clear();
-        return phieuNhapMapper.toResponse(phieuNhapRepository.findById(saved.getId()).orElseThrow());
+        PhieuNhap finalPn = phieuNhapRepository.findById(saved.getId()).orElseThrow();
+        notificationHelper.notifyPurchaseOrderCreated(finalPn, ncc.getTenNcc(), actor != null ? actor.getHoTen() : "Hệ thống");
+        return phieuNhapMapper.toResponse(finalPn);
     }
 
     @Transactional
@@ -275,7 +278,9 @@ public class PhieuNhapService {
         pn.setNgayCapNhat(LocalDateTime.now());
         phieuNhapRepository.saveAndFlush(pn);
         entityManager.clear();
-        return Optional.of(phieuNhapMapper.toResponse(phieuNhapRepository.findById(id).orElseThrow()));
+        PhieuNhap approvedPn = phieuNhapRepository.findById(id).orElseThrow();
+        notificationHelper.notifyPurchaseOrderApproved(approvedPn, actor != null ? actor.getHoTen() : "Hệ thống");
+        return Optional.of(phieuNhapMapper.toResponse(approvedPn));
     }
 
     @Transactional
@@ -473,7 +478,9 @@ public class PhieuNhapService {
         capNhatThucHienHopDong(pn.getIdHopDong(), lines, grandTotalMoi);
 
         entityManager.clear();
-        return Optional.of(phieuNhapMapper.toResponse(phieuNhapRepository.findById(id).orElseThrow()));
+        PhieuNhap completedPn = phieuNhapRepository.findById(id).orElseThrow();
+        notificationHelper.notifyPurchaseOrderCompleted(completedPn, grandTotalMoi, actor != null ? actor.getHoTen() : "Hệ thống");
+        return Optional.of(phieuNhapMapper.toResponse(completedPn));
     }
 
     @Transactional

@@ -142,6 +142,7 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                     ngay_doc            TIMESTAMP WITHOUT TIME ZONE
                 );
                 ALTER TABLE thong_bao ADD COLUMN IF NOT EXISTS id_chi_nhanh UUID;
+                ALTER TABLE danh_muc ADD COLUMN IF NOT EXISTS sku_prefix VARCHAR(50);
             """);
 
             // 4.2 Tạo bảng san_pham_nha_cung_cap (Quan hệ nhiều - nhiều giữa Sản phẩm và Nhà cung cấp)

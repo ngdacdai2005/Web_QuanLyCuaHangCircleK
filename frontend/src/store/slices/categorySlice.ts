@@ -25,6 +25,7 @@ const mapDtoToCategory = (dto: DanhMucDTO): Category => ({
   color: dto.mauHex || '#000000',
   displayOrder: dto.thuTuHienThi || 999,
   productCount: dto.productCount || 0,
+  skuPrefix: dto.skuPrefix || undefined,
   status: dto.dangHoatDong === false ? ('Inactive' as const) : ('Active' as const),
   createdAt: dto.ngayTao,
   updatedAt: dto.ngayCapNhat || dto.ngayTao || undefined,
@@ -52,6 +53,7 @@ export const createCategory = createAsyncThunk(
       // ColorPicker trả object có toHexString(); nếu là string thì dùng luôn
       mauHex: typeof rawColor === 'string' ? rawColor : (rawColor?.toHexString?.() ?? values.colorHex),
       thuTuHienThi: values.displayOrder,
+      skuPrefix: values.skuPrefix ? values.skuPrefix.trim().toUpperCase() : undefined,
       dangHoatDong: values.status === 'Active',
     };
     const data = await danhMucApi.create(dto);
@@ -73,6 +75,7 @@ export const updateCategoryThunk = createAsyncThunk(
       imageUrl: typeof (values as any).imageUrl === 'string' ? (values as any).imageUrl : undefined,
       mauHex: typeof rawColor === 'string' ? rawColor : (rawColor?.toHexString?.() ?? values.colorHex),
       thuTuHienThi: values.displayOrder,
+      skuPrefix: values.skuPrefix ? values.skuPrefix.trim().toUpperCase() : undefined,
       dangHoatDong: values.status === 'Active',
     };
     const data = await danhMucApi.update(id, dto);

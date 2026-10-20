@@ -111,6 +111,7 @@ public class DanhMucService {
         dm.setMauHex(request.getMauHex());
         dm.setThuTuHienThi(request.getThuTuHienThi() != null ? request.getThuTuHienThi() : 999);
         dm.setProductCount(0);
+        dm.setSkuPrefix(request.getSkuPrefix() != null && !request.getSkuPrefix().isBlank() ? request.getSkuPrefix().trim().toUpperCase() : null);
         dm.setDangHoatDong(request.getDangHoatDong() != null ? request.getDangHoatDong() : true);
         dm.setNgayTao(LocalDateTime.now());
         dm.setNgayCapNhat(LocalDateTime.now());
@@ -148,6 +149,9 @@ public class DanhMucService {
                     if (request.getImageUrl() != null) dm.setImageUrl(request.getImageUrl());
                     if (request.getMauHex() != null) dm.setMauHex(request.getMauHex());
                     if (request.getThuTuHienThi() != null) dm.setThuTuHienThi(request.getThuTuHienThi());
+                    if (request.getSkuPrefix() != null) {
+                        dm.setSkuPrefix(request.getSkuPrefix().isBlank() ? null : request.getSkuPrefix().trim().toUpperCase());
+                    }
                     if (request.getDangHoatDong() != null) dm.setDangHoatDong(request.getDangHoatDong());
                     dm.setNgayCapNhat(LocalDateTime.now());
                     return danhMucMapper.toResponse(danhMucRepository.save(dm));

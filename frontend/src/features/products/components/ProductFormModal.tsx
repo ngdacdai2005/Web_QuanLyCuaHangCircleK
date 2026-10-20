@@ -40,6 +40,106 @@ const STATUS_OPTIONS = [
   { value: 'Inactive', label: 'Ngừng kinh doanh' },
 ];
 
+/**
+ * Chuyển đổi tên danh mục thành tiền tố SKU viết tắt dễ nhận diện:
+ * VD: "Nước giải khát" -> "DRINK"
+ *     "Đồ ăn nóng" -> "HOTFOOD"
+ *     "Bánh kẹo & Snack" -> "SNACK"
+ *     "Sữa & Chế phẩm" -> "MILK"
+ *     "Mì & Thực phẩm khô" -> "NOODLE"
+ *     "Thức uống pha chế" -> "COFFEE"
+ *     "Hàng tiêu dùng" -> "DAILY"
+ *     "Kem & Đồ đông lạnh" -> "ICE"
+ */
+const getCategorySkuPrefix = (categoryName?: string, categoryCode?: string): string => {
+  if (!categoryName && !categoryCode) return 'SP';
+
+  const cleanName = (categoryName || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+  // 1. Ánh xạ danh mục chuẩn Circle K
+  if (cleanName.includes('do an nong') || cleanName.includes('hot dog') || cleanName.includes('banh bao')) {
+    return 'HOTFOOD';
+  }
+  if (cleanName.includes('nuoc giai khat') || cleanName.includes('do uong') || cleanName.includes('nuoc ngot')) {
+    return 'DRINK';
+  }
+  if (cleanName.includes('pha che') || cleanName.includes('ca phe') || cleanName.includes('froster')) {
+    return 'COFFEE';
+  }
+  if (cleanName.includes('banh keo') || cleanName.includes('snack')) {
+    return 'SNACK';
+  }
+  if (cleanName.includes('sua') || cleanName.includes('che pham')) {
+    return 'MILK';
+  }
+  if (cleanName.includes('mi') || cleanName.includes('thuc pham kho')) {
+    return 'NOODLE';
+  }
+  if (cleanName.includes('kem') || cleanName.includes('dong lanh')) {
+    return 'ICE';
+  }
+  if (cleanName.includes('tieu dung') || cleanName.includes('do dung') || cleanName.includes('hoa my pham')) {
+    return 'DAILY';
+  }
+
+  // 2. Fallback cho danh mục mới tự tạo: Lấy chữ cái đầu các từ (VD: "Thuốc lá & Phụ kiện" -> "TLPK")
+  const words = cleanName.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    const acronym = words.map((w) => w[0].toUpperCase()).join('');
+    if (acronym.length >= 2) return acronym;
+  }
+  if (words.length === 1 && words[0].length >= 3) {
+    return words[0].toUpperCase().substring(0, 6);
+  }
+
+  // 3. Fallback theo mã danh mục (nếu có: DM01 -> DM01)
+  if (categoryCode) {
+    return categoryCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  }
+
+  return 'SP';
+};
+
+/**
+ * Tự động tìm số thứ tự lớn nhất của nhóm SKU và sinh mã tiếp theo (VD: DRINK-04)
+ */
+const generateNextSku = (
+  categoryId: any,
+  allCategories: Array<{ id: any; name?: string; code?: string; skuPrefix?: string }>,
+  allProducts: Array<{ sku?: string }>,
+): string => {
+  if (!categoryId) return '';
+  const cat = allCategories.find((c) => String(c.id) === String(categoryId));
+  if (!cat) return '';
+
+  const prefix = cat.skuPrefix && cat.skuPrefix.trim() !== ''
+    ? cat.skuPrefix.trim().toUpperCase()
+    : getCategorySkuPrefix(cat.name, cat.code);
+
+  // Tìm tất cả các mã SKU hiện tại khớp với CK-{prefix}-{số} hoặc {prefix}-{số}
+  const regex = new RegExp(`^(?:CK-)?${prefix}-(\\d+)$`, 'i');
+  let maxSeq = 0;
+
+  for (const p of allProducts) {
+    if (!p.sku) continue;
+    const match = p.sku.trim().match(regex);
+    if (match && match[1]) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq) {
+        maxSeq = num;
+      }
+    }
+  }
+
+  const nextSeq = maxSeq + 1;
+  const seqStr = nextSeq < 10 ? `0${nextSeq}` : `${nextSeq}`;
+  return `${prefix}-${seqStr}`;
+};
+
 export const ProductFormModal: FC = () => {
   const [form] = Form.useForm<ProductFormValues>();
   const dispatch = useAppDispatch();
@@ -50,8 +150,10 @@ export const ProductFormModal: FC = () => {
   );
   const categories = useAppSelector((state) => state.category.categories);
   const suppliers = useAppSelector((state) => state.supplier.suppliers);
-  const categoryOptions = categories.map((c) => ({ value: c.id, label: `${c.code} - ${c.name}` }));
-  // const supplierOptions = suppliers.map((s) => ({ value: s.id, label: `${s.code} - ${s.name}` }));
+  const categoryOptions = categories.map((c) => ({
+    value: c.id,
+    label: `${c.code} - ${c.name}${c.skuPrefix ? ` [${c.skuPrefix}]` : ''}`,
+  }));
   const isEditing = selectedProduct !== null;
   const selectedCategoryId = Form.useWatch('categoryId', form);
   const selectedSupplierId = Form.useWatch('supplierId', form);
@@ -72,6 +174,18 @@ export const ProductFormModal: FC = () => {
     }
     return matched.map((s) => ({ value: s.id, label: `${s.code} - ${s.name}` }));
   }, [suppliers, selectedCategoryId, selectedSupplierId]);
+
+  /** Xử lý khi người dùng chọn Danh mục -> tự động sinh SKU */
+  const handleCategoryChange = (val: any) => {
+    form.setFieldValue('categoryId', val);
+    if (!isEditing) {
+      const autoSku = generateNextSku(val, categories, products);
+      if (autoSku) {
+        form.setFieldValue('sku', autoSku);
+      }
+    }
+  };
+
 
   /** Sinh ngẫu nhiên mã vạch EAN-13 gồm 13 chữ số hợp lệ và không trùng lặp */
   const generateUniqueBarcode = (): string => {
@@ -179,6 +293,47 @@ export const ProductFormModal: FC = () => {
       destroyOnHidden
     >
       <Form form={form} layout="vertical" className="product-form" validateTrigger={['onSubmit']}>
+        {/* Hàng 1: Danh mục sản phẩm (chọn trước) & Mã SKU (tự động điền) */}
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="categoryId"
+              label="Danh mục"
+              rules={[{ required: true, message: 'Vui lòng chọn danh mục.' }]}
+            >
+              <Select
+                showSearch
+                optionFilterProp="label"
+                filterOption={(input, option) =>
+                  String(option?.label ?? '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+                placeholder="Chọn danh mục"
+                options={categoryOptions}
+                onChange={handleCategoryChange}
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="sku"
+              label="Mã SKU (Tự động)"
+              rules={[
+                { required: true, whitespace: true, message: 'Vui lòng chọn danh mục để tự động tạo SKU.' },
+                { max: 47, message: 'Phần mã SKU tối đa 47 ký tự.' },
+              ]}
+            >
+              <Input
+                disabled
+                addonBefore="CK-"
+                placeholder="Chọn danh mục để tự động tạo SKU"
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {/* Hàng 2: Tên sản phẩm & Đơn vị tính */}
         <Row gutter={16}>
           <Col xs={24} md={12}>
             <Form.Item
@@ -191,62 +346,24 @@ export const ProductFormModal: FC = () => {
           </Col>
           <Col xs={24} md={12}>
             <Form.Item
-              name="sku"
-              label="SKU"
-              rules={[
-                { required: true, whitespace: true, message: 'Vui lòng nhập SKU theo định dạng <Danh mục>-<Mã>.' },
-                { max: 47, message: 'Phần mã SKU tối đa 47 ký tự.' },
-              ]}
-            >
-              <Input addonBefore="CK-" placeholder="<Danh mục>-<Mã>" />
-            </Form.Item>
-          </Col>
-        </Row>
-
-        <Row gutter={16}>
-          {isEditing && (
-            <Col xs={24} md={12}>
-              <Form.Item
-                name="barcode"
-                label="Mã vạch"
-                rules={[
-                  { required: true, whitespace: true, message: 'Vui lòng nhập mã vạch.' },
-                  { pattern: /^\d{13}$/, message: 'Mã vạch phải đúng 13 chữ số.' },
-                ]}
-              >
-                <Input placeholder="8934567000011" maxLength={13} disabled />
-              </Form.Item>
-            </Col>
-          )}
-          <Col xs={24} md={isEditing ? 12 : 24}>
-            <Form.Item
-              name="categoryId"
-              label="Danh mục"
-              rules={[{ required: true, message: 'Chọn danh mục.' }]}
-            >
-              <Select
-                  showSearch
-                  optionFilterProp="label"
-                  filterOption={(input, option) =>
-                      String(option?.label ?? '')
-                          .toLowerCase()
-                          .includes(input.toLowerCase())
-                  }
-                  placeholder="Chọn danh mục"
-                  options={categoryOptions}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
-
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Form.Item
               name="unit"
               label="Đơn vị"
               rules={[{ required: true, message: 'Chọn đơn vị.' }]}
             >
               <Select options={UNIT_OPTIONS} />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {/* Hàng 3: Nhà cung cấp & VAT (%) */}
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="supplierId"
+              label="Nhà cung cấp"
+              rules={[{ required: true, message: 'Chọn nhà cung cấp.' }]}
+            >
+              <Select placeholder="Chọn nhà cung cấp" options={supplierOptions} />
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>
@@ -267,17 +384,23 @@ export const ProductFormModal: FC = () => {
           </Col>
         </Row>
 
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Form.Item
-              name="supplierId"
-              label="Nhà cung cấp"
-              rules={[{ required: true, message: 'Chọn nhà cung cấp.' }]}
-            >
-              <Select placeholder="Chọn nhà cung cấp" options={supplierOptions} />
-            </Form.Item>
-          </Col>
-        </Row>
+        {/* Hàng bổ sung khi chỉnh sửa: Mã vạch */}
+        {isEditing && (
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="barcode"
+                label="Mã vạch (EAN-13)"
+                rules={[
+                  { required: true, whitespace: true, message: 'Vui lòng nhập mã vạch.' },
+                  { pattern: /^\d{13}$/, message: 'Mã vạch phải đúng 13 chữ số.' },
+                ]}
+              >
+                <Input placeholder="8934567000011" maxLength={13} disabled />
+              </Form.Item>
+            </Col>
+          </Row>
+        )}
 
         <Row gutter={16}>
           <Col xs={24} md={12}>

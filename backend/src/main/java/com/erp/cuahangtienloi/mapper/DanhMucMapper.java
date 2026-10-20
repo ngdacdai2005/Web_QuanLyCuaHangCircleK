@@ -18,6 +18,7 @@ public class DanhMucMapper {
         dto.setMauHex(dm.getMauHex());
         dto.setThuTuHienThi(dm.getThuTuHienThi());
         dto.setProductCount(dm.getProductCount());
+        dto.setSkuPrefix(dm.getSkuPrefix());
         dto.setDangHoatDong(dm.getDangHoatDong());
         dto.setNgayTao(dm.getNgayTao());
         dto.setNgayCapNhat(dm.getNgayCapNhat());

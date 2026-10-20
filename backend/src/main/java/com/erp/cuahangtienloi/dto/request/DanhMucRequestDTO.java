@@ -13,5 +13,6 @@ public class DanhMucRequestDTO {
     private String imageUrl;
     private String mauHex;
     private Integer thuTuHienThi;
+    private String skuPrefix;
     private Boolean dangHoatDong;
 }

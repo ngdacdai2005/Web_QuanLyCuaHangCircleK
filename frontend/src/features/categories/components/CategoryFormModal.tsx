@@ -60,6 +60,7 @@ export const CategoryFormModal: FC<CategoryFormModalProps> = ({
       // Form dùng name="icon"/"color", map từ iconEmoji/colorHex của Redux
       form.setFieldsValue({
         ...editing,
+        skuPrefix: editing.skuPrefix || '',
         icon: (editing as any).iconEmoji || (editing as any).icon || '',
         color: (editing as any).colorHex || (editing as any).color || '',
       } as any);
@@ -68,6 +69,7 @@ export const CategoryFormModal: FC<CategoryFormModalProps> = ({
     form.resetFields();
     form.setFieldsValue({
       parentId: null,
+      skuPrefix: '',
       icon: '📦',
       color: CHART_COLORS[0] ?? '#E31837',
       status: RECORD_STATUS.Active,
@@ -91,6 +93,7 @@ export const CategoryFormModal: FC<CategoryFormModalProps> = ({
       const errorMessage = getErrorMessage(error, 'Không thể lưu danh mục');
       const handled = applyFormErrors(form, errorMessage, {
         name: ['tên danh mục', 'tên'],
+        skuPrefix: ['tiền tố sku'],
         description: ['mô tả'],
         status: ['trạng thái'],
       });
@@ -116,6 +119,17 @@ export const CategoryFormModal: FC<CategoryFormModalProps> = ({
           rules={[{ required: true, message: 'Vui lòng nhập tên.' }]}
         >
           <Input placeholder="VD: Đồ ăn nóng" />
+        </Form.Item>
+
+        <Form.Item
+          name="skuPrefix"
+          label="Tiền tố SKU"
+          tooltip="Mã viết tắt đại diện dùng để tự động sinh SKU cho sản phẩm thuộc danh mục này (VD: HOTFOOD, DRINK, SNACK, MILK...)"
+          rules={[
+            { pattern: /^[A-Za-z0-9_-]{2,20}$/, message: 'Tiền tố SKU chỉ chứa chữ cái và số (2-20 ký tự).' }
+          ]}
+        >
+          <Input placeholder="VD: DRINK, HOTFOOD, SNACK" maxLength={20} style={{ textTransform: 'uppercase' }} />
         </Form.Item>
 
         <Form.Item name="description" label="Mô tả">

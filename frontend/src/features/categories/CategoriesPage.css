@@ -26,9 +26,17 @@
   border: 1px solid color-mix(in srgb, var(--cat-color, #6b7280) 27%, transparent);
 }
 
-/* Mô tả danh mục. */
+/* Mô tả danh mục: giới hạn hiển thị tối đa 2 dòng, có dấu 3 chấm nếu quá dài */
 .cat-desc {
-  font-size: 12.5px;
+  font-size: 13px;
+  color: #4b5563;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  line-height: 1.45;
 }
 
 /* Số SKU = 0 — tô vàng cảnh báo danh mục trống. */

@@ -36,6 +36,7 @@ public class ChamCongService {
     private final NhanVienRepository nhanVienRepository;
     private final BranchAccessService branchAccessService;
     private final ChamCongMapper chamCongMapper;
+    private final NotificationHelper notificationHelper;
 
     /**
      * Khoảng thời gian mặc định của mỗi ca (giờ).
@@ -122,7 +123,8 @@ public class ChamCongService {
         if (request.getWorkDate() == null) {
             return ResponseEntity.badRequest().body(ApiResponse.err("Ngày làm việc không được để trống"));
         }
-        requireReadableEmployee(branchAccessService.requireAuthenticatedEmployee(httpRequest), request.getIdNhanVien());
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        requireReadableEmployee(actor, request.getIdNhanVien());
         validateTimeAndAmounts(request);
 
         ChamCong cc = new ChamCong();
@@ -145,6 +147,7 @@ public class ChamCongService {
         cc.setNgayCapNhat(LocalDateTime.now());
 
         chamCongRepository.save(cc);
+        notificationHelper.notifyShiftScheduled(cc.getIdNhanVien(), cc.getWorkDate(), cc.getCaLamViec(), actor != null ? actor.getHoTen() : "Quản lý");
         return ResponseEntity.ok(chamCongMapper.toResponse(cc));
     }
 
@@ -210,7 +213,8 @@ public class ChamCongService {
             return ResponseEntity.notFound().build();
         }
         NhanVien nv = optNv.get();
-        requireReadableEmployee(branchAccessService.requireAuthenticatedEmployee(httpRequest), nv.getId());
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        requireReadableEmployee(actor, nv.getId());
         LocalDate date = (workDate != null && !workDate.isBlank()) ? LocalDate.parse(workDate) : LocalDate.now();
         String ca = nv.getCaMacDinh();
         if (ca == null || ca.isBlank()) {
@@ -238,6 +242,7 @@ public class ChamCongService {
         cc.setNgayCapNhat(LocalDateTime.now());
 
         chamCongRepository.save(cc);
+        notificationHelper.notifyShiftScheduled(cc.getIdNhanVien(), cc.getWorkDate(), cc.getCaLamViec(), actor != null ? actor.getHoTen() : "Quản lý");
         return ResponseEntity.ok(List.of(chamCongMapper.toResponse(cc)));
     }
 

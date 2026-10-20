@@ -39,6 +39,7 @@ public class PhieuXuatKhoService {
     private final LoHangService loHangService;
     private final PhieuXuatKhoMapper phieuXuatKhoMapper;
     private final ChiTietPhieuXuatMapper chiTietPhieuXuatMapper;
+    private final NotificationHelper notificationHelper;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -311,7 +312,9 @@ public class PhieuXuatKhoService {
             phieuXuatKhoRepository.flush();
             chiTietPhieuXuatRepository.flush();
             entityManager.clear();
-            return phieuXuatKhoMapper.toResponse(phieuXuatKhoRepository.findById(id).orElseThrow());
+            PhieuXuatKho shippedPxk = phieuXuatKhoRepository.findById(id).orElseThrow();
+            notificationHelper.notifyTransferShipped(shippedPxk, actor != null ? actor.getHoTen() : "Hệ thống");
+            return phieuXuatKhoMapper.toResponse(shippedPxk);
         });
     }
 
@@ -377,7 +380,9 @@ public class PhieuXuatKhoService {
             phieuXuatKhoRepository.save(pxk);
             phieuXuatKhoRepository.flush();
             entityManager.clear();
-            return phieuXuatKhoMapper.toResponse(phieuXuatKhoRepository.findById(id).orElseThrow());
+            PhieuXuatKho completedPxk = phieuXuatKhoRepository.findById(id).orElseThrow();
+            notificationHelper.notifyTransferCompleted(completedPxk, actor != null ? actor.getHoTen() : "Hệ thống");
+            return phieuXuatKhoMapper.toResponse(completedPxk);
         });
     }
 

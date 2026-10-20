@@ -13,6 +13,7 @@ export interface DanhMucDTO {
   mauHex?: string;
   thuTuHienThi?: number;
   productCount?: number;
+  skuPrefix?: string;
   dangHoatDong?: boolean;
   ngayTao?: string;
   ngayCapNhat?: string;

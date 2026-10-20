@@ -42,6 +42,7 @@ export interface Category {
   color: string;
   productCount: number;
   displayOrder: number;
+  skuPrefix?: string;
   status: RecordStatus;
   createdAt?: string;
   updatedAt?: string;
