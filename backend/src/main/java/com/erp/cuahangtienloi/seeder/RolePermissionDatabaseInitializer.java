@@ -430,6 +430,7 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                     'order:read', 'order:create',
                     'product:read',
                     'category:read',
+                    'warehouse:read',
                     'attendance:read',
                     'attendance:checkin'
                   )

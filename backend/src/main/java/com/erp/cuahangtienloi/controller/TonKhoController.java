@@ -31,7 +31,7 @@ public class TonKhoController {
     }
 
     @GetMapping("/by-branch/{idChiNhanh}")
-    @PreAuthorize("hasAuthority('warehouse:read')")
+    @PreAuthorize("hasAnyAuthority('warehouse:read', 'order:create')")
     public ResponseEntity<List<TonKhoResponseDTO>> getByChiNhanh(@PathVariable UUID idChiNhanh, HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
         return ResponseEntity.ok(tonKhoService.getByChiNhanh(idChiNhanh, employee));
@@ -51,7 +51,7 @@ public class TonKhoController {
     }
 
     @GetMapping("/detail/{idSanPham}/{idChiNhanh}")
-    @PreAuthorize("hasAuthority('warehouse:read')")
+    @PreAuthorize("hasAnyAuthority('warehouse:read', 'order:create')")
     public ResponseEntity<?> getDetail(@PathVariable UUID idSanPham, @PathVariable UUID idChiNhanh, HttpServletRequest request) {
         var employee = branchAccessService.requireAuthenticatedEmployee(request);
         return tonKhoService.getDetail(idSanPham, idChiNhanh, employee)

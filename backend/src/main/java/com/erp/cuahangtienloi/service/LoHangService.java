@@ -35,6 +35,27 @@ public class LoHangService {
     private final LoHangMapper loHangMapper;
 
     /**
+     * Sinh mã lô hàng tự động dạng LOT-YYYYMMDD-NNNN đảm bảo không null và duy nhất.
+     */
+    public String sinhMaLoTuDong() {
+        String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        try {
+            Long nextVal = jdbcTemplate.queryForObject("SELECT nextval('seq_lo_hang_ma')", Long.class);
+            return String.format("LOT-%s-%04d", datePart, nextVal);
+        } catch (Exception e) {
+            try {
+                jdbcTemplate.execute("CREATE SEQUENCE IF NOT EXISTS seq_lo_hang_ma START WITH 1 INCREMENT BY 1 MINVALUE 1 NO CYCLE;");
+                Long nextVal = jdbcTemplate.queryForObject("SELECT nextval('seq_lo_hang_ma')", Long.class);
+                return String.format("LOT-%s-%04d", datePart, nextVal);
+            } catch (Exception ex) {
+                long count = loHangRepository.count() + 1;
+                int rand = (int) (Math.random() * 9000) + 1000;
+                return String.format("LOT-%s-%04d-%04d", datePart, count, rand);
+            }
+        }
+    }
+
+    /**
      * Tạo mới hoặc cộng dồn vào lô hàng khi nhập kho.
      */
     @Transactional
@@ -66,7 +87,6 @@ public class LoHangService {
         }
 
         // Chỉ tìm lô hiện có khi caller thực sự chỉ định mã lô.
-        // Nếu maLo == null thì để DB trigger tự sinh mã LOT-YYYYMMDD-NNNN.
         Optional<LoHang> existing = maLo == null
                 ? Optional.empty()
                 : loHangRepository.findByMaLoAndIdChiNhanh(maLo, idChiNhanh);
@@ -92,9 +112,12 @@ public class LoHangService {
             loHang.setNgayCapNhat(LocalDateTime.now());
 
         } else {
+            String finalMaLo = (maLo != null && !maLo.trim().isEmpty())
+                    ? maLo.trim()
+                    : sinhMaLoTuDong();
             loHang = LoHang.builder()
                     .id(UUID.randomUUID())
-                    .maLo(maLo)
+                    .maLo(finalMaLo)
                     .idSanPham(idSanPham)
                     .idChiNhanh(idChiNhanh)
                     .soLuongTon(soLuong)
@@ -202,9 +225,12 @@ public class LoHangService {
             loHang.setTrangThai("ACTIVE");
             loHang.setNgayCapNhat(LocalDateTime.now());
         } else {
+            String finalMaLo = (maLo != null && !maLo.trim().isEmpty())
+                    ? maLo.trim()
+                    : sinhMaLoTuDong();
             loHang = LoHang.builder()
                     .id(UUID.randomUUID())
-                    .maLo(maLo)
+                    .maLo(finalMaLo)
                     .idSanPham(idSanPham)
                     .idChiNhanh(idChiNhanh)
                     .soLuongTon(soLuong)
@@ -288,7 +314,7 @@ public class LoHangService {
             BigDecimal giaVon = (tk.getGiaVonTrungBinh() != null) ? tk.getGiaVonTrungBinh() : BigDecimal.ZERO;
 
             congDonHoacTaoLoTaiKhoNhan(
-                    idChiNhanh, idSanPham, null,
+                    idChiNhanh, idSanPham, sinhMaLoTuDong(),
                     remaining, hsd, LocalDate.now(), giaVon);
         }
 
