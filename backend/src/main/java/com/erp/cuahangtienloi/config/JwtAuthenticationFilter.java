@@ -1,17 +1,13 @@
 package com.erp.cuahangtienloi.config;
 
-import com.erp.cuahangtienloi.entity.NhanVien;
-import com.erp.cuahangtienloi.entity.TaiKhoan;
-import com.erp.cuahangtienloi.repository.NhanVienRepository;
-import com.erp.cuahangtienloi.repository.TaiKhoanRepository;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,17 +17,25 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final TaiKhoanRepository taiKhoanRepository;
-    private final NhanVienRepository nhanVienRepository;
     private final JdbcTemplate jdbcTemplate;
+
+    /**
+     * Cache quyền theo từng vai trò trong bộ nhớ RAM.
+     * Tránh việc MỖI request API đều phải chạy 3 câu SQL truy vấn Database.
+     */
+    private final Map<String, List<GrantedAuthority>> roleAuthoritiesCache = new ConcurrentHashMap<>();
+
+    public void clearCache() {
+        roleAuthoritiesCache.clear();
+    }
 
     @Override
     protected void doFilterInternal(
@@ -43,120 +47,66 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String header = request.getHeader("Authorization");
 
         if (header != null && header.startsWith("Bearer ")) {
-
             String token = header.substring(7);
-
             Claims claims = jwtService.parseToken(token);
 
             if (claims != null) {
-                UUID taiKhoanId;
-
-                try {
-                    taiKhoanId = UUID.fromString(claims.getSubject());
-                } catch (RuntimeException e) {
-                    filterChain.doFilter(request, response);
-                    return;
+                String taiKhoanId = claims.getSubject();
+                String role = claims.get("role", String.class);
+                if (role == null || role.isBlank()) {
+                    role = "THU_NGAN";
                 }
 
-                Optional<TaiKhoan> tkOpt = taiKhoanRepository.findById(taiKhoanId);
+                String idNhanVien = claims.get("idNhanVien", String.class);
+                String idChiNhanh = claims.get("idChiNhanh", String.class);
 
-                if (tkOpt.isEmpty()) {
-                    filterChain.doFilter(request, response);
-                    return;
-                }
+                // Lấy danh sách quyền từ RAM cache, chỉ query database 1 lần duy nhất khi khởi động
+                List<GrantedAuthority> authorities = roleAuthoritiesCache.computeIfAbsent(role, r -> {
+                    List<GrantedAuthority> auths = new ArrayList<>();
+                    auths.add(new SimpleGrantedAuthority("ROLE_" + r));
 
-                TaiKhoan taiKhoan = tkOpt.get();
-
-                if (!"ACTIVE".equals(taiKhoan.getTrangThai())) {
-                    filterChain.doFilter(request, response);
-                    return;
-                }
-
-                String role;
-                String idNhanVien = null;
-                String idChiNhanh = null;
-
-                if (taiKhoan.getIdNhanVien() != null) {
-                    Optional<NhanVien> nvOpt =
-                            nhanVienRepository.findById(taiKhoan.getIdNhanVien());
-
-                    if (nvOpt.isPresent()) {
-                        NhanVien nv = nvOpt.get();
-
-                        role = nv.getVaiTro();
-                        idNhanVien = nv.getId().toString();
-
-                        if (nv.getIdChiNhanh() != null) {
-                            idChiNhanh = nv.getIdChiNhanh().toString();
+                    try {
+                        List<String> perms;
+                        if ("ADMIN".equalsIgnoreCase(r)) {
+                            perms = jdbcTemplate.queryForList(
+                                    "SELECT name FROM permissions WHERE deleted = 0 AND status = 0",
+                                    String.class
+                            );
+                        } else {
+                            perms = jdbcTemplate.queryForList("""
+                                    SELECT p.name 
+                                    FROM permissions p
+                                    JOIN role_permissions rp ON p.id = rp.permission_id
+                                    JOIN vai_tro v ON v.id = rp.role_id
+                                    WHERE v.ten_vai_tro = ? AND p.deleted = 0 AND p.status = 0
+                                    """,
+                                    String.class,
+                                    r
+                            );
                         }
-                    } else {
-                        role = claims.get("role", String.class);
-                        idNhanVien = claims.get("idNhanVien", String.class);
-                        idChiNhanh = claims.get("idChiNhanh", String.class);
+                        for (String perm : perms) {
+                            auths.add(new SimpleGrantedAuthority(perm));
+                        }
+                    } catch (Exception ignored) {
+                        // Fallback an toàn nếu database permissions chưa sẵn sàng
                     }
-                } else {
-                    role = claims.get("role", String.class);
-
-                    if (role == null) {
-                        role = "THU_NGAN";
-                    }
-                }
-
-                List<GrantedAuthority> authorities = new ArrayList<>();
-                authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
-
-                // Nạp quyền động từ database cho vai trò
-                try {
-                    List<String> perms;
-                    if ("ADMIN".equalsIgnoreCase(role)) {
-                        perms = jdbcTemplate.queryForList(
-                                "SELECT name FROM permissions WHERE deleted = 0 AND status = 0",
-                                String.class
-                        );
-                    } else {
-                        perms = jdbcTemplate.queryForList("""
-                                SELECT p.name 
-                                FROM permissions p
-                                JOIN role_permissions rp ON p.id = rp.permission_id
-                                JOIN vai_tro v ON v.id = rp.role_id
-                                WHERE v.ten_vai_tro = ? AND p.deleted = 0 AND p.status = 0
-                                """,
-                                String.class,
-                                role
-                        );
-                    }
-                    for (String perm : perms) {
-                        authorities.add(new SimpleGrantedAuthority(perm));
-                    }
-                } catch (Exception ignored) {
-                    // Fallback an toàn nếu bảng permissions đang khởi tạo
-                }
+                    return auths;
+                });
 
                 var auth = new UsernamePasswordAuthenticationToken(
-                        taiKhoanId.toString(),
+                        taiKhoanId,
                         null,
                         authorities
                 );
 
                 SecurityContextHolder.getContext().setAuthentication(auth);
 
-                request.setAttribute(
-                        "authenticatedUserId",
-                        taiKhoanId.toString()
-                );
-
+                request.setAttribute("authenticatedUserId", taiKhoanId);
                 if (idNhanVien != null) {
-                    request.setAttribute(
-                            "authenticatedIdNhanVien",
-                            idNhanVien
-                    );
+                    request.setAttribute("authenticatedIdNhanVien", idNhanVien);
                 }
-
                 if (idChiNhanh != null) {
-                    request.setAttribute(
-                            "authenticatedIdChiNhanh",
-                            idChiNhanh
-                    );
+                    request.setAttribute("authenticatedIdChiNhanh", idChiNhanh);
                 }
             }
         }

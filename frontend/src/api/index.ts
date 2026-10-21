@@ -12,4 +12,5 @@ export { theKhoApi } from './theKho';
 export { tonKhoApi } from './tonKho';
 export { bangLuongApi } from './bangLuong';
 export { chamCongApi } from './chamCong';
+export { donNghiPhepApi } from './donNghiPhep';
 export { soQuyApi } from './soQuy';

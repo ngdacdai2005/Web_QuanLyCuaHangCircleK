@@ -20,7 +20,19 @@ export const loginAsync = createAsyncThunk(
   async (values: LoginFormValues, { rejectWithValue }) => {
     try {
       const result = await authApi.login(values);
-      return result;
+      return { ...result, remember: values.remember !== false };
+    } catch (error) {
+      return rejectWithValue((error as Error).message);
+    }
+  }
+);
+
+export const fetchCurrentUserAsync = createAsyncThunk(
+  'auth/fetchCurrentUserAsync',
+  async (_, { rejectWithValue }) => {
+    try {
+      const user = await authApi.getMe();
+      return user;
     } catch (error) {
       return rejectWithValue((error as Error).message);
     }
@@ -32,6 +44,7 @@ interface PersistedSession {
   activeBranchId: string | null;
   token: string;
 }
+
 export interface AuthState {
   user: AuthUser | null;
   isAuthenticated: boolean;
@@ -43,7 +56,7 @@ export interface AuthState {
 
 const readPersistedSession = (): PersistedSession | null => {
   try {
-    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY) || window.sessionStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed === 'object' && parsed !== null && 'user' in parsed && 'activeBranchId' in parsed) {
@@ -62,13 +75,29 @@ const readPersistedSession = (): PersistedSession | null => {
   }
 };
 
-const writePersistedSession = (session: PersistedSession | null): void => {
+const isSessionRemembered = (): boolean => {
+  return window.localStorage.getItem(AUTH_STORAGE_KEY) !== null;
+};
+
+const writePersistedSession = (session: PersistedSession | null, remember: boolean = true): void => {
   try {
     if (session === null) {
       window.localStorage.removeItem(AUTH_STORAGE_KEY);
+      window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
+      window.localStorage.removeItem('auth_token');
+      window.sessionStorage.removeItem('auth_token');
       return;
     }
-    window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    const storage = remember ? window.localStorage : window.sessionStorage;
+    if (remember) {
+      window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
+      window.sessionStorage.removeItem('auth_token');
+    } else {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
+      window.localStorage.removeItem('auth_token');
+    }
+    storage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    storage.setItem('auth_token', session.token);
   } catch {
   }
 };
@@ -102,7 +131,10 @@ export const authSlice = createSlice({
     setActiveBranch: (state, action: PayloadAction<string | null>) => {
       state.activeBranchId = action.payload;
       if (state.user) {
-        writePersistedSession({ user: state.user, activeBranchId: action.payload, token: state.token || '' });
+        writePersistedSession(
+          { user: state.user, activeBranchId: action.payload, token: state.token || '' },
+          isSessionRemembered()
+        );
       }
     },
     clearAuthError: (state) => {
@@ -119,11 +151,12 @@ export const authSlice = createSlice({
       };
       state.error = null;
       if (readPersistedSession() !== null) {
-        writePersistedSession({ user: state.user, activeBranchId: state.activeBranchId, token: state.token || '' });
+        writePersistedSession(
+          { user: state.user, activeBranchId: state.activeBranchId, token: state.token || '' },
+          isSessionRemembered()
+        );
       }
     },
-    // changePassword: (_state, _action: PayloadAction<ChangePasswordFormValues>) => {
-    // },
     logout: (state) => {
       state.user = null;
       state.isAuthenticated = false;
@@ -132,7 +165,6 @@ export const authSlice = createSlice({
       state.error = null;
       state.token = null;
       writePersistedSession(null);
-      localStorage.removeItem('auth_token');
     },
   },
   extraReducers: (builder) => {
@@ -148,12 +180,14 @@ export const authSlice = createSlice({
         state.activeBranchId = defaultBranchFor(action.payload.user);
         state.token = action.payload.token;
         state.error = null;
-        localStorage.setItem('auth_token', action.payload.token);
-        writePersistedSession({
-          user: action.payload.user,
-          activeBranchId: defaultBranchFor(action.payload.user),
-          token: action.payload.token,
-        });
+        writePersistedSession(
+          {
+            user: action.payload.user,
+            activeBranchId: defaultBranchFor(action.payload.user),
+            token: action.payload.token,
+          },
+          action.payload.remember
+        );
       })
       .addCase(loginAsync.rejected, (state, action) => {
         state.isSubmitting = false;
@@ -161,35 +195,47 @@ export const authSlice = createSlice({
         state.user = null;
         state.token = null;
         state.error = action.payload as string;
+      })
+      .addCase(fetchCurrentUserAsync.fulfilled, (state, action) => {
+        if (state.user) {
+          state.user = {
+            ...state.user,
+            ...action.payload,
+          };
+          writePersistedSession(
+            { user: state.user, activeBranchId: state.activeBranchId, token: state.token || '' },
+            isSessionRemembered()
+          );
+        }
       });
   },
 });
 
 export const changePassword = createAsyncThunk(
-    'auth/changePassword',
-    async (
-        values: ChangePasswordFormValues,
-        { rejectWithValue, getState }
-    ) => {
-      const id = (getState() as { auth: AuthState }).auth.user?.id;
+  'auth/changePassword',
+  async (
+    values: ChangePasswordFormValues,
+    { rejectWithValue, getState }
+  ) => {
+    const id = (getState() as { auth: AuthState }).auth.user?.id;
 
-      if (!id) {
-        return rejectWithValue('Chưa đăng nhập');
-      }
-
-      try {
-        await taiKhoanApi.changePassword(id, {
-          currentPassword: values.currentPassword,
-          newPassword: values.newPassword,
-        });
-
-        return true;
-      } catch (e) {
-        return rejectWithValue(
-            e instanceof Error ? e.message : 'Đổi mật khẩu thất bại'
-        );
-      }
+    if (!id) {
+      return rejectWithValue('Chưa đăng nhập');
     }
+
+    try {
+      await taiKhoanApi.changePassword(id, {
+        currentPassword: values.currentPassword,
+        newPassword: values.newPassword,
+      });
+
+      return true;
+    } catch (e) {
+      return rejectWithValue(
+        e instanceof Error ? e.message : 'Đổi mật khẩu thất bại'
+      );
+    }
+  }
 );
 
 export const {
@@ -198,7 +244,6 @@ export const {
   setActiveBranch,
   clearAuthError,
   updateProfile,
-  // changePassword,
   logout,
 } = authSlice.actions;
 

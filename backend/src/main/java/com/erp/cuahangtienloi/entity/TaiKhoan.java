@@ -28,6 +28,15 @@ public class TaiKhoan {
     @Column(name = "trang_thai")
     private String trangThai;
 
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
+
+    @Column(name = "failed_login_count")
+    private Integer failedLoginCount;
+
+    @Column(name = "locked_until")
+    private LocalDateTime lockedUntil;
+
     @Column(name = "ngay_tao")
     private LocalDateTime ngayTao;
 }

@@ -12,6 +12,8 @@ import { USER_ROLE } from '@/types';
 import { hasPermission, PERMISSIONS } from '@/config/rbacConfig';
 import { fetchSapHetHan } from '@/store/slices/hopDongSlice';
 
+import { fetchCurrentUserAsync } from '@/store/slices/authSlice';
+
 /**
  * Load dữ liệu dùng chung (master data) 1 lần khi app khởi động.
  * Tránh mỗi trang phải tự dispatch fetch tránh duplicate.
@@ -22,6 +24,7 @@ export const AppBootstrap: FC = () => {
 
   useEffect(() => {
     if (authUser) {
+      void dispatch(fetchCurrentUserAsync());
       dispatch(fetchCategories());
       dispatch(fetchSuppliers());
       dispatch(fetchBranches());

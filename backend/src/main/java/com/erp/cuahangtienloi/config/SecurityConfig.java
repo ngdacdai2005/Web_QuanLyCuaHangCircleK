@@ -84,12 +84,12 @@ public class SecurityConfig {
         CorsConfiguration cfg =
                 new CorsConfiguration();
 
-        cfg.setAllowedOrigins(
-                Arrays.stream(
-                                allowedOrigins.split(",")
-                        )
-                        .map(String::trim)
-                        .toList()
+        cfg.setAllowedOriginPatterns(
+                List.of(
+                        "http://localhost:*",
+                        "http://127.0.0.1:*",
+                        "http://[::1]:*"
+                )
         );
 
         cfg.setAllowedMethods(

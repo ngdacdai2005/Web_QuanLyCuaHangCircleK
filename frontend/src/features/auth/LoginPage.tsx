@@ -1,4 +1,4 @@
-import { useEffect, type FC } from 'react';
+import { useEffect, useState, type FC } from 'react';
 import {
   Alert,
   Button,
@@ -22,13 +22,26 @@ export const LoginPage: FC = () => {
 
   const error = useAppSelector((state) => state.auth.error);
   const isSubmitting = useAppSelector((state) => state.auth.isSubmitting);
+  const [expiredNotice, setExpiredNotice] = useState<string | null>(null);
 
   useEffect(() => {
     dispatch(clearAuthError());
+
+    // Bắt sự kiện phiên làm việc hết hạn từ http interceptor
+    const handleExpired = () => {
+      setExpiredNotice('Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.');
+    };
+    window.addEventListener('auth:expired', handleExpired);
+    return () => window.removeEventListener('auth:expired', handleExpired);
   }, [dispatch]);
 
   const handleSubmit = (values: LoginFormValues): void => {
-    dispatch(loginAsync(values));
+    setExpiredNotice(null);
+    dispatch(loginAsync({
+      ...values,
+      username: values.username?.trim(),
+      remember: values.remember !== false,
+    }));
   };
 
   return (
@@ -40,6 +53,18 @@ export const LoginPage: FC = () => {
         {APP_FULL_NAME}
       </Paragraph>
 
+      {expiredNotice && (
+        <Alert
+          type="warning"
+          showIcon
+          message={expiredNotice}
+          className="login-alert"
+          closable
+          onClose={() => setExpiredNotice(null)}
+          style={{ marginBottom: 16 }}
+        />
+      )}
+
       {error !== null && (
         <Alert
           type="error"
@@ -48,6 +73,7 @@ export const LoginPage: FC = () => {
           className="login-alert"
           closable
           onClose={() => dispatch(clearAuthError())}
+          style={{ marginBottom: 16 }}
         />
       )}
 
@@ -62,11 +88,22 @@ export const LoginPage: FC = () => {
         <Form.Item
           name="username"
           label="Tên đăng nhập"
-          rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập.' }]}
+          rules={[
+            { required: true, message: 'Vui lòng nhập tên đăng nhập.' },
+            {
+              validator: (_, value) => {
+                if (value && value.trim().length === 0) {
+                  return Promise.reject(new Error('Tên đăng nhập không được chỉ chứa khoảng trắng.'));
+                }
+                return Promise.resolve();
+              },
+            },
+          ]}
         >
           <Input
+            autoFocus
             prefix={<UserOutlined className="login-input-icon" />}
-            placeholder="Nhập tên đăng nhập"
+            placeholder="Nhập tên đăng nhập (ví dụ: admin)"
             autoComplete="username"
           />
         </Form.Item>
@@ -94,8 +131,9 @@ export const LoginPage: FC = () => {
           size="large"
           loading={isSubmitting}
           className="login-submit-btn"
+          style={{ height: 46, fontSize: 16, fontWeight: 600 }}
         >
-          Đăng nhập
+          {isSubmitting ? 'Đang xác thực...' : 'Đăng nhập'}
         </Button>
       </Form>
     </div>
