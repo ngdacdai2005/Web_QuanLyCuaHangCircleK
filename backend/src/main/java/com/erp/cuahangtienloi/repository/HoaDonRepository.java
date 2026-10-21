@@ -17,6 +17,7 @@ public interface HoaDonRepository extends JpaRepository<HoaDon, UUID> {
     List<HoaDon> findByIdThuNgan(UUID idThuNgan);
     List<HoaDon> findByTrangThai(String trangThai);
     List<HoaDon> findByNgayBanBetween(LocalDateTime from, LocalDateTime to);
+    List<HoaDon> findByIdPhienThuNgan(UUID idPhienThuNgan);
 
     @Query("""
     SELECT COUNT(h)

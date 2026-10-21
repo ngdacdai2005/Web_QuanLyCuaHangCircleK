@@ -28,6 +28,8 @@ public class CheckoutRequestDTO {
 
     private BigDecimal tienKhachDua;
 
+    private UUID idPhienThuNgan;
+
     @NotEmpty(message = "Giỏ hàng không được để trống")
     @Valid
     private List<CheckoutLineDTO> lines;

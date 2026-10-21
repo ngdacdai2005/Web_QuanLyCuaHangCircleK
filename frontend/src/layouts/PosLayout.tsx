@@ -1,4 +1,4 @@
-import { useMemo, type FC } from 'react';
+import { useMemo, useState, useEffect, type FC } from 'react';
 import { Avatar, Button, Dropdown, Layout, Select, Tag, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -7,6 +7,11 @@ import {
   LogoutOutlined,
   ShopOutlined,
   SwapOutlined,
+  DollarOutlined,
+  SafetyCertificateOutlined,
+  CalculatorOutlined,
+  HistoryOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -21,6 +26,12 @@ import {
   type UserRole,
 } from '@/types';
 import logo from '@/assets/logo.png';
+import { phienThuNganApi, type PhienThuNganRecord } from '@/api/phienThuNgan';
+import { OpenShiftModal } from '@/features/cash-shift/OpenShiftModal';
+import { CloseShiftModal } from '@/features/cash-shift/CloseShiftModal';
+import { HandoverShiftModal } from '@/features/cash-shift/HandoverShiftModal';
+import { SafeDropModal } from '@/features/cash-shift/SafeDropModal';
+import { ShiftHistoryModal } from '@/features/cash-shift/ShiftHistoryModal';
 import './PosLayout.css';
 
 const { Header, Content } = Layout;
@@ -98,6 +109,26 @@ export const PosLayout: FC = () => {
     dispatch(setActiveBranch(value));
   };
 
+  const [currentShiftRecord, setCurrentShiftRecord] = useState<PhienThuNganRecord | null>(null);
+  const [isOpenShiftModalOpen, setIsOpenShiftModalOpen] = useState(false);
+  const [isCloseShiftModalOpen, setIsCloseShiftModalOpen] = useState(false);
+  const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
+  const [isSafeDropModalOpen, setIsSafeDropModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+
+  const loadCurrentShift = async () => {
+    try {
+      const res = await phienThuNganApi.getHienTai();
+      setCurrentShiftRecord(res);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    loadCurrentShift();
+  }, [user]);
+
   /** Menu tài khoản: hồ sơ, đăng xuất. */
   const userMenuItems: MenuProps['items'] = [
     {
@@ -127,6 +158,8 @@ export const PosLayout: FC = () => {
     }
   };
 
+  const selectedBranchName = branchOptions.find((b) => b.value === branchId)?.label;
+
   return (
     <Layout className="pos-shell">
       <Header className="pos-topbar">
@@ -153,12 +186,77 @@ export const PosLayout: FC = () => {
         </div>
 
         <div className="pos-topbar-right">
+          {/* Trạng thái ca thu ngân & Quản lý quỹ */}
+          {currentShiftRecord ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Tag
+                color="green"
+                style={{
+                  fontWeight: 700,
+                  fontSize: 12,
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <CheckCircleOutlined />
+                {currentShiftRecord.maPhien} ({currentShiftRecord.quaySo})
+              </Tag>
+
+              <Button
+                size="small"
+                icon={<SafetyCertificateOutlined />}
+                onClick={() => setIsSafeDropModalOpen(true)}
+                style={{ fontWeight: 600, color: '#0284c7', borderColor: '#38bdf8' }}
+              >
+                Nộp két
+              </Button>
+
+              <Button
+                size="small"
+                danger
+                type="primary"
+                icon={<CalculatorOutlined />}
+                onClick={() => setIsCloseShiftModalOpen(true)}
+                style={{ fontWeight: 600 }}
+              >
+                Chốt ca
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="primary"
+              size="small"
+              icon={<DollarOutlined />}
+              onClick={() => setIsOpenShiftModalOpen(true)}
+              style={{
+                background: '#059669',
+                borderColor: '#059669',
+                fontWeight: 700,
+                borderRadius: 6,
+              }}
+            >
+              + Mở ca & Nhận quỹ
+            </Button>
+          )}
+
+          <Button
+            size="small"
+            icon={<HistoryOutlined />}
+            onClick={() => setIsHistoryModalOpen(true)}
+            style={{ fontWeight: 600 }}
+          >
+            Lịch sử ca
+          </Button>
+
           <Tag className="pos-chip pos-chip-shift">
             Ca {SHIFT_SHORT_LABEL[currentShift()]}
           </Tag>
 
           <Tag className="pos-chip pos-chip-session">
-            Đã bán trong phiên:{' '}
+            Đã bán:{' '}
             <Typography.Text className="pos-chip-count">
               {sessionOrderCount}
             </Typography.Text>
@@ -198,6 +296,55 @@ export const PosLayout: FC = () => {
       <Content className="pos-content">
         <Outlet />
       </Content>
+
+      {/* Các Modals quản lý ca thu ngân */}
+      <OpenShiftModal
+        open={isOpenShiftModalOpen}
+        onClose={() => setIsOpenShiftModalOpen(false)}
+        onSuccess={() => {
+          loadCurrentShift();
+        }}
+        branchId={branchId || undefined}
+        branchName={selectedBranchName}
+      />
+
+      <CloseShiftModal
+        open={isCloseShiftModalOpen}
+        shift={currentShiftRecord}
+        onClose={() => setIsCloseShiftModalOpen(false)}
+        onSuccess={(closed) => {
+          setCurrentShiftRecord(closed);
+          setIsHandoverModalOpen(true);
+        }}
+      />
+
+      <HandoverShiftModal
+        open={isHandoverModalOpen}
+        shift={currentShiftRecord}
+        onClose={() => {
+          setIsHandoverModalOpen(false);
+          loadCurrentShift();
+        }}
+        onSuccess={() => {
+          loadCurrentShift();
+        }}
+      />
+
+      <SafeDropModal
+        open={isSafeDropModalOpen}
+        shift={currentShiftRecord}
+        onClose={() => setIsSafeDropModalOpen(false)}
+        onSuccess={() => {
+          loadCurrentShift();
+        }}
+      />
+
+      <ShiftHistoryModal
+        open={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        branchId={branchId || undefined}
+        currentUserId={user?.id}
+      />
     </Layout>
   );
 };

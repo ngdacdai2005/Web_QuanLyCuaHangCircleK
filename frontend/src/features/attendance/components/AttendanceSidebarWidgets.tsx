@@ -51,7 +51,6 @@ export const AttendanceSidebarWidgets: FC<AttendanceSidebarWidgetsProps> = ({
       <div className="sidebar-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <h4 className="sidebar-card-title" style={{ margin: 0 }}>Trạng thái đăng ký tháng này</h4>
-          <span style={{ fontSize: 11, color: '#94a3b8' }}>Bấm để xem list</span>
         </div>
 
         {/* MỤC 1: ĐƠN NGHỈ PHÉP */}

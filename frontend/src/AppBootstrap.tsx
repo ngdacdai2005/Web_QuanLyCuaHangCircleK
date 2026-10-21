@@ -1,4 +1,4 @@
-import { useEffect, type FC } from 'react';
+import { useEffect, useRef, type FC } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { fetchCategories } from '@/store/slices/categorySlice';
 import { fetchSuppliers } from '@/store/slices/supplierSlice';
@@ -21,9 +21,17 @@ import { fetchCurrentUserAsync } from '@/store/slices/authSlice';
 export const AppBootstrap: FC = () => {
   const dispatch = useAppDispatch();
   const authUser = useAppSelector((state) => state.auth.user);
+  const loadedUserRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (authUser) {
+    if (!authUser) {
+      loadedUserRef.current = null;
+      return;
+    }
+
+    if (authUser.id && loadedUserRef.current !== authUser.id) {
+      loadedUserRef.current = authUser.id;
+
       void dispatch(fetchCurrentUserAsync());
       dispatch(fetchCategories());
       dispatch(fetchSuppliers());

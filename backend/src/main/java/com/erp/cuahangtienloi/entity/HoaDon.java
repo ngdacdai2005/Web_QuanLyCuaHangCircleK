@@ -71,6 +71,9 @@ public class HoaDon {
     @Column(name = "ghi_chu", columnDefinition = "TEXT")
     private String ghiChu;
 
+    @Column(name = "id_phien_thu_ngan")
+    private UUID idPhienThuNgan;
+
     @Column(name = "ngay_tao")
     private LocalDateTime ngayTao;
 

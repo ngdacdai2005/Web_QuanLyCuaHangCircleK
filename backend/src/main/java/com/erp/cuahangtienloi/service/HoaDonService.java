@@ -49,6 +49,7 @@ public class HoaDonService {
     private final LoHangService loHangService;
     private final HoaDonMapper hoaDonMapper;
     private final ChiTietHoaDonMapper chiTietHoaDonMapper;
+    private final PhienThuNganRepository phienThuNganRepository;
 
     private final Map<String, HoaDonResponseDTO> recentCheckoutCache = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<String, Long> recentCheckoutTimestamp = new java.util.concurrent.ConcurrentHashMap<>();
@@ -317,6 +318,13 @@ public class HoaDonService {
                 invoice.setMaHoaDon(sinhMaHoaDon());
                 invoice.setIdChiNhanh(request.getIdChiNhanh());
                 invoice.setIdThuNgan(cashierId);
+                UUID shiftId = request.getIdPhienThuNgan();
+                if (shiftId == null) {
+                    shiftId = phienThuNganRepository.findByIdThuNganAndTrangThai(cashierId, "DANG_MO")
+                            .map(PhienThuNgan::getId)
+                            .orElse(null);
+                }
+                invoice.setIdPhienThuNgan(shiftId);
                 invoice.setCaLamViec(request.getCaLamViec() == null ? "MORNING" : request.getCaLamViec());
                 invoice.setNgayBan(LocalDateTime.now());
                 invoice.setHinhThucTt(paymentMethod);

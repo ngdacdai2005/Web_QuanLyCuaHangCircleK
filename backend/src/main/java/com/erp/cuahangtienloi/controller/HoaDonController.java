@@ -34,22 +34,6 @@ public class HoaDonController {
     private final HoaDonService hoaDonService;
     private final NhanVienRepository nhanVienRepository;
 
-    public HoaDonController(
-            HoaDonRepository hoaDonRepository,
-            ChiNhanhRepository chiNhanhRepository,
-            NhanVienRepository nhanVienRepository,
-            ChiTietHoaDonRepository chiTietHoaDonRepository,
-            SanPhamRepository sanPhamRepository,
-            TonKhoRepository tonKhoRepository,
-            SoQuyRepository soQuyRepository,
-            JdbcTemplate jdbcTemplate
-    ) {
-        this(new HoaDonService(hoaDonRepository, chiNhanhRepository, nhanVienRepository,
-                chiTietHoaDonRepository, sanPhamRepository, tonKhoRepository, soQuyRepository,
-                jdbcTemplate, null, new HoaDonMapper(chiNhanhRepository, nhanVienRepository),
-                new ChiTietHoaDonMapper()), nhanVienRepository);
-    }
-
     private UUID resolveAuthenticatedIdNhanVien(HttpServletRequest request) {
         Object attr = request.getAttribute("authenticatedIdNhanVien");
         if (attr instanceof String value) {
