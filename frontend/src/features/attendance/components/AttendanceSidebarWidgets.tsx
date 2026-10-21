@@ -27,8 +27,8 @@ export const AttendanceSidebarWidgets: FC<AttendanceSidebarWidgetsProps> = ({
   onClockIn,
   onClockOut,
 }) => {
-  const hasClockedIn = Boolean(todayShift?.clockInAt || todayShift?.checkInAt);
-  const hasClockedOut = Boolean(todayShift?.clockOutAt || todayShift?.checkOutAt);
+  const hasClockedIn = Boolean(todayShift?.clockInAt);
+  const hasClockedOut = Boolean(todayShift?.clockOutAt);
 
   return (
     <div className="attendance-sidebar-wrap">
@@ -56,7 +56,7 @@ export const AttendanceSidebarWidgets: FC<AttendanceSidebarWidgetsProps> = ({
             <EnvironmentOutlined />
           </div>
           <div className="item-info">
-            <div className="item-name">Đơn đổi ca / Onsite</div>
+            <div className="item-name">Đơn đổi ca</div>
             <div className="item-desc">Công tác & đổi ca cửa hàng</div>
           </div>
           <div className="item-status">

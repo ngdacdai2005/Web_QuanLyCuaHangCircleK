@@ -221,10 +221,29 @@ public class ChamCongService {
             return ResponseEntity.badRequest().body(ApiResponse.err("Nhân viên chưa có ca mặc định"));
         }
 
-        // Bỏ qua nếu đã có record cho (nv, date, ca)
-        Optional<ChamCong> existing = chamCongRepository.findByIdNhanVienAndWorkDateAndCaLamViec(idNhanVien, date, ca);
-        if (existing.isPresent()) {
-            return ResponseEntity.ok(List.of(chamCongMapper.toResponse(existing.get())));
+        List<ChamCong> existingDayShifts = chamCongRepository.findByIdNhanVienAndWorkDate(idNhanVien, date);
+        if (!existingDayShifts.isEmpty()) {
+            boolean hasClocked = existingDayShifts.stream().anyMatch(s -> s.getClockInAt() != null);
+            if (hasClocked) {
+                ChamCong clocked = existingDayShifts.stream().filter(s -> s.getClockInAt() != null).findFirst().orElse(existingDayShifts.get(0));
+                return ResponseEntity.ok(List.of(chamCongMapper.toResponse(clocked)));
+            }
+
+            ChamCong target = existingDayShifts.get(0);
+            if (!ca.equals(target.getCaLamViec())) {
+                target.setCaLamViec(ca);
+                target.setCheckInAt(plannedCheckIn(date, ca));
+                target.setCheckOutAt(plannedCheckOut(date, ca));
+                target.setNgayCapNhat(LocalDateTime.now());
+                chamCongRepository.save(target);
+            }
+            for (int i = 1; i < existingDayShifts.size(); i++) {
+                ChamCong extra = existingDayShifts.get(i);
+                if (extra.getClockInAt() == null && "SCHEDULED".equals(extra.getTrangThai())) {
+                    chamCongRepository.delete(extra);
+                }
+            }
+            return ResponseEntity.ok(List.of(chamCongMapper.toResponse(target)));
         }
 
         ChamCong cc = new ChamCong();
@@ -330,11 +349,33 @@ public class ChamCongService {
         LocalDate to = LocalDate.parse(toDate);
         List<ChamCongResponseDTO> created = new ArrayList<>();
         for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
-            Optional<ChamCong> existing = chamCongRepository.findByIdNhanVienAndWorkDateAndCaLamViec(idNhanVien, d, ca);
-            if (existing.isPresent()) {
-                created.add(chamCongMapper.toResponse(existing.get()));
+            List<ChamCong> existingDayShifts = chamCongRepository.findByIdNhanVienAndWorkDate(idNhanVien, d);
+            if (!existingDayShifts.isEmpty()) {
+                boolean hasClocked = existingDayShifts.stream().anyMatch(s -> s.getClockInAt() != null);
+                if (hasClocked) {
+                    ChamCong clocked = existingDayShifts.stream().filter(s -> s.getClockInAt() != null).findFirst().orElse(existingDayShifts.get(0));
+                    created.add(chamCongMapper.toResponse(clocked));
+                    continue;
+                }
+
+                ChamCong target = existingDayShifts.get(0);
+                if (!ca.equals(target.getCaLamViec())) {
+                    target.setCaLamViec(ca);
+                    target.setCheckInAt(plannedCheckIn(d, ca));
+                    target.setCheckOutAt(plannedCheckOut(d, ca));
+                    target.setNgayCapNhat(LocalDateTime.now());
+                    chamCongRepository.save(target);
+                }
+                for (int i = 1; i < existingDayShifts.size(); i++) {
+                    ChamCong extra = existingDayShifts.get(i);
+                    if (extra.getClockInAt() == null && "SCHEDULED".equals(extra.getTrangThai())) {
+                        chamCongRepository.delete(extra);
+                    }
+                }
+                created.add(chamCongMapper.toResponse(target));
                 continue;
             }
+
             ChamCong cc = new ChamCong();
             cc.setId(UUID.randomUUID());
             cc.setIdNhanVien(idNhanVien);

@@ -73,8 +73,8 @@ export const ShiftActionModal: FC<ShiftActionModalProps> = ({
   const isFuture = dateObj.isAfter(dayjs(), 'day');
 
   const shiftInfo = getShiftBadge(record?.shift);
-  const hasClockedIn = Boolean(record?.clockInAt || record?.checkInAt);
-  const hasClockedOut = Boolean(record?.clockOutAt || record?.checkOutAt);
+  const hasClockedIn = Boolean(record?.clockInAt);
+  const hasClockedOut = Boolean(record?.clockOutAt);
 
   const formattedDate = dateObj.format('dddd, [ngày] DD/MM/YYYY');
   // Chuyển chữ cái đầu thành viết hoa (VD: "thứ ba" -> "Thứ Ba")
@@ -145,7 +145,7 @@ export const ShiftActionModal: FC<ShiftActionModalProps> = ({
                       type="info"
                       showIcon
                       message="Đang trong ca làm việc"
-                      description={`Đã vào ca lúc ${formatTime(record.clockInAt || record.checkInAt)}. Hãy nhấn Check-out khi hết giờ làm.`}
+                      description={`Đã vào ca lúc ${formatTime(record.clockInAt)}. Hãy nhấn Check-out khi hết giờ làm.`}
                     />
                     <Button
                       type="primary"
@@ -168,7 +168,7 @@ export const ShiftActionModal: FC<ShiftActionModalProps> = ({
                     showIcon
                     icon={<CheckCircleOutlined style={{ fontSize: 18 }} />}
                     message="Ca làm việc đã hoàn thành"
-                    description={`Đã check-in: ${formatTime(record.clockInAt || record.checkInAt)} | Check-out: ${formatTime(record.clockOutAt || record.checkOutAt)} (Tổng ${record.actualHours || record.workedHours || 8}h)`}
+                    description={`Đã check-in: ${formatTime(record.clockInAt)} | Check-out: ${formatTime(record.clockOutAt)} (Tổng ${record.actualHours || record.workedHours || 8}h)`}
                   />
                 )}
               </div>
@@ -191,13 +191,13 @@ export const ShiftActionModal: FC<ShiftActionModalProps> = ({
               <div className="history-item">
                 <span className="history-label">Giờ vào thực tế:</span>
                 <span className="history-value">
-                  {hasClockedIn ? formatTime(record.clockInAt || record.checkInAt) : 'Chưa chấm'}
+                  {hasClockedIn ? formatTime(record.clockInAt) : 'Chưa chấm'}
                 </span>
               </div>
               <div className="history-item">
                 <span className="history-label">Giờ ra thực tế:</span>
                 <span className="history-value">
-                  {hasClockedOut ? formatTime(record.clockOutAt || record.checkOutAt) : 'Chưa chấm'}
+                  {hasClockedOut ? formatTime(record.clockOutAt) : 'Chưa chấm'}
                 </span>
               </div>
               <div className="history-item">

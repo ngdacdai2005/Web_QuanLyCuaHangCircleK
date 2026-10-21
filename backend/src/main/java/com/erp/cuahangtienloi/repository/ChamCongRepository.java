@@ -15,5 +15,7 @@ public interface ChamCongRepository extends JpaRepository<ChamCong, UUID> {
     List<ChamCong> findByWorkDate(LocalDate workDate);
     List<ChamCong> findByWorkDateBetween(LocalDate from, LocalDate to);
     List<ChamCong> findByIdNhanVienAndWorkDateBetween(UUID idNhanVien, LocalDate from, LocalDate to);
+    List<ChamCong> findByIdNhanVienAndWorkDate(UUID idNhanVien, LocalDate workDate);
+    List<ChamCong> findByIdNhanVienAndWorkDateGreaterThanEqual(UUID idNhanVien, LocalDate fromDate);
     Optional<ChamCong> findByIdNhanVienAndWorkDateAndCaLamViec(UUID idNhanVien, LocalDate workDate, String caLamViec);
 }

@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   Popconfirm,
+  Select,
   Space,
   Tabs,
   Tag,
@@ -19,10 +20,12 @@ import {
   LoginOutlined,
   LogoutOutlined,
   UnorderedListOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import type { ToolbarFilter } from '@/components/TableToolbar';
 import { AttendanceStatusTag } from '@/components/StatusTag';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchEmployees } from '@/store/slices/employeeSlice';
 import {
   canApprovePayment,
   canConfirmHours,
@@ -95,6 +98,9 @@ export const AttendancePage: FC = () => {
   const payrollLoading = useAppSelector((state) => state.payroll.loading);
   const payrollError = useAppSelector((state) => state.payroll.error);
 
+  const employees = useAppSelector((state) => state.employee.employees);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+
   const [search, setSearch] = useState('');
   const [branchFilter, setBranchFilter] = useState<string | null>(activeBranchId);
   const [shiftFilter, setShiftFilter] = useState<string | null>(null);
@@ -118,6 +124,12 @@ export const AttendancePage: FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const isSelfServiceRole = user?.role === USER_ROLE.Cashier
     || user?.role === USER_ROLE.WarehouseKeeper;
+
+  const currentViewEmployeeId = selectedEmployeeId || (user?.idNhanVien ?? user?.id);
+  const currentViewEmployee = employees.find((e) => e.id === currentViewEmployeeId);
+  const currentViewName = currentViewEmployee
+    ? `${currentViewEmployee.fullName} (${currentViewEmployee.code})`
+    : (user?.fullName || 'Nhân viên Circle K');
 
   const handleSelectDay = (dateStr: string, record: AttendanceRecord | null) => {
     setSelectedDateStr(dateStr);
@@ -143,15 +155,23 @@ export const AttendancePage: FC = () => {
     }
   };
 
+  // Tải danh sách nhân viên nếu có quyền quản lý để cho phép chọn xem lịch
   useEffect(() => {
-    if (user?.idNhanVien) {
-      void dispatch(scheduleAttendance({ idNhanVien: user.idNhanVien, days: 7 }))
+    if (!isSelfServiceRole && employees.length === 0) {
+      void dispatch(fetchEmployees());
+    }
+  }, [dispatch, isSelfServiceRole, employees.length]);
+
+  // Sinh lịch ca tự động cho nhân viên đang xem (hoặc bản thân)
+  useEffect(() => {
+    if (currentViewEmployeeId) {
+      void dispatch(scheduleAttendance({ idNhanVien: currentViewEmployeeId, days: 7 }))
         .unwrap()
         .catch((e: any) => {
           console.warn('Không thể sinh lịch ca tự động:', e?.message || e);
         });
     }
-  }, [dispatch, user?.idNhanVien]);
+  }, [dispatch, currentViewEmployeeId]);
 
   useEffect(() => {
     void dispatch(fetchAttendance({
@@ -236,16 +256,15 @@ export const AttendancePage: FC = () => {
 
   const monthPrefix = currentMonth.format('YYYY-MM');
   const myMonthRecords = useMemo(() => {
-    const myId = user?.idNhanVien ?? user?.id;
     return attendanceRecords.filter(
-      (record) => record.employeeId === myId && record.workDate.startsWith(monthPrefix),
+      (record) => record.employeeId === currentViewEmployeeId && record.workDate.startsWith(monthPrefix),
     );
-  }, [attendanceRecords, user?.idNhanVien, user?.id, monthPrefix]);
+  }, [attendanceRecords, currentViewEmployeeId, monthPrefix]);
 
   const completedCount = useMemo(
     () =>
       myMonthRecords.filter(
-        (r) => r.status === ATTENDANCE_STATUS.Present || Boolean(r.clockInAt || r.checkInAt),
+        (r) => r.status === ATTENDANCE_STATUS.Present || Boolean(r.clockInAt),
       ).length,
     [myMonthRecords],
   );
@@ -257,9 +276,8 @@ export const AttendancePage: FC = () => {
 
   const todayShift = useMemo(() => {
     const todayStr = today();
-    const myId = user?.idNhanVien ?? user?.id;
-    return attendanceRecords.find((r) => r.employeeId === myId && r.workDate === todayStr);
-  }, [attendanceRecords, user?.idNhanVien, user?.id]);
+    return attendanceRecords.find((r) => r.employeeId === currentViewEmployeeId && r.workDate === todayStr);
+  }, [attendanceRecords, currentViewEmployeeId]);
 
   const activeBranchName = useMemo(() => {
     if (!activeBranchId) return 'Toàn chuỗi Circle K';
@@ -942,7 +960,7 @@ export const AttendancePage: FC = () => {
                 <div className="attendance-overview-tab">
                   {/* Banner chào mừng & chọn tháng */}
                   <AttendanceWelcomeBanner
-                    userName={user?.fullName || 'Nhân viên Circle K'}
+                    userName={currentViewName}
                     currentMonth={currentMonth}
                     onMonthChange={setCurrentMonth}
                     todayShift={todayShift}
@@ -950,6 +968,65 @@ export const AttendancePage: FC = () => {
                     onClockOut={handleClockOut}
                     loading={attendanceLoading}
                   />
+
+                  {/* Thanh chọn nhân viên xem lịch (Dành cho Admin / Quản lý / Kế toán) */}
+                  {!isSelfServiceRole && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 16px',
+                        backgroundColor: '#ffffff',
+                        borderRadius: 10,
+                        border: '1px solid #e2e8f0',
+                        marginBottom: 16,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                        flexWrap: 'wrap',
+                        gap: 12,
+                      }}
+                    >
+                      <Space size={10} align="center">
+                        <UserOutlined style={{ color: '#2563eb', fontSize: 16 }} />
+                        <span style={{ fontWeight: 600, color: '#1e293b', fontSize: 14 }}>
+                          Xem lịch công của:
+                        </span>
+                        <Select
+                          style={{ width: 340 }}
+                          value={currentViewEmployeeId}
+                          onChange={(val) => setSelectedEmployeeId(val)}
+                          showSearch
+                          placeholder="Chọn nhân viên..."
+                          filterOption={(input, option) =>
+                            (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
+                          }
+                          options={[
+                            {
+                              value: user?.idNhanVien ?? user?.id,
+                              label: `👤 Lịch của tôi (${user?.fullName || 'Tôi'})`,
+                            },
+                            ...employees
+                              .filter((e) => e.id !== (user?.idNhanVien ?? user?.id))
+                              .map((e) => ({
+                                value: e.id,
+                                label: `${e.fullName} (${e.code}) — ${USER_ROLE_LABEL[e.role] || e.role}`,
+                              })),
+                          ]}
+                        />
+                      </Space>
+
+                      {selectedEmployeeId && selectedEmployeeId !== (user?.idNhanVien ?? user?.id) && (
+                        <Button
+                          size="small"
+                          type="primary"
+                          ghost
+                          onClick={() => setSelectedEmployeeId(null)}
+                        >
+                          Quay lại lịch của tôi
+                        </Button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Dải 5 thẻ KPI màu sắc */}
                   <AttendanceKpiStrip

@@ -71,8 +71,8 @@ export const AttendanceWelcomeBanner: FC<AttendanceWelcomeBannerProps> = ({
     onMonthChange(dayjs());
   };
 
-  const hasCheckedIn = Boolean(todayShift?.clockInAt || todayShift?.checkInAt);
-  const hasCheckedOut = Boolean(todayShift?.clockOutAt || todayShift?.checkOutAt);
+  const hasCheckedIn = Boolean(todayShift?.clockInAt);
+  const hasCheckedOut = Boolean(todayShift?.clockOutAt);
 
   return (
     <div className="attendance-welcome-banner">

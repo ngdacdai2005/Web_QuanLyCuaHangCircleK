@@ -80,7 +80,7 @@ public class ChamCongController {
     }
 
     @PostMapping("/schedule/{idNhanVien}")
-    @PreAuthorize("hasAuthority('attendance:update') or hasAuthority('attendance:approve')")
+    @PreAuthorize("hasAuthority('attendance:update') or hasAuthority('attendance:approve') or hasAuthority('attendance:checkin')")
     public ResponseEntity<?> scheduleForEmployee(
             @PathVariable UUID idNhanVien,
             @RequestParam(required = false) String workDate, HttpServletRequest httpRequest) {
@@ -100,7 +100,7 @@ public class ChamCongController {
     }
 
     @PostMapping("/schedule-range/{idNhanVien}")
-    @PreAuthorize("hasAuthority('attendance:update') or hasAuthority('attendance:approve')")
+    @PreAuthorize("hasAuthority('attendance:update') or hasAuthority('attendance:approve') or hasAuthority('attendance:checkin')")
     public ResponseEntity<?> scheduleRange(
             @PathVariable UUID idNhanVien,
             @RequestParam("from") String fromDate,

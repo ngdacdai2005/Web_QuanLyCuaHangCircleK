@@ -8,6 +8,8 @@ import com.erp.cuahangtienloi.mapper.NhanVienMapper;
 import com.erp.cuahangtienloi.repository.ChiNhanhRepository;
 import com.erp.cuahangtienloi.repository.NhanVienRepository;
 import com.erp.cuahangtienloi.repository.TaiKhoanRepository;
+import com.erp.cuahangtienloi.repository.ChamCongRepository;
+import com.erp.cuahangtienloi.entity.ChamCong;
 import lombok.RequiredArgsConstructor;
 import com.erp.cuahangtienloi.entity.TaiKhoan;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +37,9 @@ public class NhanVienService {
     private final BranchAccessService branchAccessService;
     private final NhanVienMapper nhanVienMapper;
     private final PasswordEncoder passwordEncoder;
+
+    @Autowired(required = false)
+    private ChamCongRepository chamCongRepository;
 
     @Autowired
     public NhanVienService(
@@ -293,7 +299,14 @@ public class NhanVienService {
             if (request.getVaiTro() != null) nv.setVaiTro(request.getVaiTro());
             if (request.getViTri() != null) nv.setViTri(request.getViTri());
             if (request.getLoaiHopDong() != null) nv.setLoaiHopDong(request.getLoaiHopDong());
-            if (request.getCaMacDinh() != null) nv.setCaMacDinh(request.getCaMacDinh());
+            if (request.getCaMacDinh() != null && !request.getCaMacDinh().isBlank()) {
+                String oldCa = nv.getCaMacDinh();
+                String newCa = request.getCaMacDinh().trim();
+                nv.setCaMacDinh(newCa);
+                if (oldCa != null && !newCa.equalsIgnoreCase(oldCa.trim())) {
+                    syncFutureScheduledShifts(nv.getId(), newCa);
+                }
+            }
             if (request.getLuongTheoGio() != null) nv.setLuongTheoGio(request.getLuongTheoGio());
             if (request.getLuongCung() != null) nv.setLuongCung(request.getLuongCung());
             String effectiveRole = request.getVaiTro() != null ? request.getVaiTro() : nv.getVaiTro();
@@ -575,5 +588,44 @@ public class NhanVienService {
         nhanVienRepository.save(nv);
 
         return taiKhoanRepository.save(tk);
+    }
+
+    private static final Map<String, int[]> SHIFT_HOURS_MAP = Map.of(
+            "MORNING", new int[]{6, 14},
+            "AFTERNOON", new int[]{14, 22},
+            "NIGHT", new int[]{22, 30}
+    );
+
+    private LocalDateTime calculatePlannedCheckIn(LocalDate workDate, String caLamViec) {
+        int[] h = SHIFT_HOURS_MAP.getOrDefault(caLamViec, new int[]{8, 17});
+        return LocalDateTime.of(workDate, java.time.LocalTime.of(h[0] % 24, 0));
+    }
+
+    private LocalDateTime calculatePlannedCheckOut(LocalDate workDate, String caLamViec) {
+        int[] h = SHIFT_HOURS_MAP.getOrDefault(caLamViec, new int[]{8, 17});
+        int endHour = h[1];
+        LocalDate endDate = endHour >= 24 ? workDate.plusDays(1) : workDate;
+        return LocalDateTime.of(endDate, java.time.LocalTime.of(endHour % 24, 0));
+    }
+
+    private void syncFutureScheduledShifts(UUID idNhanVien, String newCa) {
+        if (chamCongRepository == null || newCa == null || newCa.isBlank()) return;
+        LocalDate today = LocalDate.now();
+        List<ChamCong> futureShifts = chamCongRepository.findByIdNhanVienAndWorkDateGreaterThanEqual(idNhanVien, today);
+        for (ChamCong cc : futureShifts) {
+            if ("SCHEDULED".equals(cc.getTrangThai()) && cc.getClockInAt() == null) {
+                if (newCa.equals(cc.getCaLamViec())) continue;
+                Optional<ChamCong> dup = chamCongRepository.findByIdNhanVienAndWorkDateAndCaLamViec(idNhanVien, cc.getWorkDate(), newCa);
+                if (dup.isPresent()) {
+                    chamCongRepository.delete(cc);
+                } else {
+                    cc.setCaLamViec(newCa);
+                    cc.setCheckInAt(calculatePlannedCheckIn(cc.getWorkDate(), newCa));
+                    cc.setCheckOutAt(calculatePlannedCheckOut(cc.getWorkDate(), newCa));
+                    cc.setNgayCapNhat(LocalDateTime.now());
+                    chamCongRepository.save(cc);
+                }
+            }
+        }
     }
 }

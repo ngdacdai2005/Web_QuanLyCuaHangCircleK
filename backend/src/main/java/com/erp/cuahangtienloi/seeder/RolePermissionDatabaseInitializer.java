@@ -413,6 +413,7 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                     'product:read',
                     'category:read',
                     'supplier:read',
+                    'attendance:read',
                     'attendance:checkin'
                   )
                 ON CONFLICT DO NOTHING;
@@ -429,6 +430,7 @@ public class RolePermissionDatabaseInitializer implements ApplicationRunner {
                     'order:read', 'order:create',
                     'product:read',
                     'category:read',
+                    'attendance:read',
                     'attendance:checkin'
                   )
                 ON CONFLICT DO NOTHING;

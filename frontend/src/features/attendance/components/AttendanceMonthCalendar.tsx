@@ -76,8 +76,8 @@ const getShiftDisplayConfig = (
       };
     }
 
-    const hasClockIn = Boolean(record.clockInAt || record.checkInAt);
-    const hasClockOut = Boolean(record.clockOutAt || record.checkOutAt);
+    const hasClockIn = Boolean(record.clockInAt);
+    const hasClockOut = Boolean(record.clockOutAt);
 
     if (hasClockIn && !hasClockOut) {
       return {
@@ -87,7 +87,7 @@ const getShiftDisplayConfig = (
         pillBorder: '#10b981',
         isDashed: false,
         pillTitle: `🟢 Đang làm · ${SHIFT_SHORT_LABEL[record.shift] || record.shift}`,
-        pillSubtitle: `Vào: ${formatTime(record.clockInAt || record.checkInAt)}`,
+        pillSubtitle: `Vào lúc: ${formatTime(record.clockInAt)}`,
         statusLabel: 'Đang trong ca làm việc',
         statusColor: '#10b981',
       };
@@ -107,6 +107,30 @@ const getShiftDisplayConfig = (
       };
     }
 
+    // Chưa check-in (clockInAt is null)
+    // Kiểm tra nếu hiện tại đã quá giờ kết thúc ca (checkOutAt)
+    const now = dayjs();
+    const plannedEnd = record.checkOutAt ? dayjs(record.checkOutAt) : null;
+    const isPastShift = plannedEnd ? now.isAfter(plannedEnd) : false;
+
+    if (isPastShift) {
+      return {
+        cellClass: 'cell-today is-today cell-past-absent',
+        pillBg: '#fef2f2',
+        pillColor: '#b91c1c',
+        pillBorder: '#fca5a5',
+        isDashed: true,
+        pillTitle: `⚠ Quá giờ · ${SHIFT_SHORT_LABEL[record.shift] || record.shift}`,
+        pillSubtitle: 'Chưa chấm công',
+        statusLabel: 'Quá giờ chưa chấm công',
+        statusColor: '#ef4444',
+      };
+    }
+
+    let shiftTimeStr = '06:00 - 14:00';
+    if (record.shift === SHIFT_CODE.Afternoon) shiftTimeStr = '14:00 - 22:00';
+    else if (record.shift === SHIFT_CODE.Night) shiftTimeStr = '22:00 - 06:00';
+
     return {
       cellClass: 'cell-today is-today',
       pillBg: '#eff6ff',
@@ -114,7 +138,7 @@ const getShiftDisplayConfig = (
       pillBorder: '#3b82f6',
       isDashed: false,
       pillTitle: `👉 ${SHIFT_SHORT_LABEL[record.shift] || 'Ca hôm nay'}`,
-      pillSubtitle: 'Chờ Check-in',
+      pillSubtitle: `${shiftTimeStr} · Chờ Check-in`,
       statusLabel: 'Chờ vào ca',
       statusColor: '#2563eb',
     };
@@ -152,7 +176,7 @@ const getShiftDisplayConfig = (
     }
 
     // Vắng mặt hoặc quá khứ được xếp ca nhưng không đi làm
-    const hasClockIn = Boolean(record.clockInAt || record.checkInAt);
+    const hasClockIn = Boolean(record.clockInAt);
     if (record.status === ATTENDANCE_STATUS.Absent || (!hasClockIn && record.status === ATTENDANCE_STATUS.Scheduled)) {
       return {
         cellClass: 'cell-past-absent',
@@ -160,9 +184,9 @@ const getShiftDisplayConfig = (
         pillColor: '#b91c1c',
         pillBorder: '#fca5a5',
         isDashed: false,
-        pillTitle: '✕ Vắng / Nghỉ',
+        pillTitle: '✕ Nghỉ',
         pillSubtitle: 'Không chấm công',
-        statusLabel: 'Vắng không phép',
+        statusLabel: 'Nghỉ không phép',
         statusColor: '#ef4444',
       };
     }
@@ -176,7 +200,7 @@ const getShiftDisplayConfig = (
         pillBorder: '#fde68a',
         isDashed: false,
         pillTitle: `⚠ Muộn · ${SHIFT_SHORT_LABEL[record.shift] || record.shift}`,
-        pillSubtitle: `${formatTime(record.clockInAt || record.checkInAt)} (${record.actualHours || record.workedHours || 8}h)`,
+        pillSubtitle: `${formatTime(record.clockInAt)} (${record.actualHours || record.workedHours || 8}h)`,
         statusLabel: 'Đi muộn',
         statusColor: '#f59e0b',
       };
@@ -190,7 +214,7 @@ const getShiftDisplayConfig = (
       pillBorder: '#86efac',
       isDashed: false,
       pillTitle: `✓ ${SHIFT_SHORT_LABEL[record.shift] || record.shift}`,
-      pillSubtitle: `${formatTime(record.clockInAt || record.checkInAt)} · ${record.actualHours || record.workedHours || 8}h`,
+      pillSubtitle: `${formatTime(record.clockInAt)} · ${record.actualHours || record.workedHours || 8}h`,
       statusLabel: 'Đã hoàn thành công',
       statusColor: '#16a34a',
     };
@@ -225,31 +249,24 @@ const getShiftDisplayConfig = (
     };
   }
 
-  // Ca kế hoạch tương lai theo từng ca
-  let shiftPlanColor = '#2563eb';
-  let shiftPlanBorder = '#bfdbfe';
+  // Ca kế hoạch tương lai (màu xanh nhạt dịu mắt, tránh gây hiểu nhầm)
   let shiftTimeStr = '06:00 - 14:00';
-
   if (record.shift === SHIFT_CODE.Afternoon) {
-    shiftPlanColor = '#c2410c';
-    shiftPlanBorder = '#fed7aa';
     shiftTimeStr = '14:00 - 22:00';
   } else if (record.shift === SHIFT_CODE.Night) {
-    shiftPlanColor = '#7e22ce';
-    shiftPlanBorder = '#e9d5ff';
     shiftTimeStr = '22:00 - 06:00';
   }
 
   return {
     cellClass: 'cell-future cell-future-scheduled',
-    pillBg: '#ffffff',
-    pillColor: shiftPlanColor,
-    pillBorder: shiftPlanBorder,
+    pillBg: '#f0f9ff',
+    pillColor: '#0369a1',
+    pillBorder: '#7dd3fc',
     isDashed: true,
     pillTitle: `🗓 ${SHIFT_SHORT_LABEL[record.shift] || record.shift} (Dự kiến)`,
     pillSubtitle: shiftTimeStr,
     statusLabel: 'Lịch ca dự kiến',
-    statusColor: shiftPlanColor,
+    statusColor: '#0284c7',
   };
 };
 
@@ -399,7 +416,12 @@ export const AttendanceMonthCalendar: FC<AttendanceMonthCalendarProps> = ({
             }
 
             const { day, isToday, records, dateStr } = cell;
-            const primaryRecord = records[0];
+            // Ưu tiên: 1. Ca đã chấm công/đi làm -> 2. Ca nghỉ phép -> 3. Ca kế hoạch mới nhất
+            const primaryRecord = records.find(
+              (r) => r.status === ATTENDANCE_STATUS.Present || r.status === ATTENDANCE_STATUS.Late || Boolean(r.clockInAt)
+            ) || records.find(
+              (r) => r.status === ATTENDANCE_STATUS.Leave
+            ) || (records.length > 0 ? records[records.length - 1] : undefined);
             const config = getShiftDisplayConfig(dateStr, isToday, primaryRecord);
 
             return (
@@ -426,9 +448,10 @@ export const AttendanceMonthCalendar: FC<AttendanceMonthCalendarProps> = ({
                           {config.statusLabel}
                         </div>
                         <div>Ca làm: <strong>{SHIFT_SHORT_LABEL[primaryRecord.shift] || primaryRecord.shift}</strong></div>
-                        <div>Giờ vào: <strong>{formatTime(primaryRecord.clockInAt || primaryRecord.checkInAt)}</strong></div>
-                        <div>Giờ ra: <strong>{formatTime(primaryRecord.clockOutAt || primaryRecord.checkOutAt)}</strong></div>
-                        <div>Số giờ làm: <strong>{primaryRecord.actualHours || primaryRecord.workedHours || 8}h</strong></div>
+                        <div>Kế hoạch: <strong>{formatTime(primaryRecord.checkInAt)} - {formatTime(primaryRecord.checkOutAt)}</strong></div>
+                        <div>Check-in: <strong>{primaryRecord.clockInAt ? formatTime(primaryRecord.clockInAt) : 'Chưa chấm'}</strong></div>
+                        <div>Check-out: <strong>{primaryRecord.clockOutAt ? formatTime(primaryRecord.clockOutAt) : 'Chưa chấm'}</strong></div>
+                        <div>Số giờ làm: <strong>{primaryRecord.actualHours || primaryRecord.workedHours || (primaryRecord.clockInAt ? 8 : 0)}h</strong></div>
                         {primaryRecord.overtimeHours > 0 && (
                           <div style={{ color: '#d97706', fontWeight: 600 }}>Tăng ca: +{primaryRecord.overtimeHours}h OT</div>
                         )}
