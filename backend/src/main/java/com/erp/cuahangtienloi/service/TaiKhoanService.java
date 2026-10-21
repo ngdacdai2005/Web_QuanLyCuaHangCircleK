@@ -115,6 +115,7 @@ public class TaiKhoanService {
         taiKhoan.setMatKhauHash(passwordEncoder.encode(request.getMatKhau()));
         taiKhoan.setIdNhanVien(nhanVienId);
         taiKhoan.setTrangThai("ACTIVE");
+        taiKhoan.setFailedLoginCount(0);
         taiKhoan.setNgayTao(LocalDateTime.now());
 
         taiKhoanRepository.save(taiKhoan);

@@ -235,6 +235,7 @@ public class NhanVienService {
             tk.setTenDangNhap(accUsername);
             tk.setMatKhauHash(passwordEncoder.encode(rawPassword));
             tk.setTrangThai("ACTIVE");
+            tk.setFailedLoginCount(0);
             tk.setNgayTao(LocalDateTime.now());
             taiKhoanRepository.save(tk);
 
@@ -409,6 +410,7 @@ public class NhanVienService {
                 tk.setTenDangNhap(accUsername);
                 tk.setMatKhauHash(passwordEncoder.encode(rawPassword.trim()));
                 tk.setTrangThai(request.getTrangThai() != null ? request.getTrangThai() : "ACTIVE");
+                tk.setFailedLoginCount(0);
                 tk.setNgayTao(LocalDateTime.now());
                 taiKhoanRepository.save(tk);
 
@@ -581,6 +583,7 @@ public class NhanVienService {
         tk.setTenDangNhap(finalUsername);
         tk.setMatKhauHash(passwordEncoder.encode(finalPass));
         tk.setTrangThai("ACTIVE");
+        tk.setFailedLoginCount(0);
         tk.setNgayTao(LocalDateTime.now());
 
         nv.setTenDangNhap(finalUsername);

@@ -11,7 +11,6 @@ import {
 } from 'antd';
 import { SwapOutlined } from '@ant-design/icons';
 import { phienThuNganApi, type PhienThuNganRecord } from '@/api/phienThuNgan';
-import { nhanVienApi } from '@/api/nhanVien';
 
 interface HandoverShiftModalProps {
   open: boolean;
@@ -28,7 +27,7 @@ export const HandoverShiftModal: FC<HandoverShiftModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [employees, setEmployees] = useState<{ id: string; hoTen: string; chucVu?: string }[]>([]);
+  const [employees, setEmployees] = useState<{ id: string; hoTen: string; chucVu?: string; viTri?: string; vaiTro?: string }[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -43,7 +42,7 @@ export const HandoverShiftModal: FC<HandoverShiftModalProps> = ({
 
   const loadEmployees = async () => {
     try {
-      const res = await nhanVienApi.getAll();
+      const res = await phienThuNganApi.getNhanVienBanGiao();
       setEmployees(res);
     } catch (e) {
       console.error(e);
@@ -130,7 +129,7 @@ export const HandoverShiftModal: FC<HandoverShiftModalProps> = ({
             }
             options={employees.map((e) => ({
               value: e.id,
-              label: `${e.hoTen} (${e.chucVu || 'Nhân viên'})`,
+              label: `${e.hoTen} (${e.chucVu || e.viTri || (e.vaiTro === 'QUAN_LY' ? 'Quản lý cửa hàng' : 'Thu ngân')})`,
             }))}
           />
         </Form.Item>

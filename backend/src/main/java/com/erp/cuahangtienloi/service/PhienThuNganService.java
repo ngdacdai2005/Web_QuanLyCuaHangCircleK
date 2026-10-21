@@ -31,6 +31,7 @@ public class PhienThuNganService {
     private final NhanVienRepository nhanVienRepository;
     private final ChiNhanhRepository chiNhanhRepository;
     private final BranchAccessService branchAccessService;
+    private final com.erp.cuahangtienloi.mapper.NhanVienMapper nhanVienMapper;
 
     @Transactional
     public PhienThuNganResponseDTO moPhien(MoPhienThuNganRequestDTO request, NhanVien cashier) {
@@ -356,5 +357,16 @@ public class PhienThuNganService {
             } catch (Exception ignored) {}
         }
         return String.format("%s%04d", prefix, maxSeq + 1);
+    }
+
+    public List<com.erp.cuahangtienloi.dto.response.NhanVienResponseDTO> getDanhSachNhanVienBanGiao(NhanVien cashier) {
+        if (cashier.getIdChiNhanh() == null) {
+            return List.of();
+        }
+        return nhanVienRepository.findByIdChiNhanh(cashier.getIdChiNhanh()).stream()
+                .filter(nv -> Boolean.TRUE.equals(nv.getDangHoatDong()))
+                .filter(nv -> !nv.getId().equals(cashier.getId()))
+                .map(nhanVienMapper::toResponse)
+                .toList();
     }
 }

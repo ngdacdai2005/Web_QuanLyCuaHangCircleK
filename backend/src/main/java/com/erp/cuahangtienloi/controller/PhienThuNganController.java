@@ -95,4 +95,11 @@ public class PhienThuNganController {
         NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return ResponseEntity.ok(phienThuNganService.getDanhSachPhien(branchId, actor));
     }
+
+    // 9. Lấy danh sách nhân viên cùng chi nhánh để bàn giao ca
+    @GetMapping("/nhan-vien-ban-giao")
+    public ResponseEntity<List<com.erp.cuahangtienloi.dto.response.NhanVienResponseDTO>> getNhanVienBanGiao(HttpServletRequest httpRequest) {
+        NhanVien cashier = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        return ResponseEntity.ok(phienThuNganService.getDanhSachNhanVienBanGiao(cashier));
+    }
 }

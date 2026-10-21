@@ -182,4 +182,13 @@ export const phienThuNganApi = {
     if (!res.ok) throw new Error('Không thể tải danh sách phiên ca');
     return res.json();
   },
+
+  // Danh sách nhân viên cùng chi nhánh để bàn giao ca
+  getNhanVienBanGiao: async (): Promise<{ id: string; hoTen: string; viTri?: string; chucVu?: string; vaiTro?: string }[]> => {
+    const res = await fetch(`${API_BASE_URL}/api/phien-thu-ngan/nhan-vien-ban-giao`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return [];
+    return res.json();
+  },
 };

@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class TaiKhoan {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -26,17 +27,32 @@ public class TaiKhoan {
     private UUID idNhanVien;
 
     @Column(name = "trang_thai")
-    private String trangThai;
+    @Builder.Default
+    private String trangThai = "ACTIVE";
 
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
-    @Column(name = "failed_login_count")
-    private Integer failedLoginCount;
+    @Column(name = "failed_login_count", nullable = false)
+    @Builder.Default
+    private Integer failedLoginCount = 0;
 
     @Column(name = "locked_until")
     private LocalDateTime lockedUntil;
 
     @Column(name = "ngay_tao")
     private LocalDateTime ngayTao;
+
+    @PrePersist
+    public void prePersist() {
+        if (failedLoginCount == null) {
+            failedLoginCount = 0;
+        }
+        if (trangThai == null || trangThai.isBlank()) {
+            trangThai = "ACTIVE";
+        }
+        if (ngayTao == null) {
+            ngayTao = LocalDateTime.now();
+        }
+    }
 }

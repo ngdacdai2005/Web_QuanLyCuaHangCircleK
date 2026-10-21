@@ -13,6 +13,7 @@ public interface NhanVienRepository extends JpaRepository<NhanVien, UUID> {
     boolean existsByEmail(String email);
     boolean existsByMaNhanVien(String maNhanVien);
     boolean existsByIdChiNhanh(UUID idChiNhanh);
+    java.util.List<NhanVien> findByIdChiNhanh(UUID idChiNhanh);
     long countByIdVaiTro(Long idVaiTro);
     long countByVaiTro(String vaiTro);
 }
