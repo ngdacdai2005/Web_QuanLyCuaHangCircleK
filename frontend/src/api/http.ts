@@ -1,7 +1,8 @@
 /** Shared authenticated fetch helpers with token storage and 401 auto-handling. */
 
 export const getAuthToken = (): string | null => {
-  return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+  // Ưu tiên sessionStorage của tab hiện tại để cô lập phiên làm việc độc lập giữa các tab
+  return sessionStorage.getItem('auth_token') || localStorage.getItem('auth_token');
 };
 
 export const clearAuthTokens = (): void => {

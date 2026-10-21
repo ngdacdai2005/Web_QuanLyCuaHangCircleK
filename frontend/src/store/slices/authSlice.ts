@@ -56,11 +56,19 @@ export interface AuthState {
 
 const readPersistedSession = (): PersistedSession | null => {
   try {
-    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY) || window.sessionStorage.getItem(AUTH_STORAGE_KEY);
+    // Ưu tiên session độc lập của tab hiện tại trong sessionStorage
+    const raw = window.sessionStorage.getItem(AUTH_STORAGE_KEY) || window.localStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed === 'object' && parsed !== null && 'user' in parsed && 'activeBranchId' in parsed) {
       const session = parsed as PersistedSession;
+      // Khởi tạo ngay vào sessionStorage của tab này nếu đang lấy từ localStorage
+      if (!window.sessionStorage.getItem(AUTH_STORAGE_KEY)) {
+        window.sessionStorage.setItem(AUTH_STORAGE_KEY, raw);
+        if (session.token) {
+          window.sessionStorage.setItem('auth_token', session.token);
+        }
+      }
       return {
         ...session,
         user: {
@@ -82,22 +90,20 @@ const isSessionRemembered = (): boolean => {
 const writePersistedSession = (session: PersistedSession | null, remember: boolean = true): void => {
   try {
     if (session === null) {
-      window.localStorage.removeItem(AUTH_STORAGE_KEY);
+      // Khi logout ở tab này: chỉ xóa session của riêng tab này
       window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
-      window.localStorage.removeItem('auth_token');
       window.sessionStorage.removeItem('auth_token');
       return;
     }
-    const storage = remember ? window.localStorage : window.sessionStorage;
+    // 1. Luôn lưu vào sessionStorage của tab này để đảm bảo tab này hoạt động độc lập, không bị đổi theo tab khác
+    window.sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    window.sessionStorage.setItem('auth_token', session.token);
+
+    // 2. Nếu chọn "Ghi nhớ phiên đăng nhập", lưu thêm vào localStorage để khôi phục khi mở lại trình duyệt
     if (remember) {
-      window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
-      window.sessionStorage.removeItem('auth_token');
-    } else {
-      window.localStorage.removeItem(AUTH_STORAGE_KEY);
-      window.localStorage.removeItem('auth_token');
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+      window.localStorage.setItem('auth_token', session.token);
     }
-    storage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-    storage.setItem('auth_token', session.token);
   } catch {
   }
 };
