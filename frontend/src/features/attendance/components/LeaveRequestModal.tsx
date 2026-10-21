@@ -1,13 +1,16 @@
-import { useEffect, type FC } from 'react';
+import { useState, useEffect, type FC } from 'react';
 import { Modal, Form, Select, DatePicker, Input, message } from 'antd';
 import { CalendarOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
+import { donNghiPhepApi } from '@/api/donNghiPhep';
 
 interface LeaveRequestModalProps {
   open: boolean;
   onClose: () => void;
   onSubmitSuccess?: () => void;
   defaultDate?: Dayjs | null;
+  idNhanVien?: string;
+  idChiNhanh?: string;
 }
 
 export const LeaveRequestModal: FC<LeaveRequestModalProps> = ({
@@ -15,8 +18,11 @@ export const LeaveRequestModal: FC<LeaveRequestModalProps> = ({
   onClose,
   onSubmitSuccess,
   defaultDate,
+  idNhanVien,
+  idChiNhanh,
 }) => {
   const [form] = Form.useForm();
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -24,25 +30,47 @@ export const LeaveRequestModal: FC<LeaveRequestModalProps> = ({
       form.setFieldsValue({
         leaveType: 'ANNUAL',
         dateRange: [targetDate, targetDate],
+        reason: '',
       });
     }
   }, [open, defaultDate, form]);
 
-  const handleFinish = (values: any) => {
-    message.success(`Đã nộp đơn nghỉ phép (${values.leaveType}) thành công! Đang chờ Quản lý duyệt.`);
-    form.resetFields();
-    onClose();
-    onSubmitSuccess?.();
+  const handleFinish = async (values: any) => {
+    try {
+      setSubmitting(true);
+      const [from, to] = values.dateRange as [Dayjs, Dayjs];
+      const days = to.diff(from, 'day') + 1;
+
+      await donNghiPhepApi.create({
+        idNhanVien,
+        idChiNhanh,
+        loaiNghi: values.leaveType,
+        tuNgay: from.format('YYYY-MM-DD'),
+        denNgay: to.format('YYYY-MM-DD'),
+        soNgayNghi: Math.max(1, days),
+        lyDo: values.reason?.trim() || '',
+      });
+
+      message.success('Đã nộp đơn nghỉ phép thành công! Đang chờ Quản lý duyệt.');
+      form.resetFields();
+      onClose();
+      onSubmitSuccess?.();
+    } catch (error: any) {
+      message.error(error.message || 'Không thể gửi đơn nghỉ phép');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <Modal
       open={open}
       title="Đăng ký nghỉ phép"
-      okText="Gửi đơn phê duyệt"
+      okText={submitting ? 'Đang gửi...' : 'Gửi đơn phê duyệt'}
       cancelText="Hủy"
       onCancel={onClose}
       onOk={() => form.submit()}
+      confirmLoading={submitting}
       destroyOnHidden
       centered
       width={520}

@@ -277,3 +277,53 @@ export interface PayrollRow {
   paidBy: string | null;
   paidAt: string | null;
 }
+
+export const LEAVE_TYPE = {
+  Annual: 'ANNUAL',
+  Unpaid: 'UNPAID',
+  Sick: 'SICK',
+  Personal: 'PERSONAL',
+} as const;
+
+export type LeaveTypeCode = (typeof LEAVE_TYPE)[keyof typeof LEAVE_TYPE];
+
+export const LEAVE_TYPE_LABEL: Record<string, string> = {
+  ANNUAL: 'Nghỉ phép năm',
+  UNPAID: 'Nghỉ không lương',
+  SICK: 'Nghỉ ốm / BHYT',
+  PERSONAL: 'Việc riêng (Hiếu, hỉ)',
+};
+
+export const LEAVE_STATUS = {
+  Pending: 'PENDING',
+  Approved: 'APPROVED',
+  Rejected: 'REJECTED',
+} as const;
+
+export type LeaveStatusCode = (typeof LEAVE_STATUS)[keyof typeof LEAVE_STATUS];
+
+export const LEAVE_STATUS_LABEL: Record<string, string> = {
+  PENDING: 'Chờ duyệt',
+  APPROVED: 'Đã duyệt',
+  REJECTED: 'Đã từ chối',
+};
+
+export interface LeaveRequestRecord {
+  id: string;
+  idNhanVien: string;
+  tenNhanVien?: string;
+  maNhanVien?: string;
+  idChiNhanh?: string;
+  tenChiNhanh?: string;
+  loaiNghi: string;
+  tuNgay: string;
+  denNgay: string;
+  soNgayNghi: number;
+  lyDo: string;
+  trangThai: LeaveStatusCode | string;
+  idNguoiDuyet?: string;
+  tenNguoiDuyet?: string;
+  lyDoTuChoi?: string;
+  ngayTao: string;
+  ngayDuyet?: string;
+}

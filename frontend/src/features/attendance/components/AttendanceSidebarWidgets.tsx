@@ -1,10 +1,9 @@
 import { type FC } from 'react';
-import { Button, Tag } from 'antd';
+import { Tag } from 'antd';
 import {
   CalendarOutlined,
   EnvironmentOutlined,
   ClockCircleOutlined,
-  CheckCircleOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import type { AttendanceRecord } from '@/types';
@@ -17,6 +16,10 @@ interface AttendanceSidebarWidgetsProps {
   todayShift?: AttendanceRecord;
   onClockIn?: (id: string) => void;
   onClockOut?: (id: string) => void;
+  leaveApprovedCount?: number;
+  leavePendingCount?: number;
+  onOpenLeaveApprovalModal?: () => void;
+  isManager?: boolean;
 }
 
 export const AttendanceSidebarWidgets: FC<AttendanceSidebarWidgetsProps> = ({
@@ -24,11 +27,22 @@ export const AttendanceSidebarWidgets: FC<AttendanceSidebarWidgetsProps> = ({
   onOpenSwapModal,
   onOpenOtModal,
   todayShift,
-  onClockIn,
-  onClockOut,
+
+  leaveApprovedCount = 0,
+  leavePendingCount = 0,
+  onOpenLeaveApprovalModal,
+  isManager = false,
 }) => {
   const hasClockedIn = Boolean(todayShift?.clockInAt);
   const hasClockedOut = Boolean(todayShift?.clockOutAt);
+
+  const handleClickLeave = () => {
+    if (isManager && onOpenLeaveApprovalModal) {
+      onOpenLeaveApprovalModal();
+    } else {
+      onOpenLeaveModal();
+    }
+  };
 
   return (
     <div className="attendance-sidebar-wrap">
@@ -36,17 +50,30 @@ export const AttendanceSidebarWidgets: FC<AttendanceSidebarWidgetsProps> = ({
         <h4 className="sidebar-card-title">Trạng thái đăng ký tháng này</h4>
 
         {/* MỤC 1: ĐƠN NGHỈ PHÉP */}
-        <div className="sidebar-item" onClick={onOpenLeaveModal}>
+        <div
+          className="sidebar-item"
+          onClick={handleClickLeave}
+          title={isManager ? "Nhấn để quản lý & duyệt các đơn nghỉ phép" : "Nhấn để nộp hoặc xem đơn nghỉ phép"}
+        >
           <div className="item-icon-box box-red">
             <CalendarOutlined />
           </div>
           <div className="item-info">
-            <div className="item-name">Đơn nghỉ phép</div>
-            <div className="item-desc">Nghỉ phép thường niên</div>
+            <div className="item-name">
+              Đơn nghỉ phép
+              {isManager && <span style={{ fontSize: 11, marginLeft: 4, color: '#0284c7', fontWeight: 600 }}>(Duyệt)</span>}
+            </div>
+            <div className="item-desc">Nghỉ phép thường niên & ốm đau</div>
           </div>
           <div className="item-status">
-            <span className="status-badge badge-green">0 Đã duyệt</span>
-            <span className="status-sub">Không có đơn chờ</span>
+            <span className="status-badge badge-green">{leaveApprovedCount} Đã duyệt</span>
+            {leavePendingCount > 0 ? (
+              <span className="status-sub" style={{ color: '#ea580c', fontWeight: 700 }}>
+                {leavePendingCount} Chờ duyệt
+              </span>
+            ) : (
+              <span className="status-sub">Không có đơn chờ</span>
+            )}
           </div>
         </div>
 
@@ -101,32 +128,7 @@ export const AttendanceSidebarWidgets: FC<AttendanceSidebarWidgetsProps> = ({
                 <Tag color="warning">Chưa vào ca</Tag>
               )}
             </div>
-
-            <div style={{ marginTop: 12 }}>
-              {!hasClockedIn ? (
-                <Button
-                  type="primary"
-                  block
-                  style={{ background: '#10b981', borderColor: '#10b981', fontWeight: 600 }}
-                  onClick={() => onClockIn?.(todayShift.id)}
-                >
-                  Check-in vào ca
-                </Button>
-              ) : !hasClockedOut ? (
-                <Button
-                  type="primary"
-                  block
-                  style={{ background: '#f59e0b', borderColor: '#f59e0b', fontWeight: 600 }}
-                  onClick={() => onClockOut?.(todayShift.id)}
-                >
-                  Check-out tan ca
-                </Button>
-              ) : (
-                <div style={{ textAlign: 'center', color: '#10b981', fontWeight: 600, fontSize: 13 }}>
-                  <CheckCircleOutlined /> Bạn đã hoàn thành ca hôm nay
-                </div>
-              )}
-            </div>
+            
           </div>
         ) : (
           <div className="no-shift-box">

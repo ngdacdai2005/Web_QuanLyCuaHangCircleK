@@ -67,8 +67,11 @@ import { AttendanceKpiStrip } from './components/AttendanceKpiStrip';
 import { AttendanceMonthCalendar } from './components/AttendanceMonthCalendar';
 import { AttendanceSidebarWidgets } from './components/AttendanceSidebarWidgets';
 import { LeaveRequestModal } from './components/LeaveRequestModal';
+import { LeaveApprovalModal } from './components/LeaveApprovalModal';
 import { ShiftSwapModal } from './components/ShiftSwapModal';
 import { ShiftActionModal } from './components/ShiftActionModal';
+import { donNghiPhepApi } from '@/api/donNghiPhep';
+import type { LeaveRequestRecord } from '@/types/employeeTypes';
 import './AttendancePage.css';
 
 /** Kỳ lương hiện tại theo tháng thực (MM-YYYY). */
@@ -114,6 +117,8 @@ export const AttendancePage: FC = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [currentMonth, setCurrentMonth] = useState<Dayjs>(dayjs());
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+  const [leaveApprovalOpen, setLeaveApprovalOpen] = useState(false);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequestRecord[]>([]);
   const [swapModalOpen, setSwapModalOpen] = useState(false);
   const [swapModalType, setSwapModalType] = useState<'SWAP' | 'OT'>('SWAP');
   const [shiftActionOpen, setShiftActionOpen] = useState(false);
@@ -124,6 +129,12 @@ export const AttendancePage: FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const isSelfServiceRole = user?.role === USER_ROLE.Cashier
     || user?.role === USER_ROLE.WarehouseKeeper;
+
+  const leaveStats = useMemo(() => {
+    const approved = leaveRequests.filter((r) => r.trangThai === 'APPROVED').length;
+    const pending = leaveRequests.filter((r) => r.trangThai === 'PENDING').length;
+    return { approved, pending };
+  }, [leaveRequests]);
 
   const currentViewEmployeeId = selectedEmployeeId || (user?.idNhanVien ?? user?.id);
   const currentViewEmployee = employees.find((e) => e.id === currentViewEmployeeId);
@@ -154,6 +165,26 @@ export const AttendancePage: FC = () => {
       message.error(e?.message || 'Check-out thất bại');
     }
   };
+
+  const loadLeaveRequests = async () => {
+    try {
+      if (!isSelfServiceRole) {
+        const res = await donNghiPhepApi.getAll({
+          idChiNhanh: branchFilter || undefined,
+        });
+        setLeaveRequests(res);
+      } else {
+        const res = await donNghiPhepApi.getMyRequests();
+        setLeaveRequests(res);
+      }
+    } catch (e) {
+      console.error('Lỗi tải danh sách đơn nghỉ phép:', e);
+    }
+  };
+
+  useEffect(() => {
+    void loadLeaveRequests();
+  }, [isSelfServiceRole, branchFilter]);
 
   // Tải danh sách nhân viên nếu có quyền quản lý để cho phép chọn xem lịch
   useEffect(() => {
@@ -1025,6 +1056,15 @@ export const AttendancePage: FC = () => {
                           Quay lại lịch của tôi
                         </Button>
                       )}
+
+                      <Button
+                        type={leaveStats.pending > 0 ? 'primary' : 'default'}
+                        danger={leaveStats.pending > 0}
+                        onClick={() => setLeaveApprovalOpen(true)}
+                        style={{ fontWeight: 600 }}
+                      >
+                        Duyệt đơn nghỉ phép {leaveStats.pending > 0 ? `(${leaveStats.pending} chờ)` : ''}
+                      </Button>
                     </div>
                   )}
 
@@ -1036,8 +1076,8 @@ export const AttendancePage: FC = () => {
                     overtimeHours={monthOtHours}
                     totalShifts={myMonthRecords.length}
                     branchName={activeBranchName}
-                    leaveDaysTaken={0}
-                    remainingLeaveDays={12}
+                    leaveDaysTaken={leaveStats.approved}
+                    remainingLeaveDays={Math.max(0, 12 - leaveStats.approved)}
                   />
 
                   {/* Bố cục 2 cột: Cột trái 70% Lịch làm việc tháng, Cột phải 30% Widget trạng thái */}
@@ -1062,6 +1102,10 @@ export const AttendancePage: FC = () => {
                     <div className="attendance-split-right">
                       <AttendanceSidebarWidgets
                         onOpenLeaveModal={() => setLeaveModalOpen(true)}
+                        onOpenLeaveApprovalModal={() => setLeaveApprovalOpen(true)}
+                        isManager={!isSelfServiceRole}
+                        leaveApprovedCount={leaveStats.approved}
+                        leavePendingCount={leaveStats.pending}
                         onOpenSwapModal={() => {
                           setSwapModalType('SWAP');
                           setSwapModalOpen(true);
@@ -1180,9 +1224,35 @@ export const AttendancePage: FC = () => {
       <LeaveRequestModal
         open={leaveModalOpen}
         defaultDate={modalDefaultDate}
+        idNhanVien={currentViewEmployeeId}
+        idChiNhanh={activeBranchId || undefined}
         onClose={() => {
           setLeaveModalOpen(false);
           setModalDefaultDate(null);
+        }}
+        onSubmitSuccess={() => {
+          void loadLeaveRequests();
+          const monthStart = currentMonth.startOf('month').subtract(7, 'day').format('YYYY-MM-DD');
+          const monthEnd = currentMonth.endOf('month').add(7, 'day').format('YYYY-MM-DD');
+          void dispatch(fetchAttendance({
+            from: monthStart,
+            to: monthEnd,
+          }));
+        }}
+      />
+      <LeaveApprovalModal
+        open={leaveApprovalOpen}
+        onClose={() => setLeaveApprovalOpen(false)}
+        isManager={!isSelfServiceRole}
+        branchId={branchFilter || activeBranchId}
+        onUpdated={() => {
+          void loadLeaveRequests();
+          const monthStart = currentMonth.startOf('month').subtract(7, 'day').format('YYYY-MM-DD');
+          const monthEnd = currentMonth.endOf('month').add(7, 'day').format('YYYY-MM-DD');
+          void dispatch(fetchAttendance({
+            from: monthStart,
+            to: monthEnd,
+          }));
         }}
       />
       <ShiftSwapModal
