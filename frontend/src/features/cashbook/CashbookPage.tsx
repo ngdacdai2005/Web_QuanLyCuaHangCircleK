@@ -6,11 +6,16 @@ import {
   ArrowUpOutlined,
   BankOutlined,
   PlusOutlined,
+  ShopOutlined,
+  SafetyCertificateOutlined,
+  ReloadOutlined,
+  WalletOutlined,
 } from '@ant-design/icons';
 import { PageHeader } from '@/components/PageHeader';
 import { SummaryStrip, type SummaryItem } from '@/components/SummaryStrip';
 import { TableToolbar, type ToolbarFilter } from '@/components/TableToolbar';
 import { BRAND } from '@/config/brand';
+import { phienThuNganApi, type TongQuanQuyDTO } from '@/api/phienThuNgan';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchCashbook } from '@/store/slices/cashbookSlice';
 import {
@@ -66,36 +71,84 @@ export const CashbookPage: FC = () => {
   const [branchFilter, setBranchFilter] = useState<string | null>(activeBranchId);
   const [range, setRange] = useState(() => lastNDays(30));
 
+  // Phạm vi chi nhánh có hiệu lực:
+  // Nếu là Quản lý chi nhánh: BẮT BUỘC gán theo chi nhánh của mình (user.branchId || activeBranchId).
+  // Nếu là Admin / Kế toán: lấy theo bộ lọc chi nhánh (null = Toàn chuỗi).
+  const effectiveBranchId = isBranchScoped
+    ? (user?.branchId || activeBranchId)
+    : branchFilter;
+
+  const [tongQuanQuy, setTongQuanQuy] = useState<TongQuanQuyDTO | null>(null);
+  const [loadingTongQuan, setLoadingTongQuan] = useState(false);
+
+  const loadTongQuanQuy = async () => {
+    try {
+      setLoadingTongQuan(true);
+      const data = await phienThuNganApi.getTongQuanQuy(effectiveBranchId || undefined);
+      setTongQuanQuy(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingTongQuan(false);
+    }
+  };
+
   useEffect(() => {
-    if (isBranchScoped && user?.branchId) setBranchFilter(user.branchId);
+    void loadTongQuanQuy();
+  }, [effectiveBranchId]);
+
+  useEffect(() => {
+    if (activeBranchId && !isBranchScoped) {
+      setBranchFilter(activeBranchId);
+    }
+  }, [activeBranchId, isBranchScoped]);
+
+  useEffect(() => {
+    if (isBranchScoped && user?.branchId) {
+      setBranchFilter(user.branchId);
+    }
   }, [isBranchScoped, user?.branchId]);
 
-  const filtered = useMemo(
-    () =>
-      allEntries.filter((entry) => {
-        const matchSearch = matchKeyword(search, [
-          entry.code,
-          entry.counterparty,
-          entry.description,
-          entry.referenceCode ?? '',
-        ]);
-        const matchDirection =
-          directionFilter === null || entry.direction === directionFilter;
-        const matchCategory =
-          categoryFilter === null || entry.category === categoryFilter;
-        const matchBranch =
-          branchFilter === null ||
-          entry.branchId === branchFilter ||
-          // Phiếu không gắn chi nhánh (vốn, OPENING) hiển thị ở mọi filter.
-          entry.branchId === null;
-        const matchRange =
-          entry.entryDate >= range.from && entry.entryDate <= range.to;
-        return (
-          matchSearch && matchDirection && matchCategory && matchBranch && matchRange
-        );
-      }).sort((a, b) => compareDateDescWithId(a, b, (row) => row.entryDate)),
-    [allEntries, search, directionFilter, categoryFilter, branchFilter, range],
-  );
+  const filtered = useMemo(() => {
+    const matched = allEntries.filter((entry) => {
+      const matchSearch = matchKeyword(search, [
+        entry.code,
+        entry.counterparty,
+        entry.description,
+        entry.referenceCode ?? '',
+      ]);
+      const matchDirection =
+        directionFilter === null || entry.direction === directionFilter;
+      const matchCategory =
+        categoryFilter === null || entry.category === categoryFilter;
+      const matchBranch =
+        effectiveBranchId === null || entry.branchId === effectiveBranchId;
+      const matchRange =
+        entry.entryDate >= range.from && entry.entryDate <= range.to;
+      return (
+        matchSearch && matchDirection && matchCategory && matchBranch && matchRange
+      );
+    });
+
+    // Nếu lọc theo chi nhánh: tính runningBalance lũy kế riêng cho chi nhánh
+    if (effectiveBranchId !== null) {
+      const ascending = [...matched].sort((a, b) =>
+        compareDateDescWithId(b, a, (row) => row.entryDate),
+      );
+      let running = 0;
+      const result = ascending.map((item) => {
+        running +=
+          item.direction === CASH_FLOW_DIRECTION.Receipt ? item.amount : -item.amount;
+        return {
+          ...item,
+          branchRunningBalance: running,
+        };
+      });
+      return result.reverse();
+    }
+
+    return matched.sort((a, b) => compareDateDescWithId(a, b, (row) => row.entryDate));
+  }, [allEntries, search, directionFilter, categoryFilter, effectiveBranchId, range]);
 
   const summarizeCashBook = (entries: CashEntry[]): CashBookSummary => {
     const totalReceipt = entries
@@ -104,13 +157,22 @@ export const CashbookPage: FC = () => {
     const totalPayment = entries
       .filter((e) => e.direction === CASH_FLOW_DIRECTION.Payment)
       .reduce((sum, e) => sum + e.amount, 0);
-    const lastEntry = entries[0];
+
+    // Khi lọc theo chi nhánh cụ thể hoặc Quản lý chi nhánh:
+    // Số dư cuối kỳ = Tổng thu - Tổng chi trong kỳ của chi nhánh.
+    // Khi xem Toàn chuỗi (Admin / Kế toán): Số dư cuối kỳ = runningBalance của phiếu mới nhất toàn công ty.
+    const isFilteredBranch = effectiveBranchId !== null;
+    const closingBalance = isFilteredBranch
+      ? totalReceipt - totalPayment
+      : (entries[0]?.runningBalance ?? (totalReceipt - totalPayment));
+
     return {
-      openingBalance:
-        entries.find((entry) => entry.code === 'OPENING')?.runningBalance ?? 0,
+      openingBalance: isFilteredBranch
+        ? 0
+        : (entries.find((entry) => entry.code === 'OPENING')?.runningBalance ?? 0),
       totalReceipt,
       totalPayment,
-      closingBalance: lastEntry?.runningBalance ?? 0,
+      closingBalance,
       cashOnHand: entries
         .filter((e) => e.paymentMethod === PAYMENT_METHOD.Cash)
         .reduce((sum, e) => sum + (e.direction === CASH_FLOW_DIRECTION.Receipt ? e.amount : -e.amount), 0),
@@ -147,9 +209,15 @@ export const CashbookPage: FC = () => {
       },
       {
         key: 'cash',
-        title: 'Tiền mặt tại quầy',
+        title: 'Phát sinh tiền mặt trong kỳ',
         value: formatVND(bookSummary.cashOnHand),
-        color: BRAND.primaryRed,
+        color: '#d97706',
+      },
+      {
+        key: 'pos-drawer',
+        title: 'Tiền ngăn kéo POS thực tế',
+        value: formatVND(tongQuanQuy?.tongTienNganKeo ?? 0),
+        color: '#059669',
       },
       {
         key: 'closing',
@@ -158,7 +226,7 @@ export const CashbookPage: FC = () => {
         color: BRAND.neutralDark,
       },
     ],
-    [bookSummary],
+    [bookSummary, tongQuanQuy],
   );
 
   const branches = useAppSelector((state) => state.branch.branches);
@@ -298,9 +366,9 @@ export const CashbookPage: FC = () => {
       align: 'right',
       width: 160,
       fixed: 'right',
-      render: (value: number) => (
+      render: (value: number, row: CashEntry) => (
         <Text className="numeric-cell cash-balance">
-          {formatVND(value)}
+          {formatVND(row.branchRunningBalance ?? value)}
         </Text>
       ),
     },
@@ -377,7 +445,118 @@ export const CashbookPage: FC = () => {
         }
       />
 
-      <SummaryStrip items={summary} columns={5} />
+      <SummaryStrip items={summary} columns={6} />
+
+      {/* Khối theo dõi Quỹ tiền mặt tại các Quầy POS & Két an toàn */}
+      <Card
+        size="small"
+        style={{
+          marginTop: 16,
+          marginBottom: 16,
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+          borderColor: '#cbd5e1',
+          borderRadius: 8,
+        }}
+        styles={{ body: { padding: '14px 18px' } }}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ShopOutlined style={{ color: '#0284c7', fontSize: 16 }} />
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+                Quỹ tiền mặt tại các Quầy POS & Két an toàn — {tongQuanQuy?.tenChiNhanh || 'Chi nhánh'}
+              </span>
+            </div>
+            <Button
+              size="small"
+              icon={<ReloadOutlined spin={loadingTongQuan} />}
+              onClick={loadTongQuanQuy}
+              style={{ fontSize: 12 }}
+            >
+              Cập nhật số dư quầy
+            </Button>
+          </div>
+        }
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+          {/* Card ngăn kéo POS */}
+          <div
+            style={{
+              border: '1px solid #bbf7d0',
+              background: '#f0fdf4',
+              borderRadius: 8,
+              padding: '12px 16px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#166534' }}>
+                <WalletOutlined style={{ marginRight: 6 }} />
+                TIỀN MẶT TRONG NGĂN KÉO POS (REAL-TIME)
+              </span>
+              <Tag color="green" style={{ fontWeight: 700, margin: 0 }}>
+                {tongQuanQuy?.soQuayDangMo ?? 0} quầy đang mở
+              </Tag>
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#15803d', marginBottom: 8 }}>
+              {formatVND(tongQuanQuy?.tongTienNganKeo ?? 0)}
+            </div>
+            {tongQuanQuy?.danhSachQuayDangMo && tongQuanQuy.danhSachQuayDangMo.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+                {tongQuanQuy.danhSachQuayDangMo.map((q) => (
+                  <div
+                    key={q.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      background: '#ffffff',
+                      padding: '6px 10px',
+                      borderRadius: 6,
+                      border: '1px solid #dcfce7',
+                    }}
+                  >
+                    <span>
+                      <strong style={{ color: '#0f172a' }}>{q.quaySo || 'Quầy 1'}</strong> ({q.tenThuNgan}):
+                    </span>
+                    <strong style={{ color: '#166534', fontSize: 13 }}>
+                      {formatVND(q.tienDuKienCuoiCa ?? q.quyDauCaThucTe ?? 0)}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <span style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic' }}>
+                Hiện không có quầy nào đang mở ca bán hàng
+              </span>
+            )}
+          </div>
+
+          {/* Card két sắt ngầm */}
+          <div
+            style={{
+              border: '1px solid #bfdbfe',
+              background: '#eff6ff',
+              borderRadius: 8,
+              padding: '12px 16px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#1e40af' }}>
+                <SafetyCertificateOutlined style={{ marginRight: 6 }} />
+                KÉT SẮT AN TOÀN DƯỚI QUẦY (DROP SAFE)
+              </span>
+              <Tag color="blue" style={{ fontWeight: 600, margin: 0 }}>
+                Chờ nộp NH
+              </Tag>
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#1d4ed8', marginBottom: 8 }}>
+              {formatVND(tongQuanQuy?.tongTienKetAnToan ?? 0)}
+            </div>
+            <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.4 }}>
+              Tiền nộp két an toàn tích lũy từ các ca bán hàng được lưu giữ an toàn dưới quầy, chờ Quản lý thu gom làm thủ tục nộp vào tài khoản ngân hàng.
+            </div>
+          </div>
+        </div>
+      </Card>
 
       <Card styles={{ body: { padding: '18px 18px 8px' } }}>
         <TableToolbar
@@ -390,7 +569,7 @@ export const CashbookPage: FC = () => {
             setSearch('');
             setDirectionFilter(null);
             setCategoryFilter(null);
-            setBranchFilter(null);
+            setBranchFilter(isBranchScoped ? (user?.branchId || activeBranchId) : null);
             setRange(lastNDays(30));
           }}
         />

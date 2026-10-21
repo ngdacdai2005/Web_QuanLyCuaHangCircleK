@@ -119,4 +119,13 @@ public class PhienThuNganController {
         NhanVien receiver = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return ResponseEntity.ok(phienThuNganService.tiepQuanVaMoCa(id, request, receiver));
     }
+
+    // 12. Tổng quan quỹ tiền mặt quầy POS & Két an toàn (đồng bộ với Sổ Quỹ)
+    @GetMapping("/tong-quan-quy")
+    public ResponseEntity<com.erp.cuahangtienloi.dto.response.TongQuanQuyChiNhanhDTO> getTongQuanQuy(
+            @RequestParam(required = false) UUID branchId,
+            HttpServletRequest httpRequest) {
+        NhanVien actor = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        return ResponseEntity.ok(phienThuNganService.getTongQuanQuyChiNhanh(branchId, actor));
+    }
 }

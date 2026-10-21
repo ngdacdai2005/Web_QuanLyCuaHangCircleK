@@ -217,4 +217,30 @@ export const phienThuNganApi = {
     }
     return res.json();
   },
+
+  // Tổng quan quỹ ngăn kéo POS và Két sắt an toàn (đồng bộ Sổ Quỹ)
+  getTongQuanQuy: async (branchId?: string): Promise<TongQuanQuyDTO> => {
+    const url = `${API_BASE_URL}/api/phien-thu-ngan/tong-quan-quy${branchId ? `?branchId=${branchId}` : ''}`;
+    const res = await fetch(url, { headers: getAuthHeaders() });
+    if (!res.ok) {
+      return {
+        idChiNhanh: branchId || '',
+        tenChiNhanh: '',
+        tongTienNganKeo: 0,
+        tongTienKetAnToan: 0,
+        soQuayDangMo: 0,
+        danhSachQuayDangMo: [],
+      };
+    }
+    return res.json();
+  },
 };
+
+export interface TongQuanQuyDTO {
+  idChiNhanh?: string;
+  tenChiNhanh?: string;
+  tongTienNganKeo: number;
+  tongTienKetAnToan: number;
+  soQuayDangMo: number;
+  danhSachQuayDangMo: PhienThuNganRecord[];
+}

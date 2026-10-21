@@ -414,4 +414,63 @@ public class PhienThuNganService {
         xacNhanNhanBanGiao(idPhien, receiver);
         return moPhien(request, receiver);
     }
+
+    // 12. Tổng quan quỹ tiền mặt tại quầy và két an toàn của chi nhánh (khớp số liệu với Sổ Quỹ)
+    @Transactional(readOnly = true)
+    public com.erp.cuahangtienloi.dto.response.TongQuanQuyChiNhanhDTO getTongQuanQuyChiNhanh(UUID branchId, NhanVien actor) {
+        UUID targetBranchId = branchId;
+        if (targetBranchId == null && !branchAccessService.isSystemWide(actor)) {
+            targetBranchId = actor.getIdChiNhanh();
+        }
+
+        List<PhienThuNgan> activeShifts;
+        if (targetBranchId != null) {
+            branchAccessService.requireReadableBranch(actor, targetBranchId);
+            activeShifts = phienThuNganRepository.findByIdChiNhanhAndTrangThai(targetBranchId, "DANG_MO");
+        } else {
+            activeShifts = phienThuNganRepository.findByTrangThai("DANG_MO");
+        }
+
+        BigDecimal tongTienNganKeo = BigDecimal.ZERO;
+        List<PhienThuNganResponseDTO> dtoList = new ArrayList<>();
+
+        for (PhienThuNgan p : activeShifts) {
+            DoiSoatPhienThuNganDTO ds = tinhDoiSoatEntity(p);
+            PhienThuNganResponseDTO dto = mapToDTO(p);
+            dto.setDoiSoat(ds);
+            dto.setTienDuKienCuoiCa(ds.getTienDuKienCuoiCa());
+            dtoList.add(dto);
+            if (ds.getTienDuKienCuoiCa() != null) {
+                tongTienNganKeo = tongTienNganKeo.add(ds.getTienDuKienCuoiCa());
+            }
+        }
+
+        // Tính tổng tiền nộp két an toàn chưa đem gửi ngân hàng
+        BigDecimal tongKetAnToan = BigDecimal.ZERO;
+        List<PhienThuNgan> recentShifts = targetBranchId != null
+                ? phienThuNganRepository.findByIdChiNhanhOrderByGioMoCaDesc(targetBranchId)
+                : phienThuNganRepository.findAllByOrderByGioMoCaDesc();
+
+        for (PhienThuNgan p : recentShifts) {
+            List<GiaoDichQuyCa> gdList = giaoDichQuyCaRepository.findByIdPhienThuNganOrderByNgayTaoAsc(p.getId());
+            for (GiaoDichQuyCa gd : gdList) {
+                if ("NOP_KET".equals(gd.getLoaiGiaoDich()) && gd.getSoTien() != null) {
+                    tongKetAnToan = tongKetAnToan.add(gd.getSoTien());
+                }
+            }
+        }
+
+        String tenChiNhanh = targetBranchId != null
+                ? chiNhanhRepository.findById(targetBranchId).map(ChiNhanh::getTenChiNhanh).orElse("Chi nhánh")
+                : "Tất cả chi nhánh";
+
+        return com.erp.cuahangtienloi.dto.response.TongQuanQuyChiNhanhDTO.builder()
+                .idChiNhanh(targetBranchId)
+                .tenChiNhanh(tenChiNhanh)
+                .tongTienNganKeo(tongTienNganKeo)
+                .tongTienKetAnToan(tongKetAnToan)
+                .soQuayDangMo(dtoList.size())
+                .danhSachQuayDangMo(dtoList)
+                .build();
+    }
 }

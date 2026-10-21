@@ -20,6 +20,12 @@ public interface PhienThuNganRepository extends JpaRepository<PhienThuNgan, UUID
     // Tìm phiên ca đang mở tại một quầy của chi nhánh
     Optional<PhienThuNgan> findByIdChiNhanhAndQuaySoAndTrangThai(UUID idChiNhanh, String quaySo, String trangThai);
 
+    // Tìm tất cả phiên ca theo trạng thái tại chi nhánh
+    List<PhienThuNgan> findByIdChiNhanhAndTrangThai(UUID idChiNhanh, String trangThai);
+
+    // Tìm tất cả phiên ca theo trạng thái toàn hệ thống
+    List<PhienThuNgan> findByTrangThai(String trangThai);
+
     // Tìm phiên ca gần nhất đã chốt hoặc bàn giao của quầy để lấy quỹ đề xuất cho ca sau
     @Query("SELECT p FROM PhienThuNgan p WHERE p.idChiNhanh = :idChiNhanh AND p.quaySo = :quaySo AND p.trangThai IN ('DA_DONG', 'CHO_BAN_GIAO', 'DA_BAN_GIAO') ORDER BY p.gioDongCa DESC")
     List<PhienThuNgan> findLatestClosedSessions(@Param("idChiNhanh") UUID idChiNhanh, @Param("quaySo") String quaySo);

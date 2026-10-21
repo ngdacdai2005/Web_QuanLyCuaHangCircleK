@@ -83,8 +83,10 @@ export interface CashEntry {
   description: string;
   status: DocumentStatus;
   createdBy: string;
-  /** Số dư quỹ lũy kế sau phiếu này. */
+  /** Số dư quỹ lũy kế sau phiếu này (toàn công ty). */
   runningBalance: VND;
+  /** Số dư quỹ lũy kế theo chi nhánh (khi lọc theo chi nhánh). */
+  branchRunningBalance?: VND;
 }
 
 export type CashEntryFormValues = Omit<
