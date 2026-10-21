@@ -81,6 +81,7 @@ export interface PhienThuNganRecord {
   bangKeDongCa?: CashDenominations;
   idNguoiNhanBanGiao?: string;
   tenNguoiNhanBanGiao?: string;
+  soTienBanGiao?: number;
   xacNhanBanGiao?: boolean;
   thoiGianBanGiao?: string;
   ghiChuBanGiao?: string;
@@ -189,6 +190,31 @@ export const phienThuNganApi = {
       headers: getAuthHeaders(),
     });
     if (!res.ok) return [];
+    return res.json();
+  },
+
+  // Ca đang chờ tiếp quản cho nhân viên hiện tại hoặc cùng chi nhánh
+  getPhienChoTiepQuan: async (): Promise<PhienThuNganRecord | null> => {
+    const res = await fetch(`${API_BASE_URL}/api/phien-thu-ngan/cho-tiep-quan`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (!text) return null;
+    return JSON.parse(text);
+  },
+
+  // Tiếp quản ca và mở ca mới
+  tiepQuanVaMoCa: async (idPhien: string, data: MoPhienThuNganRequest): Promise<PhienThuNganRecord> => {
+    const res = await fetch(`${API_BASE_URL}/api/phien-thu-ngan/${idPhien}/tiep-quan-va-mo-ca`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err || 'Không thể tiếp quản và mở ca');
+    }
     return res.json();
   },
 };

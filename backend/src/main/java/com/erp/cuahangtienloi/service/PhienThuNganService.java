@@ -241,11 +241,25 @@ public class PhienThuNganService {
         PhienThuNgan phien = phienThuNganRepository.findById(idPhien)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiên thu ngân"));
 
-        // Người nhận hoặc Quản lý xác nhận
-        if (phien.getIdNguoiNhanBanGiao() != null && !phien.getIdNguoiNhanBanGiao().equals(receiver.getId()) && !branchAccessService.isSystemWide(receiver)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không phải là người được chỉ định nhận bàn giao ca này");
+        // 1. Tuyệt đối không cho phép người giao tự tiếp quản ca của chính mình
+        if (phien.getIdThuNgan().equals(receiver.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bạn là người giao ca này, không thể tự tiếp quản ca của chính mình");
         }
 
+        // 2. Kiểm tra chi nhánh
+        if (receiver.getIdChiNhanh() == null || !receiver.getIdChiNhanh().equals(phien.getIdChiNhanh())) {
+            if (!branchAccessService.isSystemWide(receiver)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không thuộc chi nhánh của ca bàn giao này");
+            }
+        }
+
+        // 3. Nếu ca được bàn giao đích danh cho người khác: chỉ người đó hoặc Quản lý mới được nhận
+        boolean isManager = "QUAN_LY".equals(receiver.getVaiTro()) || branchAccessService.isSystemWide(receiver);
+        if (phien.getIdNguoiNhanBanGiao() != null && !phien.getIdNguoiNhanBanGiao().equals(receiver.getId()) && !isManager) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Ca này được bàn giao cho nhân viên khác, bạn không có quyền tiếp quản");
+        }
+
+        phien.setIdNguoiNhanBanGiao(receiver.getId());
         phien.setXacNhanBanGiao(true);
         phien.setTrangThai("DA_DONG");
 
@@ -335,6 +349,7 @@ public class PhienThuNganService {
                 .bangKeDongCa(p.getBangKeDongCa())
                 .idNguoiNhanBanGiao(p.getIdNguoiNhanBanGiao())
                 .tenNguoiNhanBanGiao(tenNguoiNhan)
+                .soTienBanGiao(p.getTienThucDemCuoiCa())
                 .xacNhanBanGiao(p.getXacNhanBanGiao())
                 .thoiGianBanGiao(p.getThoiGianBanGiao())
                 .ghiChuBanGiao(p.getGhiChuBanGiao())
@@ -368,5 +383,35 @@ public class PhienThuNganService {
                 .filter(nv -> !nv.getId().equals(cashier.getId()))
                 .map(nhanVienMapper::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PhienThuNganResponseDTO getPhienChoTiepQuan(NhanVien cashier) {
+        if (cashier.getIdChiNhanh() == null) {
+            return null;
+        }
+
+        boolean isManager = "QUAN_LY".equals(cashier.getVaiTro()) || branchAccessService.isSystemWide(cashier);
+        List<PhienThuNgan> list;
+        if (isManager) {
+            // Quản lý: có quyền thấy và tiếp quản ca chờ bàn giao của chi nhánh (loại trừ ca do chính mình lập nếu có)
+            list = phienThuNganRepository.findPendingHandoversForBranch(cashier.getIdChiNhanh()).stream()
+                    .filter(p -> !p.getIdThuNgan().equals(cashier.getId()))
+                    .toList();
+        } else {
+            // Thu ngân: CHỈ thấy ca bàn giao đích danh cho mình hoặc ca chung chưa chỉ định (đã loại trừ ca của chính mình trong query)
+            list = phienThuNganRepository.findPendingHandoversForEmployee(cashier.getIdChiNhanh(), cashier.getId());
+        }
+
+        if (list.isEmpty()) {
+            return null;
+        }
+        return mapToDTO(list.get(0));
+    }
+
+    @Transactional
+    public PhienThuNganResponseDTO tiepQuanVaMoCa(UUID idPhien, MoPhienThuNganRequestDTO request, NhanVien receiver) {
+        xacNhanNhanBanGiao(idPhien, receiver);
+        return moPhien(request, receiver);
     }
 }

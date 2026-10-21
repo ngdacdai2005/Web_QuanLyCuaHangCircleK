@@ -39,4 +39,12 @@ public interface PhienThuNganRepository extends JpaRepository<PhienThuNgan, UUID
     // Tìm mã phiên lớn nhất trong ngày để sinh mã tự tăng (VD: PH-20261021-0001)
     @Query("SELECT p.maPhien FROM PhienThuNgan p WHERE p.maPhien LIKE :prefix% ORDER BY p.maPhien DESC")
     List<String> findMaPhienByPrefix(@Param("prefix") String prefix);
+
+    // Tìm các phiên ca đang chờ bàn giao cho một nhân viên cụ thể tại chi nhánh (loại trừ ca do chính nhân viên này lập)
+    @Query("SELECT p FROM PhienThuNgan p WHERE p.idChiNhanh = :idChiNhanh AND p.trangThai IN ('DA_BAN_GIAO', 'CHO_BAN_GIAO') AND (p.xacNhanBanGiao IS NULL OR p.xacNhanBanGiao = false) AND p.idThuNgan != :idNhanVien AND (p.idNguoiNhanBanGiao = :idNhanVien OR (p.idNguoiNhanBanGiao IS NULL AND p.trangThai = 'CHO_BAN_GIAO')) ORDER BY COALESCE(p.thoiGianBanGiao, p.gioDongCa) DESC")
+    List<PhienThuNgan> findPendingHandoversForEmployee(@Param("idChiNhanh") UUID idChiNhanh, @Param("idNhanVien") UUID idNhanVien);
+
+    // Tìm tất cả phiên ca đang chờ bàn giao tại chi nhánh (cho Quản lý hoặc trường hợp chung)
+    @Query("SELECT p FROM PhienThuNgan p WHERE p.idChiNhanh = :idChiNhanh AND p.trangThai IN ('DA_BAN_GIAO', 'CHO_BAN_GIAO') AND (p.xacNhanBanGiao IS NULL OR p.xacNhanBanGiao = false) ORDER BY COALESCE(p.thoiGianBanGiao, p.gioDongCa) DESC")
+    List<PhienThuNgan> findPendingHandoversForBranch(@Param("idChiNhanh") UUID idChiNhanh);
 }

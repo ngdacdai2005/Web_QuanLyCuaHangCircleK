@@ -102,4 +102,21 @@ public class PhienThuNganController {
         NhanVien cashier = branchAccessService.requireAuthenticatedEmployee(httpRequest);
         return ResponseEntity.ok(phienThuNganService.getDanhSachNhanVienBanGiao(cashier));
     }
+
+    // 10. Lấy phiên ca đang chờ tiếp quản (được bàn giao cho nhân viên hiện tại hoặc cùng chi nhánh)
+    @GetMapping("/cho-tiep-quan")
+    public ResponseEntity<PhienThuNganResponseDTO> getPhienChoTiepQuan(HttpServletRequest httpRequest) {
+        NhanVien cashier = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        return ResponseEntity.ok(phienThuNganService.getPhienChoTiepQuan(cashier));
+    }
+
+    // 11. Tiếp quản ca và tự động mở ca mới với tiền bàn giao
+    @PostMapping("/{id}/tiep-quan-va-mo-ca")
+    public ResponseEntity<PhienThuNganResponseDTO> tiepQuanVaMoCa(
+            @PathVariable UUID id,
+            @Valid @RequestBody MoPhienThuNganRequestDTO request,
+            HttpServletRequest httpRequest) {
+        NhanVien receiver = branchAccessService.requireAuthenticatedEmployee(httpRequest);
+        return ResponseEntity.ok(phienThuNganService.tiepQuanVaMoCa(id, request, receiver));
+    }
 }

@@ -21,6 +21,9 @@ interface ShiftHistoryModalProps {
   onClose: () => void;
   branchId?: string;
   currentUserId?: string;
+  currentEmployeeId?: string;
+  isManager?: boolean;
+  onTakeover?: (shift: PhienThuNganRecord) => void;
   onOpenDetail?: (shift: PhienThuNganRecord) => void;
 }
 
@@ -28,7 +31,10 @@ export const ShiftHistoryModal: FC<ShiftHistoryModalProps> = ({
   open,
   onClose,
   branchId,
-  currentUserId,
+  currentUserId: _currentUserId,
+  currentEmployeeId,
+  isManager = false,
+  onTakeover,
   onOpenDetail: _onOpenDetail,
 }) => {
   const [data, setData] = useState<PhienThuNganRecord[]>([]);
@@ -144,16 +150,54 @@ export const ShiftHistoryModal: FC<ShiftHistoryModalProps> = ({
     {
       title: 'Thao tác',
       key: 'action',
-      width: 120,
+      width: 150,
       render: (_, r) => {
-        const canConfirm =
-          r.trangThai === 'DA_BAN_GIAO' &&
-          !r.xacNhanBanGiao &&
-          (r.idNguoiNhanBanGiao === currentUserId || !r.idNguoiNhanBanGiao);
+        // Có thể tiếp quản/nhận ca nếu ca đang ở CHO_BAN_GIAO hoặc DA_BAN_GIAO và chưa hoàn tất đóng (xacNhanBanGiao chưa true)
+        const isPending =
+          (r.trangThai === 'DA_BAN_GIAO' || r.trangThai === 'CHO_BAN_GIAO') &&
+          !r.xacNhanBanGiao;
+
+        if (!isPending) return null;
+
+        // 1. Tuyệt đối không cho người giao tự tiếp quản ca của chính mình
+        if (currentEmployeeId && r.idThuNgan === currentEmployeeId) {
+          return (
+            <Tag color="orange" style={{ fontStyle: 'italic', fontSize: 11 }}>
+              Ca của bạn ({r.trangThai === 'CHO_BAN_GIAO' ? 'Chờ bàn giao' : 'Đang chờ ca sau'})
+            </Tag>
+          );
+        }
+
+        // 2. Nếu ca được bàn giao đích danh cho người khác và người đang xem không phải Quản lý
+        const isDesignatedToOther =
+          Boolean(r.idNguoiNhanBanGiao &&
+          currentEmployeeId &&
+          r.idNguoiNhanBanGiao !== currentEmployeeId &&
+          !isManager);
+
+        if (isDesignatedToOther) {
+          return (
+            <Tag color="default" style={{ fontStyle: 'italic', fontSize: 11 }}>
+              Bàn giao cho {r.tenNguoiNhanBanGiao || 'nhân viên khác'}
+            </Tag>
+          );
+        }
 
         return (
           <Space>
-            {canConfirm && (
+            {onTakeover ? (
+              <Button
+                size="small"
+                type="primary"
+                style={{ background: '#2563eb', borderColor: '#2563eb', fontWeight: 600 }}
+                onClick={() => {
+                  onClose();
+                  onTakeover(r);
+                }}
+              >
+                Tiếp quản ca
+              </Button>
+            ) : (
               <Popconfirm
                 title="Xác nhận nhận bàn giao ca này?"
                 description={`Bạn xác nhận đã nhận bàn giao quỹ ${formatVND(
@@ -161,7 +205,7 @@ export const ShiftHistoryModal: FC<ShiftHistoryModalProps> = ({
                 )}?`}
                 onConfirm={() => handleConfirmHandover(r.id)}
               >
-                <Button size="small" type="primary" style={{ background: '#059669' }}>
+                <Button size="small" type="primary" style={{ background: '#059669', fontWeight: 600 }}>
                   Nhận ca
                 </Button>
               </Popconfirm>

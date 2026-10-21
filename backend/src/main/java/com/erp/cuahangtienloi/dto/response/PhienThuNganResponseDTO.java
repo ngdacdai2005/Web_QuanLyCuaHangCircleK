@@ -42,6 +42,7 @@ public class PhienThuNganResponseDTO {
     // Bàn giao ca
     private UUID idNguoiNhanBanGiao;
     private String tenNguoiNhanBanGiao;
+    private BigDecimal soTienBanGiao;
     private Boolean xacNhanBanGiao;
     private LocalDateTime thoiGianBanGiao;
     private String ghiChuBanGiao;

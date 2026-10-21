@@ -30,8 +30,10 @@ import { phienThuNganApi, type PhienThuNganRecord } from '@/api/phienThuNgan';
 import { OpenShiftModal } from '@/features/cash-shift/OpenShiftModal';
 import { CloseShiftModal } from '@/features/cash-shift/CloseShiftModal';
 import { HandoverShiftModal } from '@/features/cash-shift/HandoverShiftModal';
+import { ReceiveHandoverModal } from '@/features/cash-shift/ReceiveHandoverModal';
 import { SafeDropModal } from '@/features/cash-shift/SafeDropModal';
 import { ShiftHistoryModal } from '@/features/cash-shift/ShiftHistoryModal';
+import { formatVND } from '@/utils/formatters';
 import './PosLayout.css';
 
 const { Header, Content } = Layout;
@@ -110,9 +112,11 @@ export const PosLayout: FC = () => {
   };
 
   const [currentShiftRecord, setCurrentShiftRecord] = useState<PhienThuNganRecord | null>(null);
+  const [pendingHandoverShift, setPendingHandoverShift] = useState<PhienThuNganRecord | null>(null);
   const [isOpenShiftModalOpen, setIsOpenShiftModalOpen] = useState(false);
   const [isCloseShiftModalOpen, setIsCloseShiftModalOpen] = useState(false);
   const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
+  const [isReceiveHandoverOpen, setIsReceiveHandoverOpen] = useState(false);
   const [isSafeDropModalOpen, setIsSafeDropModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
@@ -120,6 +124,13 @@ export const PosLayout: FC = () => {
     try {
       const res = await phienThuNganApi.getHienTai();
       setCurrentShiftRecord(res);
+      if (!res) {
+        // Kiểm tra xem có ca nào đang bàn giao cho mình hoặc cùng chi nhánh không
+        const pending = await phienThuNganApi.getPhienChoTiepQuan();
+        setPendingHandoverShift(pending);
+      } else {
+        setPendingHandoverShift(null);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -225,6 +236,32 @@ export const PosLayout: FC = () => {
                 Chốt ca
               </Button>
             </div>
+          ) : pendingHandoverShift ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Button
+                type="primary"
+                size="small"
+                icon={<SwapOutlined />}
+                onClick={() => setIsReceiveHandoverOpen(true)}
+                style={{
+                  background: '#2563eb',
+                  borderColor: '#2563eb',
+                  fontWeight: 700,
+                  borderRadius: 6,
+                  boxShadow: '0 0 10px rgba(37, 99, 235, 0.4)',
+                }}
+              >
+                ⚡ Tiếp quản ca ({pendingHandoverShift.tenThuNgan || pendingHandoverShift.maPhien})
+              </Button>
+              <Button
+                size="small"
+                icon={<DollarOutlined />}
+                onClick={() => setIsOpenShiftModalOpen(true)}
+                style={{ fontWeight: 600 }}
+              >
+                + Mở ca mới
+              </Button>
+            </div>
           ) : (
             <Button
               type="primary"
@@ -293,6 +330,44 @@ export const PosLayout: FC = () => {
         </div>
       </Header>
 
+      {/* Banner thông báo ca đang chờ tiếp quản */}
+      {pendingHandoverShift && !currentShiftRecord && (
+        <div
+          style={{
+            background: 'linear-gradient(90deg, #eff6ff 0%, #dbeafe 100%)',
+            borderBottom: '1px solid #bfdbfe',
+            padding: '8px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: 13,
+            zIndex: 10,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Tag color="processing" style={{ fontWeight: 700, margin: 0 }}>
+              CÓ CA ĐANG CHỜ TIẾP QUẢN
+            </Tag>
+            <span style={{ color: '#1e3a8a' }}>
+              Thu ngân <strong>{pendingHandoverShift.tenThuNgan || 'Ca trước'}</strong> ({pendingHandoverShift.quaySo || 'Quầy 1'}) đã bàn giao ca <strong>{pendingHandoverShift.maPhien}</strong> với số tiền bàn giao{' '}
+              <strong style={{ color: '#1d4ed8', fontSize: 14 }}>
+                {formatVND(pendingHandoverShift.soTienBanGiao ?? pendingHandoverShift.tienThucDemCuoiCa ?? 0)}
+              </strong>.
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Button
+              size="small"
+              type="primary"
+              style={{ background: '#2563eb', borderColor: '#2563eb', fontWeight: 600 }}
+              onClick={() => setIsReceiveHandoverOpen(true)}
+            >
+              Tiếp nhận bàn giao & Mở ca
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Content className="pos-content">
         <Outlet />
       </Content>
@@ -306,6 +381,16 @@ export const PosLayout: FC = () => {
         }}
         branchId={branchId || undefined}
         branchName={selectedBranchName}
+      />
+
+      <ReceiveHandoverModal
+        open={isReceiveHandoverOpen}
+        shift={pendingHandoverShift}
+        onClose={() => setIsReceiveHandoverOpen(false)}
+        onSuccess={() => {
+          setPendingHandoverShift(null);
+          loadCurrentShift();
+        }}
       />
 
       <CloseShiftModal
@@ -341,9 +426,18 @@ export const PosLayout: FC = () => {
 
       <ShiftHistoryModal
         open={isHistoryModalOpen}
-        onClose={() => setIsHistoryModalOpen(false)}
+        onClose={() => {
+          setIsHistoryModalOpen(false);
+          loadCurrentShift();
+        }}
         branchId={branchId || undefined}
         currentUserId={user?.id}
+        currentEmployeeId={user?.idNhanVien || undefined}
+        isManager={!isCashier}
+        onTakeover={(shift) => {
+          setPendingHandoverShift(shift);
+          setIsReceiveHandoverOpen(true);
+        }}
       />
     </Layout>
   );
