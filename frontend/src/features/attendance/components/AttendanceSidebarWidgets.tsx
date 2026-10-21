@@ -5,55 +5,61 @@ import {
   EnvironmentOutlined,
   ClockCircleOutlined,
   ThunderboltOutlined,
+  RightOutlined,
 } from '@ant-design/icons';
 import type { AttendanceRecord } from '@/types';
 import './AttendanceSidebarWidgets.css';
 
 interface AttendanceSidebarWidgetsProps {
-  onOpenLeaveModal: () => void;
-  onOpenSwapModal: () => void;
-  onOpenOtModal: () => void;
+  onOpenLeaveList: () => void;
+  onOpenSwapList: () => void;
+  onOpenOtList: () => void;
   todayShift?: AttendanceRecord;
   onClockIn?: (id: string) => void;
   onClockOut?: (id: string) => void;
   leaveApprovedCount?: number;
   leavePendingCount?: number;
-  onOpenLeaveApprovalModal?: () => void;
+  leaveRejectedCount?: number;
+  swapApprovedCount?: number;
+  swapPendingCount?: number;
+  otApprovedCount?: number;
+  otPendingCount?: number;
   isManager?: boolean;
 }
 
 export const AttendanceSidebarWidgets: FC<AttendanceSidebarWidgetsProps> = ({
-  onOpenLeaveModal,
-  onOpenSwapModal,
-  onOpenOtModal,
+  onOpenLeaveList,
+  onOpenSwapList,
+  onOpenOtList,
   todayShift,
-
+  onClockIn,
+  onClockOut,
   leaveApprovedCount = 0,
   leavePendingCount = 0,
-  onOpenLeaveApprovalModal,
+  leaveRejectedCount = 0,
+  swapApprovedCount = 1,
+  swapPendingCount = 0,
+  otApprovedCount = 0,
+  otPendingCount = 1,
   isManager = false,
 }) => {
   const hasClockedIn = Boolean(todayShift?.clockInAt);
   const hasClockedOut = Boolean(todayShift?.clockOutAt);
 
-  const handleClickLeave = () => {
-    if (isManager && onOpenLeaveApprovalModal) {
-      onOpenLeaveApprovalModal();
-    } else {
-      onOpenLeaveModal();
-    }
-  };
-
   return (
     <div className="attendance-sidebar-wrap">
       <div className="sidebar-card">
-        <h4 className="sidebar-card-title">Trạng thái đăng ký tháng này</h4>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h4 className="sidebar-card-title" style={{ margin: 0 }}>Trạng thái đăng ký tháng này</h4>
+          <span style={{ fontSize: 11, color: '#94a3b8' }}>Bấm để xem list</span>
+        </div>
 
         {/* MỤC 1: ĐƠN NGHỈ PHÉP */}
         <div
           className="sidebar-item"
-          onClick={handleClickLeave}
-          title={isManager ? "Nhấn để quản lý & duyệt các đơn nghỉ phép" : "Nhấn để nộp hoặc xem đơn nghỉ phép"}
+          onClick={onOpenLeaveList}
+          title="Nhấn để xem danh sách & tiến độ duyệt các đơn nghỉ phép"
+          style={{ cursor: 'pointer', position: 'relative' }}
         >
           <div className="item-icon-box box-red">
             <CalendarOutlined />
@@ -65,20 +71,30 @@ export const AttendanceSidebarWidgets: FC<AttendanceSidebarWidgetsProps> = ({
             </div>
             <div className="item-desc">Nghỉ phép thường niên & ốm đau</div>
           </div>
-          <div className="item-status">
+          <div className="item-status" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
             <span className="status-badge badge-green">{leaveApprovedCount} Đã duyệt</span>
             {leavePendingCount > 0 ? (
               <span className="status-sub" style={{ color: '#ea580c', fontWeight: 700 }}>
                 {leavePendingCount} Chờ duyệt
               </span>
+            ) : leaveRejectedCount > 0 ? (
+              <span className="status-sub" style={{ color: '#ef4444', fontWeight: 600 }}>
+                {leaveRejectedCount} Bị từ chối
+              </span>
             ) : (
               <span className="status-sub">Không có đơn chờ</span>
             )}
           </div>
+          <RightOutlined style={{ fontSize: 12, color: '#cbd5e1', marginLeft: 8 }} />
         </div>
 
         {/* MỤC 2: ĐƠN ĐI CA / ONSITE / ĐỔI CA */}
-        <div className="sidebar-item" onClick={onOpenSwapModal}>
+        <div
+          className="sidebar-item"
+          onClick={onOpenSwapList}
+          title="Nhấn để xem danh sách & tiến độ duyệt các yêu cầu đổi ca"
+          style={{ cursor: 'pointer', position: 'relative' }}
+        >
           <div className="item-icon-box box-purple">
             <EnvironmentOutlined />
           </div>
@@ -86,14 +102,26 @@ export const AttendanceSidebarWidgets: FC<AttendanceSidebarWidgetsProps> = ({
             <div className="item-name">Đơn đổi ca</div>
             <div className="item-desc">Công tác & đổi ca cửa hàng</div>
           </div>
-          <div className="item-status">
-            <span className="status-badge badge-green">0 Đã duyệt</span>
-            <span className="status-sub">Không có đơn chờ</span>
+          <div className="item-status" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+            <span className="status-badge badge-green">{swapApprovedCount} Đã duyệt</span>
+            {swapPendingCount > 0 ? (
+              <span className="status-sub" style={{ color: '#ea580c', fontWeight: 700 }}>
+                {swapPendingCount} Chờ duyệt
+              </span>
+            ) : (
+              <span className="status-sub">Không có đơn chờ</span>
+            )}
           </div>
+          <RightOutlined style={{ fontSize: 12, color: '#cbd5e1', marginLeft: 8 }} />
         </div>
 
         {/* MỤC 3: LÀM THÊM GIỜ (OT) */}
-        <div className="sidebar-item" onClick={onOpenOtModal}>
+        <div
+          className="sidebar-item"
+          onClick={onOpenOtList}
+          title="Nhấn để xem danh sách & tiến độ duyệt các yêu cầu làm thêm OT"
+          style={{ cursor: 'pointer', position: 'relative' }}
+        >
           <div className="item-icon-box box-orange">
             <ClockCircleOutlined />
           </div>
@@ -101,10 +129,17 @@ export const AttendanceSidebarWidgets: FC<AttendanceSidebarWidgetsProps> = ({
             <div className="item-name">Làm thêm (OT)</div>
             <div className="item-desc">Tăng ca ca đêm / lễ</div>
           </div>
-          <div className="item-status">
-            <span className="status-badge badge-green">0 Đã duyệt</span>
-            <span className="status-sub">Không có đơn chờ</span>
+          <div className="item-status" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+            <span className="status-badge badge-green">{otApprovedCount} Đã duyệt</span>
+            {otPendingCount > 0 ? (
+              <span className="status-sub" style={{ color: '#ea580c', fontWeight: 700 }}>
+                {otPendingCount} Chờ duyệt
+              </span>
+            ) : (
+              <span className="status-sub">Không có đơn chờ</span>
+            )}
           </div>
+          <RightOutlined style={{ fontSize: 12, color: '#cbd5e1', marginLeft: 8 }} />
         </div>
       </div>
 
@@ -128,7 +163,32 @@ export const AttendanceSidebarWidgets: FC<AttendanceSidebarWidgetsProps> = ({
                 <Tag color="warning">Chưa vào ca</Tag>
               )}
             </div>
-            
+
+            <div style={{ marginTop: 12 }}>
+              {!hasClockedIn ? (
+                <button
+                  type="button"
+                  className="ant-btn ant-btn-primary ant-btn-block"
+                  style={{ background: '#10b981', borderColor: '#10b981', fontWeight: 600, height: 38, borderRadius: 6 }}
+                  onClick={() => onClockIn?.(todayShift.id)}
+                >
+                  Check-in vào ca
+                </button>
+              ) : !hasClockedOut ? (
+                <button
+                  type="button"
+                  className="ant-btn ant-btn-primary ant-btn-block"
+                  style={{ background: '#f59e0b', borderColor: '#f59e0b', fontWeight: 600, height: 38, borderRadius: 6 }}
+                  onClick={() => onClockOut?.(todayShift.id)}
+                >
+                  Check-out tan ca
+                </button>
+              ) : (
+                <div style={{ textAlign: 'center', color: '#10b981', fontWeight: 600, fontSize: 13 }}>
+                  ✓ Bạn đã hoàn thành ca hôm nay
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <div className="no-shift-box">

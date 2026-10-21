@@ -1,9 +1,5 @@
 import { useMemo, type FC } from 'react';
-import { Button, Popover } from 'antd';
-import {
-  PlusOutlined,
-  SwapOutlined,
-} from '@ant-design/icons';
+import {  Popover } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import {
   SHIFT_CODE,
@@ -290,8 +286,6 @@ const getShiftDisplayConfig = (
 export const AttendanceMonthCalendar: FC<AttendanceMonthCalendarProps> = ({
   currentMonth,
   attendanceRecords,
-  onOpenLeaveModal,
-  onOpenSwapModal,
   onSelectDay,
 }) => {
   const startOfMonth = currentMonth.startOf('month');
@@ -367,22 +361,22 @@ export const AttendanceMonthCalendar: FC<AttendanceMonthCalendarProps> = ({
           </p>
         </div>
 
-        <div className="calendar-actions">
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            className="btn-leave-action"
-            onClick={onOpenLeaveModal}
-          >
-            Đăng ký nghỉ phép
-          </Button>
-          <Button
-            icon={<SwapOutlined />}
-            onClick={onOpenSwapModal}
-          >
-            Đổi ca / OT
-          </Button>
-        </div>
+        {/*<div className="calendar-actions">*/}
+        {/*  <Button*/}
+        {/*    type="primary"*/}
+        {/*    icon={<PlusOutlined />}*/}
+        {/*    className="btn-leave-action"*/}
+        {/*    onClick={onOpenLeaveModal}*/}
+        {/*  >*/}
+        {/*    Đăng ký nghỉ phép*/}
+        {/*  </Button>*/}
+        {/*  <Button*/}
+        {/*    icon={<SwapOutlined />}*/}
+        {/*    onClick={onOpenSwapModal}*/}
+        {/*  >*/}
+        {/*    Đổi ca / OT*/}
+        {/*  </Button>*/}
+        {/*</div>*/}
       </div>
 
       {/* Thanh chú thích trạng thái màu */}

@@ -30,7 +30,7 @@ export const donNghiPhepApi = {
   },
 
   getMyRequests: async (): Promise<LeaveRequestRecord[]> => {
-    const response = await fetch(`${API_BASE_URL}/api/don-nghi-phep/my`, {
+    const response = await fetch(`${API_BASE_URL}/api/don-nghi-phep/my-requests`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Không thể tải danh sách đơn nghỉ phép của bạn');

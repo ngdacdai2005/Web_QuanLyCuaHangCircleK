@@ -24,7 +24,7 @@ public class DonNghiPhepController {
         return donNghiPhepService.create(request, httpRequest);
     }
 
-    @GetMapping("/my-requests")
+    @GetMapping({"/my-requests", "/my"})
     public ResponseEntity<List<DonNghiPhepResponseDTO>> getMyRequests(HttpServletRequest httpRequest) {
         return ResponseEntity.ok(donNghiPhepService.getMyRequests(httpRequest));
     }

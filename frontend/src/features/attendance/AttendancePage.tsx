@@ -69,6 +69,7 @@ import { AttendanceSidebarWidgets } from './components/AttendanceSidebarWidgets'
 import { LeaveRequestModal } from './components/LeaveRequestModal';
 import { LeaveApprovalModal } from './components/LeaveApprovalModal';
 import { ShiftSwapModal } from './components/ShiftSwapModal';
+import { ShiftRequestListModal } from './components/ShiftRequestListModal';
 import { ShiftActionModal } from './components/ShiftActionModal';
 import { donNghiPhepApi } from '@/api/donNghiPhep';
 import type { LeaveRequestRecord } from '@/types/employeeTypes';
@@ -121,6 +122,8 @@ export const AttendancePage: FC = () => {
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequestRecord[]>([]);
   const [swapModalOpen, setSwapModalOpen] = useState(false);
   const [swapModalType, setSwapModalType] = useState<'SWAP' | 'OT'>('SWAP');
+  const [shiftListModalOpen, setShiftListModalOpen] = useState(false);
+  const [shiftListType, setShiftListType] = useState<'SWAP' | 'OT'>('SWAP');
   const [shiftActionOpen, setShiftActionOpen] = useState(false);
   const [selectedDateStr, setSelectedDateStr] = useState<string>('');
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
@@ -133,7 +136,8 @@ export const AttendancePage: FC = () => {
   const leaveStats = useMemo(() => {
     const approved = leaveRequests.filter((r) => r.trangThai === 'APPROVED').length;
     const pending = leaveRequests.filter((r) => r.trangThai === 'PENDING').length;
-    return { approved, pending };
+    const rejected = leaveRequests.filter((r) => r.trangThai === 'REJECTED').length;
+    return { approved, pending, rejected };
   }, [leaveRequests]);
 
   const currentViewEmployeeId = selectedEmployeeId || (user?.idNhanVien ?? user?.id);
@@ -1101,22 +1105,26 @@ export const AttendancePage: FC = () => {
                     </div>
                     <div className="attendance-split-right">
                       <AttendanceSidebarWidgets
-                        onOpenLeaveModal={() => setLeaveModalOpen(true)}
-                        onOpenLeaveApprovalModal={() => setLeaveApprovalOpen(true)}
-                        isManager={!isSelfServiceRole}
+                        onOpenLeaveList={() => setLeaveApprovalOpen(true)}
+                        onOpenSwapList={() => {
+                          setShiftListType('SWAP');
+                          setShiftListModalOpen(true);
+                        }}
+                        onOpenOtList={() => {
+                          setShiftListType('OT');
+                          setShiftListModalOpen(true);
+                        }}
                         leaveApprovedCount={leaveStats.approved}
                         leavePendingCount={leaveStats.pending}
-                        onOpenSwapModal={() => {
-                          setSwapModalType('SWAP');
-                          setSwapModalOpen(true);
-                        }}
-                        onOpenOtModal={() => {
-                          setSwapModalType('OT');
-                          setSwapModalOpen(true);
-                        }}
+                        leaveRejectedCount={leaveStats.rejected}
+                        swapApprovedCount={1}
+                        swapPendingCount={0}
+                        otApprovedCount={0}
+                        otPendingCount={1}
                         todayShift={todayShift}
                         onClockIn={handleClockIn}
                         onClockOut={handleClockOut}
+                        isManager={!isSelfServiceRole}
                       />
                     </div>
                   </div>
@@ -1245,6 +1253,7 @@ export const AttendancePage: FC = () => {
         onClose={() => setLeaveApprovalOpen(false)}
         isManager={!isSelfServiceRole}
         branchId={branchFilter || activeBranchId}
+        onOpenCreateModal={() => setLeaveModalOpen(true)}
         onUpdated={() => {
           void loadLeaveRequests();
           const monthStart = currentMonth.startOf('month').subtract(7, 'day').format('YYYY-MM-DD');
@@ -1254,6 +1263,16 @@ export const AttendancePage: FC = () => {
             to: monthEnd,
           }));
         }}
+      />
+      <ShiftRequestListModal
+        open={shiftListModalOpen}
+        type={shiftListType}
+        onClose={() => setShiftListModalOpen(false)}
+        onOpenCreateModal={() => {
+          setSwapModalType(shiftListType);
+          setSwapModalOpen(true);
+        }}
+        isManager={!isSelfServiceRole}
       />
       <ShiftSwapModal
         open={swapModalOpen}
