@@ -52,6 +52,23 @@ interface ShiftDisplayConfig {
   statusColor: string;
 }
 
+const formatAttendanceStatus = (status?: string): string => {
+  switch (status) {
+    case 'SCHEDULED':
+      return 'Đã lên lịch ca';
+    case 'PRESENT':
+      return 'Đã hoàn thành';
+    case 'LATE':
+      return 'Đi làm muộn';
+    case 'ABSENT':
+      return 'Vắng mặt / Nghỉ';
+    case 'LEAVE':
+      return 'Nghỉ phép';
+    default:
+      return status || 'Chưa xác định';
+  }
+};
+
 const getShiftDisplayConfig = (
   dateStr: string,
   isToday: boolean,
@@ -455,8 +472,21 @@ export const AttendanceMonthCalendar: FC<AttendanceMonthCalendarProps> = ({
                         {primaryRecord.overtimeHours > 0 && (
                           <div style={{ color: '#d97706', fontWeight: 600 }}>Tăng ca: +{primaryRecord.overtimeHours}h OT</div>
                         )}
+                        {primaryRecord.clockInAt && primaryRecord.checkInAt && (() => {
+                          const lateMin = dayjs(primaryRecord.clockInAt).diff(dayjs(primaryRecord.checkInAt), 'minute');
+                          if (lateMin > 15) {
+                            const lH = Math.floor(lateMin / 60);
+                            const lM = lateMin % 60;
+                            return (
+                              <div style={{ color: '#d97706', fontWeight: 600, marginTop: 2 }}>
+                                ⚠ Đi muộn: {lH > 0 ? `${lH}h ` : ''}${lM}p
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                         <div style={{ marginTop: 6, fontSize: 12, color: '#64748b' }}>
-                          Trạng thái: <strong>{primaryRecord.status}</strong>
+                          Trạng thái: <strong>{formatAttendanceStatus(primaryRecord.status)}</strong>
                         </div>
                       </div>
                     }

@@ -50,38 +50,103 @@
   align-items: center;
 }
 
-/* Đồng hồ thời gian thực */
-.live-clock-section {
+/* TRƯỜNG HỢP HÔM NAY: BỘ ĐẾM THỜI GIAN KÉP */
+.today-action-section {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 16px;
-  background: #ffffff;
-  border: 1px dashed #cbd5e1;
-  border-radius: 12px;
-  gap: 12px;
+  gap: 14px;
 }
 
-.live-clock-title {
-  font-size: 12px;
+.time-display-container {
+  display: flex;
+  gap: 10px;
+}
+
+.time-card {
+  flex: 1;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.time-card.live-card {
+  border-left: 4px solid #3b82f6;
+  background: #f8fafc;
+}
+
+.time-card.worked-card {
+  border-left: 4px solid #10b981;
+  background: #f0fdf4;
+}
+
+.time-card-label {
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-weight: 600;
+  font-weight: 700;
   color: #64748b;
+  display: flex;
+  align-items: center;
 }
 
-.live-clock-digits {
+.time-card-value {
   font-family: 'SF Mono', 'Roboto Mono', 'Fira Code', monospace;
-  font-size: 38px;
+  font-size: 24px;
   font-weight: 800;
   color: #0f172a;
-  letter-spacing: 2px;
-  line-height: 1;
+  letter-spacing: 1px;
+}
+
+.time-card-value.worked-value {
+  color: #047857;
+  font-size: 16px;
+  font-family: inherit;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* BẢNG SO SÁNH KẾ HOẠCH VS THỰC TẾ */
+.shift-schedule-compare {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.compare-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.compare-label {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.compare-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
 }
 
 .clock-actions-wrap {
   width: 100%;
-  margin-top: 8px;
 }
 
 .btn-large-checkin {
@@ -118,7 +183,7 @@
   box-shadow: 0 6px 18px rgba(220, 38, 38, 0.45);
 }
 
-/* Lịch sử chấm công */
+/* Lịch sử chấm công (Quá khứ) */
 .shift-history-section {
   display: flex;
   flex-direction: column;
@@ -176,4 +241,35 @@
 .empty-shift-section {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.future-plan-hint-card {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-left: 4px solid #0284c7;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hint-card-title {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0369a1;
+}
+
+.hint-card-desc {
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.future-actions-bar {
+  display: flex;
+  gap: 12px;
 }
